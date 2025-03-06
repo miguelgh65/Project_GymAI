@@ -1,0 +1,34 @@
+version: "3.8"
+
+services:
+  gym-app:
+    build: .
+    container_name: gym-flask-app
+    restart: always  # 🔴 Hace que el contenedor se inicie automáticamente
+    ports:
+      - "5050:5050"
+    environment:
+      - DEEPSEEK_API_KEY=sk-289660c5a8524bc8af1c9ea38f9368c1  # Sustituye con tu clave real
+      - DB_HOST=192.168.1.60
+      - DB_PORT=5432
+      - DB_NAME=gymdb
+      - DB_USER=postgres
+      - DB_PASSWORD=NuevaBabilonia9317@  # 🔴 Cambia esto por seguridad
+    depends_on:
+      - postgres_gymdb
+
+  postgres_gymdb:
+    image: postgres:latest
+    container_name: postgres_gymdb
+    restart: always
+    environment:
+      - POSTGRES_DB=gymdb
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=NuevaBabilonia9317@
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

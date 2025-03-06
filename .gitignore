@@ -1,0 +1,30 @@
+# Ignorar archivos sensibles
+.env
+
+# Archivos de dependencias
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Carpetas de entornos virtuales
+venv/
+.env/
+.venv/
+
+# Archivos de logs
+logs/
+*.log
+
+# Archivos de caché
+*.sqlite3
+*.db
+.DS_Store
+
+# Dependencias instaladas
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Ignorar contenedores de Docker
+docker-compose.override.yml
+
