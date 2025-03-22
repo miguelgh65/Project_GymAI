@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Registro de Ejercicios</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-dumbbell"></i> GymTracker Pro</h1>
+            <p class="subtitle">Sistema de Registro de Entrenamiento</p>
+        </header>
+        
+        <main>
+            <section class="card form-card">
+                <h2><i class="fas fa-plus-circle"></i> Nuevo Registro</h2>
+                
+                <form id="exerciseForm" method="POST" action="/">
+                    <!-- Campo oculto para el ID de usuario -->
+                    <input type="hidden" id="user_id" name="user_id" value="3892415">
+                    
+                    <div class="form-group">
+                        <label for="exercise_data">Datos del Ejercicio:</label>
+                        <div class="textarea-container">
+                            <textarea id="exercise_data" name="exercise_data" required placeholder="Ejemplos:&#10;Press Banca: 5x75, 7x70, 8x60&#10;Correr: 30 minutos&#10;Dominadas: 12x0, 10x0, 8x0"></textarea>
+                            <div class="textarea-info">
+                                <i class="fas fa-info-circle"></i>
+                                <span>Formato: Nombre del ejercicio: repeticiones x peso, ...</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn primary-btn">
+                        <i class="fas fa-save"></i> Registrar Ejercicio
+                    </button>
+                </form>
+                
+                <div id="response" class="response" style="display: none;"></div>
+            </section>
+            
+            <section class="card info-card">
+                <h2><i class="fas fa-info-circle"></i> Cómo Usar</h2>
+                <div class="info-content">
+                    <h3>Formato de Ejercicios</h3>
+                    <ul>
+                        <li><strong>Ejercicios de fuerza:</strong> [Nombre]: [reps]x[peso], [reps]x[peso], ...</li>
+                        <li><strong>Ejercicios cardio:</strong> [Nombre]: [duración] minutos</li>
+                    </ul>
+                    
+                    <div class="examples">
+                        <div class="example">
+                            <h4>Ejemplo Fuerza</h4>
+                            <p>Press Banca: 5x75, 7x70, 8x60</p>
+                        </div>
+                        <div class="example">
+                            <h4>Ejemplo Cardio</h4>
+                            <p>Correr: 30 minutos</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <footer>
+            <p>&copy; 2025 RoonieColemAI. Todos los derechos reservados.</p>
+        </footer>
+    </div>
+    
+    <script>
+        document.getElementById('exerciseForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const submitBtn = this.querySelector('button[type="submit"]');
+            
+            // Cambiar el botón a estado de carga
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+            submitBtn.disabled = true;
+            
+            fetch('/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                const responseDiv = document.getElementById('response');
+                responseDiv.style.display = 'block';
+                
+                if (data.success) {
+                    responseDiv.className = 'response success';
+                    responseDiv.innerHTML = '<i class="fas fa-check-circle"></i> ' + data.message;
+                    document.getElementById('exercise_data').value = '';
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ' + data.message;
+                }
+                
+                // Restaurar el botón
+                submitBtn.innerHTML = '<i class="fas fa-save"></i> Registrar Ejercicio';
+                submitBtn.disabled = false;
+                
+                // Ocultar el mensaje después de 5 segundos
+                setTimeout(() => {
+                    responseDiv.style.display = 'none';
+                }, 5000);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                const responseDiv = document.getElementById('response');
+                responseDiv.style.display = 'block';
+                responseDiv.className = 'response error';
+                responseDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error en la comunicación con el servidor.';
+                
+                // Restaurar el botón
+                submitBtn.innerHTML = '<i class="fas fa-save"></i> Registrar Ejercicio';
+                submitBtn.disabled = false;
+            });
+        });
+    </script>
+</body>
+</html>
+

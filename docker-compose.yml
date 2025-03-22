@@ -4,31 +4,37 @@ services:
   gym-app:
     build: .
     container_name: gym-flask-app
-    restart: always  # 🔴 Hace que el contenedor se inicie automáticamente
+    restart: always
     ports:
       - "5050:5050"
-    environment:
-      - DEEPSEEK_API_KEY=sk-289660c5a8524bc8af1c9ea38f9368c1  # Sustituye con tu clave real
-      - DB_HOST=192.168.1.60
-      - DB_PORT=5432
-      - DB_NAME=gymdb
-      - DB_USER=postgres
-      - DB_PASSWORD=NuevaBabilonia9317@  # 🔴 Cambia esto por seguridad
+    env_file:
+      - .env
+    volumes:
+      - ./workflows/gym/templates:/app/workflows/gym/templates
+      - ./workflows/gym/static:/app/workflows/gym/static
     depends_on:
       - postgres_gymdb
+    networks:
+      - gym_network
 
   postgres_gymdb:
-    image: postgres:latest
+    image: postgres:17
     container_name: postgres_gymdb
     restart: always
     environment:
-      - POSTGRES_DB=gymdb
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=NuevaBabilonia9317@
-    ports:
-      - "5432:5432"
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - gym_network
+
+networks:
+  gym_network:
+    driver: bridge
 
 volumes:
   postgres_data:

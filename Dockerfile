@@ -1,18 +1,25 @@
-# Usar una imagen de Python 3
 FROM python:3.11
 
-# Establecer el directorio de trabajo
+# Establecer el directorio de trabajo en la imagen
 WORKDIR /app
 
+# Copiar primero el archivo de dependencias para aprovechar la cache de Docker
+COPY requirements.txt /app/
+
+# Instalar las dependencias
+RUN pip install --no-cache-dir -r requirements.txt
+
 # Copiar archivos de la aplicación
-COPY . /app
+COPY workflows/gym/ /app/workflows/gym/
 
-# Instalar dependencias
-RUN pip install --no-cache-dir flask psycopg2-binary langchain_deepseek requests
+# Copiar .env al directorio raíz
+COPY .env /app/
 
-# Exponer el puerto 5050 para Flask
+# Exponer el puerto que usará la aplicación Flask
 EXPOSE 5050
 
-# Comando para ejecutar la app automáticamente
-CMD ["python", "-u", "gym.py"]
+# Cambiar al directorio de la aplicación
+WORKDIR /app/workflows/gym
 
+# Comando para ejecutar la aplicación
+CMD ["python", "-u", "app.py"]
