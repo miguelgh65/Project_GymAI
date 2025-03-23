@@ -1,5 +1,4 @@
 version: "3.8"
-
 services:
   gym-app:
     build: .
@@ -16,7 +15,7 @@ services:
       - postgres_gymdb
     networks:
       - gym_network
-
+      
   postgres_gymdb:
     image: postgres:17
     container_name: postgres_gymdb
@@ -27,14 +26,15 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
     ports:
       - "5432:5432"
     networks:
       - gym_network
-
+      
 networks:
   gym_network:
     driver: bridge
-
+    
 volumes:
   postgres_data:

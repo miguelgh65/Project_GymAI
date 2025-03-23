@@ -3,62 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Registro de Ejercicios</title>
+    <title>RoonieColemAI - Sistema de Entrenamiento</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1><i class="fas fa-dumbbell"></i> GymTracker Pro</h1>
+            <h1><i class="fas fa-dumbbell"></i> RoonieColemAI</h1>
             <p class="subtitle">Sistema de Registro de Entrenamiento</p>
         </header>
         
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="registro">Registrar Ejercicio</button>
+            <button class="tab-btn" data-tab="hoy">¿Qué toca hoy?</button>
+            <button class="tab-btn" data-tab="rutina">Mi Rutina</button>
+        </div>
+        
         <main>
-            <section class="card form-card">
-                <h2><i class="fas fa-plus-circle"></i> Nuevo Registro</h2>
-                
-                <form id="exerciseForm" method="POST" action="/">
-                    <!-- Campo oculto para el ID de usuario -->
-                    <input type="hidden" id="user_id" name="user_id" value="3892415">
+            <!-- Tab de Registro de Ejercicios -->
+            <section id="tab-registro" class="tab-content active">
+                <div class="card form-card">
+                    <h2><i class="fas fa-plus-circle"></i> Nuevo Registro</h2>
                     
-                    <div class="form-group">
-                        <label for="exercise_data">Datos del Ejercicio:</label>
-                        <div class="textarea-container">
-                            <textarea id="exercise_data" name="exercise_data" required placeholder="Ejemplos:&#10;Press Banca: 5x75, 7x70, 8x60&#10;Correr: 30 minutos&#10;Dominadas: 12x0, 10x0, 8x0"></textarea>
-                            <div class="textarea-info">
-                                <i class="fas fa-info-circle"></i>
-                                <span>Formato: Nombre del ejercicio: repeticiones x peso, ...</span>
+                    <form id="exerciseForm" method="POST" action="/">
+                        <!-- Campo oculto para el ID de usuario -->
+                        <input type="hidden" id="user_id" name="user_id" value="3892415">
+                        
+                        <div class="form-group">
+                            <label for="exercise_data">Datos del Ejercicio:</label>
+                            <div class="textarea-container">
+                                <textarea id="exercise_data" name="exercise_data" required placeholder="Ejemplos:&#10;Press Banca: 5x75, 7x70, 8x60&#10;Correr: 30 minutos&#10;Dominadas: 12x0, 10x0, 8x0"></textarea>
+                                <div class="textarea-info">
+                                    <i class="fas fa-info-circle"></i>
+                                    <span>Formato: Nombre del ejercicio: repeticiones x peso, ...</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn primary-btn">
+                            <i class="fas fa-save"></i> Registrar Ejercicio
+                        </button>
+                    </form>
+                    
+                    <div id="response" class="response" style="display: none;"></div>
+                </div>
+                
+                <div class="card info-card">
+                    <h2><i class="fas fa-info-circle"></i> Cómo Usar</h2>
+                    <div class="info-content">
+                        <h3>Formato de Ejercicios</h3>
+                        <ul>
+                            <li><strong>Ejercicios de fuerza:</strong> [Nombre]: [reps]x[peso], [reps]x[peso], ...</li>
+                            <li><strong>Ejercicios cardio:</strong> [Nombre]: [duración] minutos</li>
+                        </ul>
+                        
+                        <div class="examples">
+                            <div class="example">
+                                <h4>Ejemplo Fuerza</h4>
+                                <p>Press Banca: 5x75, 7x70, 8x60</p>
+                            </div>
+                            <div class="example">
+                                <h4>Ejemplo Cardio</h4>
+                                <p>Correr: 30 minutos</p>
                             </div>
                         </div>
                     </div>
-                    
-                    <button type="submit" class="btn primary-btn">
-                        <i class="fas fa-save"></i> Registrar Ejercicio
-                    </button>
-                </form>
-                
-                <div id="response" class="response" style="display: none;"></div>
+                </div>
             </section>
             
-            <section class="card info-card">
-                <h2><i class="fas fa-info-circle"></i> Cómo Usar</h2>
-                <div class="info-content">
-                    <h3>Formato de Ejercicios</h3>
-                    <ul>
-                        <li><strong>Ejercicios de fuerza:</strong> [Nombre]: [reps]x[peso], [reps]x[peso], ...</li>
-                        <li><strong>Ejercicios cardio:</strong> [Nombre]: [duración] minutos</li>
-                    </ul>
-                    
-                    <div class="examples">
-                        <div class="example">
-                            <h4>Ejemplo Fuerza</h4>
-                            <p>Press Banca: 5x75, 7x70, 8x60</p>
+            <!-- Tab de ¿Qué toca hoy? -->
+            <section id="tab-hoy" class="tab-content">
+                <div class="card today-card">
+                    <h2><i class="fas fa-calendar-day"></i> Entrenamiento de Hoy</h2>
+                    <div class="today-content" id="today-content">
+                        <div class="loading">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <p>Cargando tu rutina de hoy...</p>
                         </div>
-                        <div class="example">
-                            <h4>Ejemplo Cardio</h4>
-                            <p>Correr: 30 minutos</p>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Tab de Mi Rutina -->
+            <section id="tab-rutina" class="tab-content">
+                <div class="card routine-card">
+                    <h2><i class="fas fa-calendar-alt"></i> Mi Rutina Semanal</h2>
+                    <div class="routine-content">
+                        <p class="routine-intro">Configura los ejercicios para cada día de la semana. Los cambios se guardarán automáticamente.</p>
+                        
+                        <div class="routine-days" id="routine-days">
+                            <div class="loading">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                <p>Cargando tu rutina...</p>
+                            </div>
                         </div>
+                        
+                        <div id="routine-response" class="response" style="display: none;"></div>
                     </div>
                 </div>
             </section>
@@ -70,6 +111,30 @@
     </div>
     
     <script>
+        // Funcionalidad de tabs
+        document.querySelectorAll('.tab-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                // Remover clase active de todos los botones y contenidos
+                document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                
+                // Añadir clase active al botón clickeado
+                button.classList.add('active');
+                
+                // Mostrar el contenido correspondiente
+                const tabId = button.getAttribute('data-tab');
+                document.getElementById('tab-' + tabId).classList.add('active');
+                
+                // Cargar datos específicos según la pestaña
+                if (tabId === 'hoy') {
+                    loadTodaysWorkout();
+                } else if (tabId === 'rutina') {
+                    loadRoutine();
+                }
+            });
+        });
+        
+        // Formulario de registro de ejercicios
         document.getElementById('exerciseForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -119,7 +184,294 @@
                 submitBtn.disabled = false;
             });
         });
+        
+        // Funciones para la tab de "¿Qué toca hoy?"
+        function loadTodaysWorkout() {
+            const todayContent = document.getElementById('today-content');
+            todayContent.innerHTML = `
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Cargando tu rutina de hoy...</p>
+                </div>
+            `;
+            
+            fetch('/rutina_hoy')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.rutina && data.rutina.length > 0) {
+                        let html = `
+                            <div class="today-header">
+                                <h3>${data.dia_nombre}</h3>
+                                <p>Estos son los ejercicios que te tocan hoy:</p>
+                            </div>
+                            <form id="todayExerciseForm">
+                                <ul class="today-exercises">
+                        `;
+                        
+                        data.rutina.forEach((item, index) => {
+                            const statusClass = item.realizado ? 'completed' : 'pending';
+                            const statusIcon = item.realizado ? 
+                                '<i class="fas fa-check-circle"></i>' : 
+                                '<i class="fas fa-circle"></i>';
+                            
+                            html += `
+                                <li class="${statusClass}">
+                                    <div class="exercise-info">
+                                        ${statusIcon}
+                                        <span>${item.ejercicio}</span>
+                                    </div>
+                                    <div class="exercise-input">
+                                        <input type="text" 
+                                               name="exercise_input_${index}" 
+                                               id="exercise_input_${index}" 
+                                               data-exercise="${item.ejercicio}"
+                                               placeholder="ej: 5x75, 7x70, 8x60" 
+                                               ${item.realizado ? 'disabled' : ''}
+                                               class="reps-input">
+                                    </div>
+                                </li>
+                            `;
+                        });
+                        
+                        html += `
+                                </ul>
+                                <button type="submit" class="btn primary-btn log-today-btn">
+                                    <i class="fas fa-save"></i> Registrar Entrenamiento
+                                </button>
+                            </form>
+                            <div id="today-response" class="response" style="display: none;"></div>
+                        `;
+                        
+                        todayContent.innerHTML = html;
+                        
+                        // Añadir evento al formulario
+                        document.getElementById('todayExerciseForm').addEventListener('submit', function(e) {
+                            e.preventDefault();
+                            
+                            // Recopilar datos de los ejercicios
+                            const exerciseData = [];
+                            let hasData = false;
+                            
+                            document.querySelectorAll('.reps-input').forEach(input => {
+                                if (input.value.trim() !== '') {
+                                    hasData = true;
+                                    const exerciseName = input.getAttribute('data-exercise');
+                                    exerciseData.push(`${exerciseName}: ${input.value.trim()}`);
+                                }
+                            });
+                            
+                            if (!hasData) {
+                                const responseDiv = document.getElementById('today-response');
+                                responseDiv.style.display = 'block';
+                                responseDiv.className = 'response error';
+                                responseDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Debes completar al menos un ejercicio.';
+                                
+                                setTimeout(() => {
+                                    responseDiv.style.display = 'none';
+                                }, 5000);
+                                
+                                return;
+                            }
+                            
+                            // Preparar datos para enviar
+                            const formData = new FormData();
+                            formData.append('exercise_data', exerciseData.join('\n'));
+                            
+                            const submitBtn = document.querySelector('.log-today-btn');
+                            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+                            submitBtn.disabled = true;
+                            
+                            // Enviar datos
+                            fetch('/', {
+                                method: 'POST',
+                                body: formData
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                const responseDiv = document.getElementById('today-response');
+                                responseDiv.style.display = 'block';
+                                
+                                if (data.success) {
+                                    responseDiv.className = 'response success';
+                                    responseDiv.innerHTML = '<i class="fas fa-check-circle"></i> ' + data.message;
+                                    
+                                    // Limpiar inputs y recargar
+                                    document.querySelectorAll('.reps-input').forEach(input => {
+                                        input.value = '';
+                                    });
+                                    
+                                    // Recargar después de un breve retraso
+                                    setTimeout(() => {
+                                        loadTodaysWorkout();
+                                    }, 2000);
+                                } else {
+                                    responseDiv.className = 'response error';
+                                    responseDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ' + data.message;
+                                }
+                                
+                                // Restaurar el botón
+                                submitBtn.innerHTML = '<i class="fas fa-save"></i> Registrar Entrenamiento';
+                                submitBtn.disabled = false;
+                                
+                                // Ocultar el mensaje después de 5 segundos
+                                setTimeout(() => {
+                                    responseDiv.style.display = 'none';
+                                }, 5000);
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                const responseDiv = document.getElementById('today-response');
+                                responseDiv.style.display = 'block';
+                                responseDiv.className = 'response error';
+                                responseDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error en la comunicación con el servidor.';
+                                
+                                // Restaurar el botón
+                                submitBtn.innerHTML = '<i class="fas fa-save"></i> Registrar Entrenamiento';
+                                submitBtn.disabled = false;
+                            });
+                        });
+                    } else {
+                        todayContent.innerHTML = `
+                            <div class="no-routine">
+                                <i class="fas fa-calendar-times"></i>
+                                <p>${data.message || 'No hay rutina definida para hoy.'}</p>
+                                <p class="no-routine-tip">Configura tu rutina en la pestaña "Mi Rutina".</p>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    todayContent.innerHTML = `
+                        <div class="error-message">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <p>Error al cargar la rutina de hoy.</p>
+                        </div>
+                    `;
+                });
+        }
+        
+        // Funciones para la tab de "Mi Rutina"
+        function loadRoutine() {
+            const routineDays = document.getElementById('routine-days');
+            routineDays.innerHTML = `
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Cargando tu rutina...</p>
+                </div>
+            `;
+            
+            fetch('/rutina')
+                .then(response => response.json())
+                .then(data => {
+                    let html = '';
+                    const weekdays = [
+                        { id: 1, name: 'Lunes' },
+                        { id: 2, name: 'Martes' },
+                        { id: 3, name: 'Miércoles' },
+                        { id: 4, name: 'Jueves' },
+                        { id: 5, name: 'Viernes' },
+                        { id: 6, name: 'Sábado' },
+                        { id: 7, name: 'Domingo' }
+                    ];
+                    
+                    weekdays.forEach(day => {
+                        const dayExercises = data.success && data.rutina && data.rutina[day.id.toString()] ? 
+                            data.rutina[day.id.toString()].join('\n') : '';
+                        
+                        html += `
+                            <div class="routine-day">
+                                <h3>${day.name}</h3>
+                                <textarea 
+                                    id="day-${day.id}" 
+                                    data-day="${day.id}" 
+                                    placeholder="Introduce los ejercicios para este día (uno por línea)"
+                                    class="routine-textarea"
+                                >${dayExercises}</textarea>
+                            </div>
+                        `;
+                    });
+                    
+                    html += `
+                        <div class="routine-actions">
+                            <button id="save-routine" class="btn primary-btn">
+                                <i class="fas fa-save"></i> Guardar Rutina
+                            </button>
+                        </div>
+                    `;
+                    
+                    routineDays.innerHTML = html;
+                    
+                    // Añadir evento al botón de guardar
+                    document.getElementById('save-routine').addEventListener('click', saveRoutine);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    routineDays.innerHTML = `
+                        <div class="error-message">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <p>Error al cargar la rutina.</p>
+                        </div>
+                    `;
+                });
+        }
+        
+        function saveRoutine() {
+            const saveBtn = document.getElementById('save-routine');
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+            saveBtn.disabled = true;
+            
+            const routine = {};
+            document.querySelectorAll('.routine-textarea').forEach(textarea => {
+                const dayId = textarea.getAttribute('data-day');
+                const exercises = textarea.value.split('\n')
+                    .map(line => line.trim())
+                    .filter(line => line.length > 0);
+                
+                routine[dayId] = exercises;
+            });
+            
+            fetch('/rutina', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ rutina: routine })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const responseDiv = document.getElementById('routine-response');
+                responseDiv.style.display = 'block';
+                
+                if (data.success) {
+                    responseDiv.className = 'response success';
+                    responseDiv.innerHTML = '<i class="fas fa-check-circle"></i> ' + data.message;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ' + data.message;
+                }
+                
+                // Restaurar el botón
+                saveBtn.innerHTML = '<i class="fas fa-save"></i> Guardar Rutina';
+                saveBtn.disabled = false;
+                
+                // Ocultar el mensaje después de 5 segundos
+                setTimeout(() => {
+                    responseDiv.style.display = 'none';
+                }, 5000);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                const responseDiv = document.getElementById('routine-response');
+                responseDiv.style.display = 'block';
+                responseDiv.className = 'response error';
+                responseDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error al guardar la rutina.';
+                
+                // Restaurar el botón
+                saveBtn.innerHTML = '<i class="fas fa-save"></i> Guardar Rutina';
+                saveBtn.disabled = false;
+            });
+        }
     </script>
 </body>
 </html>
-

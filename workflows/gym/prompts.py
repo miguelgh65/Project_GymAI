@@ -21,6 +21,7 @@ reglas:
 por ejemplo, 'trices en polea' debe transformarse en 'triceps en polea' y 'press banca inclinado' en 'press banca inclinado'.
 - asegúrate de que el ejercicio normalizado pertenezca a la siguiente lista: {exercise_list}.
 - si se trata de un ejercicio de fuerza, utiliza la clave 'ejercicio' y 'series' (una lista de objetos con 'repeticiones' y 'peso').
+- para ejercicios con peso corporal como dominadas, si no se especifica peso, usa "peso": 0 explícitamente.
 - si es cardio, utiliza 'ejercicio' y 'duracion' (en minutos).
 - devuelve unicamente json valido, sin explicaciones adicionales.
 
@@ -34,6 +35,19 @@ salida:
       {{"repeticiones": 5, "peso": 75}},
       {{"repeticiones": 7, "peso": 70}},
       {{"repeticiones": 8, "peso": 60}}
+    ]
+  }}
+]
+
+entrada: "dominadas 5, 7, 8"
+salida:
+[
+  {{
+    "ejercicio": "dominadas",
+    "series": [
+      {{"repeticiones": 5, "peso": 0}},
+      {{"repeticiones": 7, "peso": 0}},
+      {{"repeticiones": 8, "peso": 0}}
     ]
   }}
 ]

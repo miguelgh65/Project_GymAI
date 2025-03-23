@@ -1,6 +1,6 @@
 # schemas.py
 from pydantic import BaseModel, field_validator, model_validator
-from typing import List, Optional
+from typing import List, Optional, Union, Dict, Any
 import unicodedata
 from config import KNOWN_EXERCISES
 
@@ -12,7 +12,7 @@ def normalize_exercise_name(name: str) -> str:
 
 class Series(BaseModel):
     repeticiones: int
-    peso: float
+    peso: Optional[float] = 0.0  # Ahora el peso es opcional, por defecto 0.0 para ejercicios con peso corporal
 
 class Exercise(BaseModel):
     ejercicio: str

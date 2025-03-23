@@ -51,6 +51,54 @@ header h1 {
     color: var(--dark-gray);
 }
 
+/* Sistema de tabs */
+.tabs {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 30px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: var(--box-shadow);
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 15px;
+    background-color: white;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: var(--transition);
+    border-bottom: 3px solid transparent;
+}
+
+.tab-btn:hover {
+    background-color: var(--light-gray);
+}
+
+.tab-btn.active {
+    background-color: white;
+    border-bottom: 3px solid var(--primary-color);
+    color: var(--primary-color);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: grid;
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+    .tab-content.active {
+        grid-template-columns: 3fr 2fr;
+        gap: 20px;
+    }
+}
+
 /* Tarjetas */
 .card {
     background-color: white;
@@ -68,19 +116,6 @@ header h1 {
     display: flex;
     align-items: center;
     gap: 10px;
-}
-
-/* Diseño de dos columnas para escritorio */
-main {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 20px;
-}
-
-@media (min-width: 768px) {
-    main {
-        grid-template-columns: 3fr 2fr;
-    }
 }
 
 /* Formulario */
@@ -117,7 +152,7 @@ label {
 
 input[type="text"] {
     width: 100%;
-    padding: 12px 12px 12px 35px;
+    padding: 12px;
     border: 1px solid var(--medium-gray);
     border-radius: 4px;
     font-size: 1rem;
@@ -270,6 +305,164 @@ textarea:focus {
     font-size: 0.9rem;
 }
 
+/* Estilos para el tab de "¿Qué toca hoy?" */
+.today-card h2 {
+    background-color: #e67e22;
+}
+
+.today-content {
+    padding: 20px;
+}
+
+.today-header {
+    margin-bottom: 20px;
+}
+
+.today-header h3 {
+    font-size: 1.5rem;
+    color: #d35400;
+    margin-bottom: 10px;
+}
+
+.today-exercises {
+    list-style-type: none;
+    margin-bottom: 20px;
+}
+
+.today-exercises li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px;
+    border-bottom: 1px solid var(--medium-gray);
+    font-size: 1.1rem;
+}
+
+.today-exercises li:last-child {
+    border-bottom: none;
+}
+
+.today-exercises li.completed {
+    color: var(--dark-gray);
+}
+
+.today-exercises li.completed i {
+    color: var(--secondary-color);
+}
+
+.today-exercises li.pending i {
+    color: #f39c12;
+}
+
+.exercise-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex: 1;
+}
+
+.exercise-input {
+    flex: 1;
+    max-width: 200px;
+}
+
+.reps-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--medium-gray);
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-family: "Courier New", monospace;
+}
+
+.log-today-btn {
+    margin-top: 10px;
+    width: 100%;
+}
+
+.no-routine {
+    text-align: center;
+    padding: 30px 20px;
+}
+
+.no-routine i {
+    font-size: 3rem;
+    color: var(--dark-gray);
+    margin-bottom: 15px;
+}
+
+.no-routine p {
+    color: var(--dark-gray);
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+}
+
+.no-routine-tip {
+    font-size: 0.9rem !important;
+}
+
+/* Estilos para el tab de "Mi Rutina" */
+.routine-card h2 {
+    background-color: #9b59b6;
+}
+
+.routine-content {
+    padding: 20px;
+}
+
+.routine-intro {
+    margin-bottom: 20px;
+    color: var(--dark-gray);
+}
+
+.routine-days {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.routine-day {
+    background-color: var(--light-gray);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.routine-day h3 {
+    background-color: #9b59b6;
+    color: white;
+    padding: 10px 15px;
+    font-size: 1.1rem;
+}
+
+.routine-textarea {
+    height: 150px;
+    border: none;
+    background-color: white;
+}
+
+.routine-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+/* Estado de carga */
+.loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: var(--dark-gray);
+}
+
+.loading i {
+    font-size: 2rem;
+    margin-bottom: 15px;
+}
+
 /* Pie de página */
 footer {
     text-align: center;
@@ -289,7 +482,7 @@ footer {
 }
 
 /* Responsive ajustes */
-@media (max-width: 600px) {
+@media (max-width: 768px) {
     .examples {
         grid-template-columns: 1fr;
     }
@@ -299,6 +492,21 @@ footer {
     }
     
     .btn {
+        width: 100%;
+    }
+    
+    .routine-days {
+        grid-template-columns: 1fr;
+    }
+    
+    .today-exercises li {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .exercise-input {
+        max-width: 100%;
         width: 100%;
     }
 }
