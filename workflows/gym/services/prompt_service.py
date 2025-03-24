@@ -1,4 +1,4 @@
-# prompts.py
+# services/prompt_service.py
 import re
 import json
 from config import KNOWN_EXERCISES, llm
@@ -6,6 +6,12 @@ from config import KNOWN_EXERCISES, llm
 def format_for_postgres(text: str):
     """
     Convierte el texto en JSON estructurado válido para PostgreSQL usando DeepSeek.
+    
+    Args:
+        text (str): Texto de entrada con información de ejercicios.
+        
+    Returns:
+        dict or None: JSON estructurado o None si hay un error.
     """
     print("\n➡️ Texto enviado al LLM para procesamiento:")
     print(text)

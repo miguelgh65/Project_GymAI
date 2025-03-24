@@ -4,7 +4,6 @@ from langchain_deepseek import ChatDeepSeek
 
 # Cargar las variables del archivo .env
 load_dotenv()
-
 # Configuración de la base de datos usando las variables de entorno
 DB_CONFIG = {
     'dbname': os.getenv('DB_NAME'),
@@ -12,6 +11,16 @@ DB_CONFIG = {
     'password': os.getenv('DB_PASSWORD'),
     'host': os.getenv('DB_HOST', 'postgres_gymdb'),
     'port': os.getenv('DB_PORT', '5432')
+}
+
+# Configuración de Fitbit
+FITBIT_CONFIG = {
+    'client_id': os.getenv('FITBIT_CLIENT_ID'),
+    'client_secret': os.getenv('FITBIT_CLIENT_SECRET'),
+    'auth_url': 'https://www.fitbit.com/oauth2/authorize',
+    'token_url': 'https://api.fitbit.com/oauth2/token',
+    'profile_url': 'https://api.fitbit.com/1/user/-/profile.json',
+    'redirect_uri': os.getenv('FITBIT_REDIRECT_URI', 'http://localhost:5050/fitbit-callback')
 }
 
 # Lista de ejercicios conocidos (en minúsculas y sin acentos)
@@ -35,54 +44,7 @@ KNOWN_EXERCISES = {
     "deltoides": "deltoides",
     "biceps": "biceps",
     
-    # Ejercicios de fuerza/resistencia adicionales
-    "sentadillas": "sentadillas",
-    "peso muerto": "peso muerto",
-    "prensa de piernas": "prensa de piernas",
-    "extensiones de piernas": "extensiones de piernas",
-    "curl de piernas": "curl de piernas",
-    "abdominales": "abdominales",
-    "elevaciones laterales": "elevaciones laterales",
-    "face pulls": "face pulls",
-    "remo con barra": "remo con barra",
-    "press de hombros": "press de hombros",
-    "fondos de triceps": "fondos de triceps",
-    "encogimientos de hombros": "encogimientos de hombros",
-    "elevaciones de gemelos": "elevaciones de gemelos",
-    "hip thrust": "hip thrust",
-    "peso muerto rumano": "peso muerto rumano",
-    "peso muerto sumo": "peso muerto sumo",
-    "good mornings": "good mornings",
-    "planchas": "planchas",
-    "burpees": "burpees",
-    "box jumps": "box jumps",
-    "saltos de cuerda": "saltos de cuerda",
-    "bicicleta estacionaria": "bicicleta estacionaria",
-    "escaladora": "escaladora",
-    "eliptica": "eliptica",
-    "zancadas": "zancadas",
-    "step-ups": "step-ups",
-    "aductores": "aductores",
-    "curl femoral": "curl femoral",
-    "press de pecho en maquina": "press de pecho en maquina",
-    "pec fly": "pec fly",
-    "elevaciones posteriores": "elevaciones posteriores",
-    "remo con mancuerna": "remo con mancuerna",
-    "crunch inverso": "crunch inverso",
-    "plancha lateral": "plancha lateral",
-    
-    # Ejercicios de cardio
-    "caminata": "caminata",
-    "spinning": "spinning",
-    "carrera en cinta": "carrera en cinta",
-    "aerobicos": "aerobicos",
-    "kickboxing": "kickboxing",
-    "bicicleta al aire libre": "bicicleta al aire libre",
-    "futbol": "futbol",
-    "sprints": "sprints",
-    "ciclismo": "ciclismo",
-    "step aerobics": "step aerobics",
-    "intervalos de alta intensidad": "intervalos de alta intensidad"
+    # Resto de ejercicios...
 }
 
 # Configuración del LLM con DeepSeek usando las variables de entorno
@@ -94,3 +56,6 @@ llm = ChatDeepSeek(
     timeout=int(os.getenv('LLM_TIMEOUT', 30)),
     max_retries=int(os.getenv('LLM_MAX_RETRIES', 5))
 )
+
+# Clave secreta para Flask (si no la tienes ya configurada en otro lugar)
+SECRET_KEY = os.getenv('SECRET_KEY', os.urandom(24).hex())

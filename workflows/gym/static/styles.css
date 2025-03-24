@@ -71,6 +71,9 @@ header h1 {
     font-weight: 500;
     transition: var(--transition);
     border-bottom: 3px solid transparent;
+    text-decoration: none;
+    color: var(--text-color);
+    text-align: center;
 }
 
 .tab-btn:hover {

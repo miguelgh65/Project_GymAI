@@ -9,7 +9,6 @@ __pycache__/
 
 # Carpetas de entornos virtuales
 venv/
-.env/
 .venv/
 
 # Archivos de logs
@@ -24,7 +23,3 @@ logs/
 # Dependencias instaladas
 pip-log.txt
 pip-delete-this-directory.txt
-
-# Ignorar contenedores de Docker
-docker-compose.override.yml
-

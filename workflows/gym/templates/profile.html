@@ -1,0 +1,259 @@
+{% extends 'layout.html' %}
+
+{% block title %}RoonieColemAI - Mi Perfil{% endblock %}
+
+{% block extra_css %}
+<style>
+    .profile-container {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-top: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .profile-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    
+    .profile-avatar {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background-color: #f0f0f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.5rem;
+        color: #757575;
+        margin-right: 20px;
+        overflow: hidden;
+    }
+    
+    .profile-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .profile-info h2 {
+        margin: 0 0 5px 0;
+        color: #333;
+    }
+    
+    .profile-info p {
+        margin: 0;
+        color: #757575;
+    }
+    
+    .connect-btn {
+        display: inline-block;
+        background: #00B0B9;
+        color: white;
+        padding: 10px 15px;
+        text-decoration: none;
+        border-radius: 4px;
+        margin-top: 20px;
+    }
+    
+    .disconnect-btn {
+        display: inline-block;
+        background: #e74c3c;
+        color: white;
+        padding: 10px 15px;
+        text-decoration: none;
+        border-radius: 4px;
+        margin-top: 10px;
+    }
+    
+    .connection-status {
+        display: inline-block;
+        padding: 5px 10px;
+        border-radius: 20px;
+        color: white;
+        font-size: 0.8rem;
+        margin-bottom: 15px;
+    }
+    
+    .status-connected {
+        background-color: #2ecc71;
+    }
+    
+    .status-disconnected {
+        background-color: #e74c3c;
+    }
+    
+    .fitbit-data {
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #f0f0f0;
+    }
+    
+    .data-card {
+        background: #f8f8f8;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+    }
+    
+    .data-card h4 {
+        margin-top: 0;
+        color: #333;
+    }
+    
+    .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 15px;
+        margin-top: 15px;
+    }
+    
+    .stat-box {
+        background: white;
+        padding: 10px;
+        border-radius: 8px;
+        text-align: center;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #00B0B9;
+    }
+    
+    .stat-label {
+        font-size: 0.8rem;
+        color: #757575;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <div class="profile-header">
+        <div class="profile-avatar">
+            {% if is_connected and fitbit_profile and fitbit_profile.user and fitbit_profile.user.avatar %}
+                <img src="{{ fitbit_profile.user.avatar }}" alt="Foto de perfil">
+            {% else %}
+                <i class="fas fa-user"></i>
+            {% endif %}
+        </div>
+        <div class="profile-info">
+            <h2>
+                {% if is_connected and fitbit_profile and fitbit_profile.user %}
+                    {{ fitbit_profile.user.fullName or 'Usuario ' + user_id }}
+                {% else %}
+                    Usuario {{ user_id }}
+                {% endif %}
+            </h2>
+            <p>
+                {% if is_connected %}
+                <span class="connection-status status-connected">
+                    <i class="fas fa-check-circle"></i> Conectado a Fitbit
+                </span>
+                {% else %}
+                <span class="connection-status status-disconnected">
+                    <i class="fas fa-times-circle"></i> No conectado
+                </span>
+                {% endif %}
+            </p>
+            <p>Conecta tu cuenta de Fitbit para visualizar tus datos de actividad, ritmo cardíaco, sueño y más.</p>
+        </div>
+    </div>
+    
+    <div class="profile-content">
+        {% if not is_connected %}
+            <h3><i class="fas fa-link"></i> Conecta tus dispositivos</h3>
+            <p>Conecta tu cuenta de Fitbit para visualizar tus datos de actividad, ritmo cardíaco, sueño y más en esta plataforma.</p>
+            
+            <a href="/connect-fitbit?user_id={{ user_id }}" class="connect-btn">
+                <i class="fas fa-heart-pulse"></i> Conectar con Fitbit
+            </a>
+        {% else %}
+            <h3><i class="fas fa-link"></i> Conexión con Fitbit</h3>
+            <p>Tu cuenta de Fitbit está conectada. Puedes visualizar tus datos de actividad, ritmo cardíaco, sueño y más.</p>
+            
+            <form action="/disconnect-fitbit" method="post" style="display: inline;">
+                <input type="hidden" name="user_id" value="{{ user_id }}">
+                <button type="submit" class="disconnect-btn">
+                    <i class="fas fa-unlink"></i> Desconectar
+                </button>
+            </form>
+            
+            {% if fitbit_profile %}
+            <div class="fitbit-data">
+                <h3><i class="fas fa-chart-simple"></i> Tus datos de Fitbit</h3>
+                
+                <div class="data-card">
+                    <h4><i class="fas fa-user-circle"></i> Perfil</h4>
+                    {% if fitbit_profile.user %}
+                    <div class="stat-grid">
+                        <div class="stat-box">
+                            <div class="stat-value">{{ fitbit_profile.user.age }}</div>
+                            <div class="stat-label">Años</div>
+                        </div>
+                        
+                        <div class="stat-box">
+                            <div class="stat-value">{{ fitbit_profile.user.height }}</div>
+                            <div class="stat-label">Altura (cm)</div>
+                        </div>
+                        
+                        <div class="stat-box">
+                            <div class="stat-value">{{ fitbit_profile.user.weight }}</div>
+                            <div class="stat-label">Peso (kg)</div>
+                        </div>
+                        
+                        <div class="stat-box">
+                            <div class="stat-value">{{ fitbit_profile.user.averageDailySteps }}</div>
+                            <div class="stat-label">Pasos diarios</div>
+                        </div>
+                    </div>
+                    <p>Miembro desde: {{ fitbit_profile.user.memberSince }}</p>
+                    {% endif %}
+                </div>
+                
+                {% if health_metrics %}
+                <div class="data-card">
+                    <h4><i class="fas fa-heartbeat"></i> Métricas de salud</h4>
+                    
+                    <div class="stat-grid">
+                        {% if health_metrics.heart_rate and health_metrics.heart_rate.restingHeartRate %}
+                        <div class="stat-box">
+                            <div class="stat-value">{{ health_metrics.heart_rate.restingHeartRate }}</div>
+                            <div class="stat-label">Ritmo cardíaco en reposo</div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if health_metrics.sleep and health_metrics.sleep.totalMinutesAsleep %}
+                        <div class="stat-box">
+                            <div class="stat-value">{{ (health_metrics.sleep.totalMinutesAsleep / 60)|round(1) }}h</div>
+                            <div class="stat-label">Horas de sueño</div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if health_metrics.sleep and health_metrics.sleep.efficiency %}
+                        <div class="stat-box">
+                            <div class="stat-value">{{ health_metrics.sleep.efficiency }}%</div>
+                            <div class="stat-label">Eficiencia del sueño</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="data-card">
+                    <h4><i class="fas fa-dumbbell"></i> Actividad reciente</h4>
+                    <p>Consulta tu historial de actividad en la pestaña "Dashboard" para ver estadísticas detalladas de tus entrenamientos.</p>
+                    <a href="/dashboard?user_id={{ user_id }}" class="connect-btn">
+                        <i class="fas fa-chart-line"></i> Ver Dashboard
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
