@@ -10,4 +10,7 @@ langchain>=0.1.4
 langchain-core>=0.1.17
 langchain-deepseek>=0.1.2
 langchain-community>=0.0.13
-langsmith>=0.0.69
+langgraph==0.3.20
+
+# Dependencias para el bot de Telegram
+pyTelegramBotAPI>=4.10.0

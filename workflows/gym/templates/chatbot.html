@@ -1,0 +1,236 @@
+<!-- Archivo: workflows/gym/templates/chatbot.html -->
+{% extends 'layout.html' %}
+{% block title %}Entrenador Personal AI{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-robot me-2"></i> Entrenador Personal AI
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="chat-container" class="chat-container mb-3">
+                        <div id="chat-messages" class="chat-messages">
+                            <!-- Mensajes del chat se cargarán aquí -->
+                            <div class="message system-message">
+                                <div class="message-content">
+                                    <p>¡Hola! Soy tu entrenador personal AI. ¿En qué puedo ayudarte hoy?</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-input-container">
+                        <form id="chat-form" class="d-flex">
+                            <input type="hidden" id="user_id" value="{{ user_id }}">
+                            <input type="text" id="message-input" class="form-control me-2" placeholder="Escribe tu mensaje aquí...">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mt-4 shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-lightbulb me-2"></i> Sugerencias
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex flex-wrap gap-2">
+                        <button class="btn btn-outline-primary suggestion-btn">
+                            ¿Cuál es mi entrenamiento para hoy?
+                        </button>
+                        <button class="btn btn-outline-primary suggestion-btn">
+                            Muestra mis últimos ejercicios
+                        </button>
+                        <button class="btn btn-outline-primary suggestion-btn">
+                            Necesito ayuda con mi rutina
+                        </button>
+                        <button class="btn btn-outline-primary suggestion-btn">
+                            Dame consejos de nutrición
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .chat-container {
+        height: 400px;
+        overflow-y: auto;
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+        padding: 15px;
+        background-color: #f8f9fa;
+    }
+    
+    .chat-messages {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .message {
+        margin-bottom: 10px;
+        max-width: 80%;
+        padding: 10px 15px;
+        border-radius: 18px;
+    }
+    
+    .user-message {
+        align-self: flex-end;
+        background-color: #007bff;
+        color: white;
+    }
+    
+    .bot-message {
+        align-self: flex-start;
+        background-color: #e9ecef;
+        color: #212529;
+    }
+    
+    .system-message {
+        align-self: center;
+        background-color: #ffc107;
+        color: #212529;
+        border-radius: 10px;
+        font-style: italic;
+    }
+    
+    .message-content {
+        word-break: break-word;
+    }
+    
+    .chat-input-container {
+        padding-top: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chatForm = document.getElementById('chat-form');
+    const messageInput = document.getElementById('message-input');
+    const chatMessages = document.getElementById('chat-messages');
+    const userId = document.getElementById('user_id').value;
+    const suggestionBtns = document.querySelectorAll('.suggestion-btn');
+    
+    // Enviar mensaje al chatbot
+    async function sendMessage(messageText) {
+        if (!messageText.trim()) return;
+        
+        // Mostrar mensaje del usuario
+        appendMessage(messageText, 'user');
+        messageInput.value = '';
+        scrollToBottom();
+        
+        // Mostrar indicador de escritura
+        const typingIndicator = document.createElement('div');
+        typingIndicator.className = 'message bot-message typing-indicator';
+        typingIndicator.innerHTML = '<div class="message-content"><p>Escribiendo...</p></div>';
+        chatMessages.appendChild(typingIndicator);
+        scrollToBottom();
+        
+        try {
+            const response = await fetch('/api/chatbot/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    user_id: userId,
+                    message: messageText
+                }),
+            });
+            
+            const data = await response.json();
+            
+            // Eliminar indicador de escritura
+            if (typingIndicator && typingIndicator.parentNode) {
+                typingIndicator.parentNode.removeChild(typingIndicator);
+            }
+            
+            if (data.success && data.responses) {
+                data.responses.forEach(msg => {
+                    let content = msg.content;
+                    let role = msg.role === 'tool' ? 'system' : 'bot';
+                    
+                    appendMessage(content, role);
+                });
+            } else {
+                appendMessage("Lo siento, ocurrió un error al procesar tu mensaje.", 'bot');
+            }
+            
+            scrollToBottom();
+        } catch (error) {
+            console.error('Error sending message:', error);
+            
+            // Eliminar indicador de escritura en caso de error
+            if (typingIndicator && typingIndicator.parentNode) {
+                typingIndicator.parentNode.removeChild(typingIndicator);
+            }
+            
+            appendMessage("Lo siento, no pude conectarme con el servidor. Por favor, intenta de nuevo más tarde.", 'bot');
+            scrollToBottom();
+        }
+    }
+    
+    // Agregar mensaje al chat
+    function appendMessage(content, type) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${type}-message`;
+        
+        // Formatear contenido para detectar posibles JSON
+        let formattedContent = content;
+        if (typeof content === 'string' && content.trim().startsWith('{') && content.trim().endsWith('}')) {
+            try {
+                const jsonData = JSON.parse(content);
+                formattedContent = `<pre>${JSON.stringify(jsonData, null, 2)}</pre>`;
+            } catch (e) {
+                // No es JSON válido, mantener el contenido original
+            }
+        }
+        
+        // Formatear listas y negritas
+        if (typeof formattedContent === 'string') {
+            // Convertir * texto * a <strong>texto</strong>
+            formattedContent = formattedContent.replace(/\*(.*?)\*/g, '<strong>$1</strong>');
+            
+            // Convertir listas con guiones
+            formattedContent = formattedContent.replace(/- (.*?)(?=\n|$)/g, '• $1<br>');
+        }
+        
+        messageDiv.innerHTML = `<div class="message-content"><p>${formattedContent}</p></div>`;
+        chatMessages.appendChild(messageDiv);
+    }
+    
+    // Desplazar al final del chat
+    function scrollToBottom() {
+        const chatContainer = document.getElementById('chat-container');
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+    
+    // Event listeners
+    chatForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const messageText = messageInput.value;
+        sendMessage(messageText);
+    });
+    
+    suggestionBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            sendMessage(this.textContent.trim());
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -11,6 +11,8 @@ services:
     volumes:
       - ./workflows/gym/templates:/app/workflows/gym/templates
       - ./workflows/gym/static:/app/workflows/gym/static
+      # Si deseas que los cambios en handlers.py sean inmediatos:
+      - ./telegram/gym:/app/telegram/gym
     depends_on:
       - postgres_gymdb
     networks:

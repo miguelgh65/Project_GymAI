@@ -4,33 +4,71 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}RoonieColemAI - Sistema de Entrenamiento{% endblock %}</title>
+    <!-- Favicon -->
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+    <!-- CSS Principal -->
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <!-- CSS Adicional específico de página -->
     {% block extra_css %}{% endblock %}
+    <!-- Font Awesome para iconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <div class="container">
+        <!-- Encabezado principal -->
         <header>
             <h1><i class="fas fa-dumbbell"></i> RoonieColemAI</h1>
-            <p class="subtitle">Sistema de Registro de Entrenamiento</p>
+            <p class="subtitle">Sistema Inteligente de Entrenamiento Personalizado</p>
         </header>
         
+        <!-- Navegación principal -->
+        <!-- Navegación principal -->
         <div class="tabs">
-            <a href="/" class="tab-btn {% if request.path == '/' %}active{% endif %}">Registrar Ejercicio</a>
-            <a href="/rutina_hoy" class="tab-btn {% if request.path == '/rutina_hoy' %}active{% endif %}">¿Qué toca hoy?</a>
-            <a href="/rutina" class="tab-btn {% if request.path == '/rutina' %}active{% endif %}">Mi Rutina</a>
-            <a href="/dashboard" class="tab-btn {% if request.path == '/dashboard' %}active{% endif %}">Dashboard</a>
-            <a href="/profile" class="tab-btn {% if request.path == '/profile' %}active{% endif %}">Mi Perfil</a>        </div>
+            <a href="/chatbot" class="tab-btn {% if request.path == '/chatbot' %}active{% endif %}">
+                <i class="fas fa-robot"></i> Entrenador AI
+            </a>
+            <a href="/" class="tab-btn {% if request.path == '/' %}active{% endif %}">
+                <i class="fas fa-plus-circle"></i> Registrar
+            </a>
+            <a href="/rutina_hoy" class="tab-btn {% if request.path == '/rutina_hoy' %}active{% endif %}">
+                <i class="fas fa-calendar-day"></i> Hoy
+            </a>
+            <a href="/rutina" class="tab-btn {% if request.path == '/rutina' %}active{% endif %}">
+                <i class="fas fa-calendar-alt"></i> Mi Rutina
+            </a>
+            <a href="/dashboard" class="tab-btn {% if request.path == '/dashboard' %}active{% endif %}">
+                <i class="fas fa-chart-line"></i> Dashboard
+            </a>
+            <a href="/profile" class="tab-btn {% if request.path == '/profile' %}active{% endif %}">
+                <i class="fas fa-user"></i> Perfil
+            </a>
+        </div>
         
+        <!-- Contenido principal -->
         <main>
             {% block content %}{% endblock %}
         </main>
         
+        <!-- Pie de página -->
         <footer>
-            <p>&copy; 2025 RoonieColemAI. Todos los derechos reservados.</p>
+            <div class="footer-content">
+                <p>&copy; 2025 RoonieColemAI. Todos los derechos reservados.</p>
+                <div class="footer-links">
+                    <a href="/about">Acerca de</a>
+                    <a href="/privacy">Privacidad</a>
+                    <a href="/terms">Términos</a>
+                </div>
+            </div>
         </footer>
     </div>
     
+    <!-- Botón flotante de Telegram -->
+    <a href="https://t.me/RoonieColemAi_dev_bot" target="_blank" class="telegram-float" aria-label="Contactar por Telegram">
+        <i class="fab fa-telegram-plane"></i>
+        <div class="tooltip">¡Habla con nuestro bot!</div>
+    </a>
+    
+    <!-- Scripts específicos de página -->
     {% block scripts %}{% endblock %}
 </body>
 </html>
