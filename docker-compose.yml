@@ -14,7 +14,8 @@ services:
       - ./init-scripts:/docker-entrypoint-initdb.d  # Ensure init scripts are mounted
     depends_on:
       - postgres_gymdb
-    command: uvicorn workflows.gym.app_fastapi:app --host 0.0.0.0 --port=5050 --reload
+    # Usar start.sh en lugar del comando directo para iniciar ambos servicios (FastAPI y Telegram)
+    command: /app/start.sh
     networks:
       - gym_network
       

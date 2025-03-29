@@ -1,8 +1,3 @@
-import sys
-import os
-from dotenv import load_dotenv
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from telegram.gym.utils import log_to_console  # Importar desde la ubicación correcta
 from fastapi import APIRouter, Request, Response, HTTPException, Form, Query, Cookie, Depends
 from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -16,12 +11,15 @@ from services.auth_service import (
     get_or_create_user, 
     migrate_user_data,
     get_user_by_id,
+    get_user_by_email,
     get_user_id_by_telegram,
     get_user_id_by_google,
-    generate_link_code,  # Añadido
-    verify_link_code     # Añadido
+    generate_link_code,  
+    verify_link_code     
 )
 from config import GOOGLE_CONFIG
+import os
+from dotenv import load_dotenv
 
 # Cargar variables de entorno
 load_dotenv()
@@ -34,9 +32,6 @@ GOOGLE_REDIRECT_URI = os.getenv('GOOGLE_REDIRECT_URI', 'http://localhost:5050/go
 # Configuración de plantillas
 templates = Jinja2Templates(directory="/app/workflows/gym/templates")
 router = APIRouter()
-# Añadir a routes/auth.py (después de las importaciones existentes)
-import random
-import string
 
 # Añadir la nueva ruta para generar códigos de vinculación
 @router.post("/api/generate-link-code", response_class=JSONResponse)
@@ -104,6 +99,7 @@ async def verify_link_code_route(request: Request):
             content={"success": False, "message": f"Error: {str(e)}"},
             status_code=500
         )
+
 # Página de inicio de sesión
 @router.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request, redirect_url: str = "/"):
@@ -118,16 +114,22 @@ async def login_page(request: Request, redirect_url: str = "/"):
         {
             "request": request, 
             "google_client_id": GOOGLE_CLIENT_ID,
-            "redirect_url": redirect_url
+            "redirect_url": redirect_url,
+            "user": user  # Pasar el usuario a la plantilla (probablemente será None aquí)
         }
     )
+
 # Ruta para manejar el callback de Google
 @router.get("/google-callback", response_class=HTMLResponse)
 async def google_callback(request: Request):
     """Maneja el callback de Google después de la autenticación."""
+    user = getattr(request.state, "user", None)
     return templates.TemplateResponse(
         "google_callback.html", 
-        {"request": request}
+        {
+            "request": request,
+            "user": user  # Pasar el usuario a la plantilla
+        }
     )
 
 @router.post("/auth/google/verify", response_class=JSONResponse)
@@ -187,8 +189,7 @@ async def verify_google_signin(request: Request, response: Response):
             if old_user_id and old_user_id != user_id:
                 migrate_user_data(telegram_id, user_id)
         
-        # Establecer una cookie con el ID del usuario
-        # IMPORTANTE: Usar response.headers para establecer la cookie manualmente
+        # Establecer una cookie con el ID del usuario - configuración mejorada
         response.set_cookie(
             key="user_id",
             value=str(user_id),
@@ -229,16 +230,22 @@ async def logout(
     user_id: str = Cookie(None)
 ):
     """Cierra la sesión del usuario."""
-    # Eliminar la cookie de user_id
-    response.delete_cookie(key="user_id")
+    # Eliminar la cookie de user_id de forma explícita
+    response.delete_cookie(key="user_id", path="/")
+    
+    # También usar headers para asegurar que se elimine
+    response.headers["Set-Cookie"] = "user_id=; Path=/; Max-Age=0; HttpOnly"
     
     # Redirigir a la página principal o a la URL especificada
     return RedirectResponse(url=redirect_url)
+
 @router.get("/verify-telegram", response_class=HTMLResponse)
 async def verify_telegram_page(request: Request, email: str = Query(None)):
     """
     Página de verificación de Telegram para usuarios con cuenta de Google.
     """
+    user = getattr(request.state, "user", None)
+    
     if not email:
         return JSONResponse(
             content={"success": False, "message": "Email no proporcionado"},
@@ -246,9 +253,9 @@ async def verify_telegram_page(request: Request, email: str = Query(None)):
         )
     
     # Buscar usuario por email
-    user = get_user_by_email(email)
+    found_user = get_user_by_email(email)
     
-    if not user or user.get('telegram_id'):
+    if not found_user or found_user.get('telegram_id'):
         return JSONResponse(
             content={
                 "success": False, 
@@ -259,20 +266,23 @@ async def verify_telegram_page(request: Request, email: str = Query(None)):
         )
     
     # Generar código de vinculación
-    link_code = generate_link_code(user['id'])
+    link_code = generate_link_code(found_user['id'])
     
     return templates.TemplateResponse(
         "telegram_verify.html", 
         {
             "request": request, 
             "email": email,
-            "link_code": link_code
+            "link_code": link_code,
+            "user": user  # Pasar el usuario a la plantilla
         }
     )
+
 # Ruta para obtener información del usuario actual
 @router.get("/api/current-user", response_class=JSONResponse)
-async def get_current_user(user_id: str = Cookie(None)):
+async def get_current_user(request: Request):
     """Obtiene la información del usuario actual."""
+    user_id = request.cookies.get("user_id")
     if not user_id:
         return JSONResponse(content={"success": False, "message": "No hay sesión activa"})
     

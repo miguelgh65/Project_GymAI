@@ -2,29 +2,31 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from fastapi import APIRouter, Request, Query, HTTPException
+from fastapi import APIRouter, Request, Query, HTTPException, Depends
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 import json
 import psycopg2
 from datetime import datetime
 from config import DB_CONFIG
+from workflows.gym.middlewares import get_current_user
 
 router = APIRouter()
 # Use absolute path for templates
 templates = Jinja2Templates(directory="/app/workflows/gym/templates")
 
 @router.get("/dashboard", response_class=HTMLResponse)
-async def dashboard(request: Request, user_id: str = "3892415"):
+async def dashboard(request: Request, user_id: str = "3892415", user = Depends(get_current_user)):
     """Página principal del dashboard de análisis."""
-    return templates.TemplateResponse("dashboard.html", {"request": request, "user_id": user_id})
+    return templates.TemplateResponse("dashboard.html", {"request": request, "user_id": user_id, "user": user})
 
 @router.get("/api/ejercicios_stats", response_class=JSONResponse)
 async def get_ejercicios_stats(
     user_id: str = Query("3892415"),
     ejercicio: str = Query(None),
     desde: str = Query(None),
-    hasta: str = Query(None)
+    hasta: str = Query(None),
+    user = Depends(get_current_user)
 ):
     """API para obtener estadísticas de los ejercicios."""
     # Construir la consulta base
@@ -170,7 +172,7 @@ async def get_ejercicios_stats(
         })
 
 @router.get("/api/calendar_heatmap", response_class=JSONResponse)
-async def get_calendar_heatmap(user_id: str = Query("3892415"), year: int = Query(datetime.now().year)):
+async def get_calendar_heatmap(user_id: str = Query("3892415"), year: int = Query(datetime.now().year), user = Depends(get_current_user)):
     """Datos para el mapa de calor del calendario de actividad."""
     try:
         conn = psycopg2.connect(**DB_CONFIG)

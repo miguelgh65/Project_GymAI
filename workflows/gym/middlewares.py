@@ -22,12 +22,19 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             '/google-callback', 
             '/auth/google/verify', 
             '/api/verify-link-code', 
-            '/static'
+            '/static',
+            # Añadir más rutas públicas si es necesario
+            '/favicon.ico',
+            '/favicon.svg'
         ]
+        
+        # También considerar como públicas todas las rutas que empiecen con estos prefijos
+        public_prefixes = ['/static/', '/api/', '/auth/']
         
         # Verificar si la ruta actual es pública
         current_path = request.url.path
-        is_public = any(current_path.startswith(path) for path in public_paths)
+        is_public = any(current_path.startswith(path) for path in public_paths) or \
+                   any(current_path.startswith(prefix) for prefix in public_prefixes)
         
         # Obtener user_id de las cookies
         user_id = request.cookies.get("user_id")
@@ -58,4 +65,18 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         
         # Continuar con la solicitud
         response = await call_next(request)
+        
+        # Mantener la sesión del usuario como cookie (añadir nuevamente la cookie a la respuesta)
+        if user_id and current_path != '/logout':
+            # Asegurar que la cookie se mantenga con cada respuesta
+            cookie_max_age = 60 * 60 * 24 * 30  # 30 días
+            response.set_cookie(
+                key="user_id",
+                value=str(user_id),
+                max_age=cookie_max_age,
+                httponly=True,
+                samesite="lax",
+                path="/"
+            )
+        
         return response

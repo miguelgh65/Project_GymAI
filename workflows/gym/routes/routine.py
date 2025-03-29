@@ -13,19 +13,12 @@ import base64
 import secrets
 from datetime import datetime, timedelta
 from services.database import get_routine, save_routine, get_today_routine
+from workflows.gym.middlewares import get_current_user
 # Add this import for DB_CONFIG
 from config import DB_CONFIG
 
 # Make sure to load environment variables
 load_dotenv()
-# Define DB_CONFIG directly in this file to avoid import issues
-DB_CONFIG = {
-    'dbname': os.getenv('DB_NAME'),
-    'user': os.getenv('DB_USER'),
-    'password': os.getenv('DB_PASSWORD'),
-    'host': os.getenv('DB_HOST', 'postgres_gymdb'),
-    'port': os.getenv('DB_PORT', '5432')
-}
 # Use absolute path for templates
 templates = Jinja2Templates(directory="/app/workflows/gym/templates")
 router = APIRouter()
@@ -51,7 +44,7 @@ def get_fitbit_credentials():
 
 # Route handlers for routine functionality
 @router.get("/rutina_hoy", response_class=HTMLResponse)
-async def rutina_hoy(request: Request, user_id: str = Query("3892415"), format: str = Query(None)):
+async def rutina_hoy(request: Request, user_id: str = Query("3892415"), format: str = Query(None), user = Depends(get_current_user)):
     """Página de rutina del día."""
     # Check if the request is for JSON format
     if format == "json":
@@ -59,10 +52,10 @@ async def rutina_hoy(request: Request, user_id: str = Query("3892415"), format: 
         return JSONResponse(content=result)
     
     # Return HTML response
-    return templates.TemplateResponse("rutina_hoy.html", {"request": request, "user_id": user_id})
+    return templates.TemplateResponse("rutina_hoy.html", {"request": request, "user_id": user_id, "user": user})
 
 @router.get("/rutina", response_class=HTMLResponse)
-async def rutina(request: Request, user_id: str = Query("3892415"), format: str = Query(None)):
+async def rutina(request: Request, user_id: str = Query("3892415"), format: str = Query(None), user = Depends(get_current_user)):
     """Página de configuración de rutina."""
     # Check if the request is for JSON format
     if format == "json":
@@ -70,10 +63,10 @@ async def rutina(request: Request, user_id: str = Query("3892415"), format: str 
         return JSONResponse(content={"success": True, "rutina": rutina_data})
     
     # Return HTML response
-    return templates.TemplateResponse("rutina.html", {"request": request, "user_id": user_id})
+    return templates.TemplateResponse("rutina.html", {"request": request, "user_id": user_id, "user": user})
 
 @router.post("/rutina", response_class=JSONResponse)
-async def save_rutina(request: Request):
+async def save_rutina(request: Request, user = Depends(get_current_user)):
     """Guarda la configuración de rutina."""
     try:
         data = await request.json()
@@ -94,17 +87,25 @@ async def save_rutina(request: Request):
 
 # Profile and Fitbit routes
 @router.get('/profile', response_class=HTMLResponse)
-async def profile(request: Request, user_id: str = Query("3892415")):
+async def profile(request: Request, user_id: str = Query("3892415"), user = Depends(get_current_user)):
     """Página del perfil del usuario."""
     try:
+        # Use the authenticated user's ID instead of the query parameter
+        actual_user_id = str(user["id"]) if user else user_id
+        
         # Check if this user has Fitbit tokens in the database
         conn = psycopg2.connect(**DB_CONFIG)
         cur = conn.cursor()
         
-        # Query for tokens
+        # Query for tokens - try both string ID and integer ID
+        print(f"Checking Fitbit tokens for user ID: {actual_user_id}")
         cur.execute(
-            "SELECT access_token, refresh_token, expires_at FROM fitbit_tokens WHERE user_id = %s",
-            (user_id,)
+            """
+            SELECT access_token, refresh_token, expires_at 
+            FROM fitbit_tokens 
+            WHERE user_id = %s OR user_id = %s
+            """,
+            (actual_user_id, user_id)
         )
         
         result = cur.fetchone()
@@ -115,7 +116,7 @@ async def profile(request: Request, user_id: str = Query("3892415")):
         
         # If connected, get Fitbit profile data
         if is_connected:
-            print(f"User {user_id} is connected to Fitbit!")
+            print(f"User {actual_user_id} is connected to Fitbit!")
             access_token = result[0]
             refresh_token = result[1]
             expires_at = result[2]
@@ -144,17 +145,18 @@ async def profile(request: Request, user_id: str = Query("3892415")):
                 except Exception as e:
                     print(f"Error getting Fitbit profile: {str(e)}")
         else:
-            print(f"User {user_id} is NOT connected to Fitbit")
+            print(f"User {actual_user_id} is NOT connected to Fitbit")
         
         cur.close()
         conn.close()
         
         return templates.TemplateResponse('profile.html', {
             "request": request, 
-            "user_id": user_id,
+            "user_id": actual_user_id,
             "is_connected": is_connected,
             "fitbit_profile": fitbit_profile,
-            "health_metrics": health_metrics
+            "health_metrics": health_metrics,
+            "user": user
         })
     except Exception as e:
         print(f"Error in profile page: {str(e)}")
@@ -162,13 +164,17 @@ async def profile(request: Request, user_id: str = Query("3892415")):
             "request": request, 
             "user_id": user_id,
             "is_connected": False,
-            "error_message": str(e)
+            "error_message": str(e),
+            "user": user
         })
 
 @router.get('/connect-fitbit')
-async def connect_fitbit(request: Request, user_id: str = Query("3892415")):
+async def connect_fitbit(request: Request, user_id: str = Query("3892415"), user = Depends(get_current_user)):
     """Iniciar proceso de conexión con Fitbit."""
     try:
+        # Use authenticated user ID if available
+        actual_user_id = str(user["id"]) if user else user_id
+        
         # Get credentials from environment variables
         credentials = get_fitbit_credentials()
         state = secrets.token_urlsafe(16)
@@ -179,7 +185,7 @@ async def connect_fitbit(request: Request, user_id: str = Query("3892415")):
         # Create a response that will set cookies first
         response = RedirectResponse(url='')
         response.set_cookie(key="oauth_state", value=state, httponly=True, samesite="lax")
-        response.set_cookie(key="user_id", value=user_id, httponly=True, samesite="lax")
+        response.set_cookie(key="fitbit_user_id", value=actual_user_id, httponly=True, samesite="lax")
         
         # Build the authorization URL
         auth_url = (
@@ -202,27 +208,39 @@ async def connect_fitbit(request: Request, user_id: str = Query("3892415")):
         return templates.TemplateResponse('profile_callback.html', {
             "request": request,
             "success": False,
-            "message": f"Error al iniciar autenticación: {str(e)}"
+            "message": f"Error al iniciar autenticación: {str(e)}",
+            "user": user
         })
 
 @router.get('/fitbit-callback')
-async def fitbit_callback(request: Request, code: str = Query(None), state: str = Query(None), error: str = Query(None)):
+async def fitbit_callback(
+    request: Request, 
+    code: str = Query(None), 
+    state: str = Query(None), 
+    error: str = Query(None),
+    user = Depends(get_current_user)
+):
     """Callback para recibir el código de autorización de Fitbit."""
     print(f"Fitbit callback received - code: {'present' if code else 'missing'}, state: {state}")
     print(f"Request cookies: {request.cookies}")
     
     # Get state and user_id from cookies
     expected_state = request.cookies.get('oauth_state')
-    user_id = request.cookies.get('user_id', "3892415")
     
-    print(f"Expected state: {expected_state}, User ID: {user_id}")
+    # Use the specific fitbit_user_id cookie if available, or fallback to user_id cookie
+    # Also use the authenticated user's ID if available
+    cookie_user_id = request.cookies.get('fitbit_user_id') or request.cookies.get('user_id', "3892415")
+    actual_user_id = str(user["id"]) if user else cookie_user_id
+    
+    print(f"Expected state: {expected_state}, User ID from cookie: {cookie_user_id}, Actual User ID: {actual_user_id}")
     
     # Handle error from Fitbit
     if error:
         return templates.TemplateResponse('profile_callback.html', {
             "request": request,
             "success": False,
-            "message": f"Error de autorización: {error}"
+            "message": f"Error de autorización: {error}",
+            "user": user
         })
     
     # Continue even if state doesn't match (for debugging)
@@ -235,7 +253,8 @@ async def fitbit_callback(request: Request, code: str = Query(None), state: str 
         return templates.TemplateResponse('profile_callback.html', {
             "request": request,
             "success": False,
-            "message": "No se recibió el código de autorización"
+            "message": "No se recibió el código de autorización",
+            "user": user
         })
     
     try:
@@ -272,7 +291,8 @@ async def fitbit_callback(request: Request, code: str = Query(None), state: str 
             return templates.TemplateResponse('profile_callback.html', {
                 "request": request,
                 "success": False,
-                "message": f"Error al intercambiar tokens: {response.status_code}, {response.text[:100]}"
+                "message": f"Error al intercambiar tokens: {response.status_code}, {response.text[:100]}",
+                "user": user
             })
         
         tokens = response.json()
@@ -312,10 +332,11 @@ async def fitbit_callback(request: Request, code: str = Query(None), state: str 
             expires_in = tokens.get('expires_in', 28800)  # Default 8 hours
             expires_at = datetime.now() + timedelta(seconds=expires_in)
             
-            # Remove any existing tokens
-            cur.execute("DELETE FROM fitbit_tokens WHERE user_id = %s", (user_id,))
+            # Remove any existing tokens for this user (using both IDs to be safe)
+            cur.execute("DELETE FROM fitbit_tokens WHERE user_id = %s OR user_id = %s", (actual_user_id, cookie_user_id))
             
-            # Insert new tokens
+            # Insert new tokens - use the actual_user_id which should be the internal user ID
+            print(f"Saving Fitbit tokens for user ID: {actual_user_id}")
             cur.execute(
                 """
                 INSERT INTO fitbit_tokens 
@@ -323,7 +344,7 @@ async def fitbit_callback(request: Request, code: str = Query(None), state: str 
                 VALUES (%s, %s, %s, %s, %s)
                 """,
                 (
-                    user_id, 
+                    actual_user_id, 
                     credentials['client_id'], 
                     tokens.get('access_token'), 
                     tokens.get('refresh_token'),
@@ -341,19 +362,22 @@ async def fitbit_callback(request: Request, code: str = Query(None), state: str 
             return templates.TemplateResponse('profile_callback.html', {
                 "request": request,
                 "success": True,
-                "message": "¡Cuenta de Fitbit conectada correctamente!"
+                "message": "¡Cuenta de Fitbit conectada correctamente!",
+                "user": user
             })
         except Exception as db_error:
             print(f"Database error: {str(db_error)}")
             return templates.TemplateResponse('profile_callback.html', {
                 "request": request,
                 "success": False,
-                "message": f"Error al guardar tokens: {str(db_error)}"
+                "message": f"Error al guardar tokens: {str(db_error)}",
+                "user": user
             })
     except Exception as e:
         print(f"Error in Fitbit callback: {str(e)}")
         return templates.TemplateResponse('profile_callback.html', {
             "request": request,
             "success": False,
-            "message": f"Error inesperado: {str(e)}"
+            "message": f"Error inesperado: {str(e)}",
+            "user": user
         })

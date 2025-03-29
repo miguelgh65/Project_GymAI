@@ -39,6 +39,12 @@
             padding: 5px 10px;
             border-radius: 20px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .user-profile:hover {
+            background-color: #e0e0e0;
         }
         
         .user-avatar {
@@ -114,15 +120,18 @@
                 
                 <div class="user-menu">
                     {% if user %}
-                        <div class="user-profile">
-                            {% if user.profile_picture %}
-                                <img src="{{ user.profile_picture }}" alt="{{ user.display_name }}" class="user-avatar">
-                            {% else %}
-                                <i class="fas fa-user-circle"></i>
-                            {% endif %}
-                            <span>{{ user.display_name }}</span>
-                            <a href="/logout" class="logout-btn" title="Cerrar sesión"><i class="fas fa-sign-out-alt"></i></a>
-                        </div>
+                        <!-- Hacer toda la zona del perfil clickable para cerrar sesión -->
+                        <a href="/logout" style="text-decoration: none; color: inherit;">
+                            <div class="user-profile">
+                                {% if user.profile_picture %}
+                                    <img src="{{ user.profile_picture }}" alt="{{ user.display_name }}" class="user-avatar">
+                                {% else %}
+                                    <i class="fas fa-user-circle"></i>
+                                {% endif %}
+                                <span>{{ user.display_name }}</span>
+                                <i class="fas fa-sign-out-alt logout-btn" title="Cerrar sesión"></i>
+                            </div>
+                        </a>
                     {% else %}
                         <a href="/login" class="login-btn">
                             <i class="fas fa-sign-in-alt"></i> Iniciar sesión
@@ -173,10 +182,24 @@
     </div>
     
     <!-- Botón flotante de Telegram -->
-    <a href="https://t.me/RoonieColemAi_dev_bot" target="_blank" class="telegram-float" aria-label="Contactar por Telegram">
-        <i class="fab fa-telegram-plane"></i>
-        <div class="tooltip">¡Habla con nuestro bot!</div>
-    </a>
+    {% if user %}
+        {% if user.telegram_id %}
+            <a href="https://t.me/RoonieColemAi_dev_bot" target="_blank" class="telegram-float" aria-label="Contactar por Telegram">
+                <i class="fab fa-telegram-plane"></i>
+                <div class="tooltip">¡Habla con nuestro bot!</div>
+            </a>
+        {% else %}
+            <a href="/profile" class="telegram-float" aria-label="Vincular cuenta de Telegram">
+                <i class="fab fa-telegram-plane"></i>
+                <div class="tooltip">¡Vincular cuenta de Telegram!</div>
+            </a>
+        {% endif %}
+    {% else %}
+        <a href="/login" class="telegram-float" aria-label="Inicia sesión para vincular">
+            <i class="fab fa-telegram-plane"></i>
+            <div class="tooltip">¡Inicia sesión para usar Telegram!</div>
+        </a>
+    {% endif %}
     
     <!-- Scripts específicos de página -->
     {% block scripts %}{% endblock %}

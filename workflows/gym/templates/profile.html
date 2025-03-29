@@ -128,6 +128,46 @@
         font-size: 0.8rem;
         color: #757575;
     }
+    
+    .telegram-section {
+        margin-top: 30px;
+        padding: 20px;
+        border-radius: 8px;
+        background-color: #f0f8ff;
+        border: 1px solid #add8e6;
+    }
+    
+    .telegram-content {
+        margin-top: 15px;
+    }
+    
+    #link-code-display {
+        font-size: 24px;
+        font-weight: bold;
+        color: #0088cc;
+        letter-spacing: 2px;
+        background: rgba(0, 136, 204, 0.1);
+        padding: 8px 16px;
+        border-radius: 4px;
+        display: inline-block;
+        margin: 10px 0;
+    }
+    
+    .telegram-instructions {
+        margin-top: 15px;
+        padding: 15px;
+        background: #f8f8f8;
+        border-radius: 4px;
+    }
+    
+    .telegram-instructions ol {
+        margin-left: 20px;
+        margin-top: 10px;
+    }
+    
+    .telegram-instructions li {
+        margin-bottom: 8px;
+    }
 </style>
 {% endblock %}
 
@@ -137,18 +177,27 @@
         <div class="profile-avatar">
             {% if is_connected and fitbit_profile and fitbit_profile.user and fitbit_profile.user.avatar %}
                 <img src="{{ fitbit_profile.user.avatar }}" alt="Foto de perfil">
+            {% elif user and user.profile_picture %}
+                <img src="{{ user.profile_picture }}" alt="{{ user.display_name }}">
             {% else %}
                 <i class="fas fa-user"></i>
             {% endif %}
         </div>
         <div class="profile-info">
             <h2>
-                {% if is_connected and fitbit_profile and fitbit_profile.user %}
+                {% if user %}
+                    {{ user.display_name }}
+                {% elif is_connected and fitbit_profile and fitbit_profile.user %}
                     {{ fitbit_profile.user.fullName or 'Usuario ' + user_id }}
                 {% else %}
                     Usuario {{ user_id }}
                 {% endif %}
             </h2>
+            
+            {% if user %}
+                <p>{{ user.email }}</p>
+            {% endif %}
+            
             <p>
                 {% if is_connected %}
                 <span class="connection-status status-connected">
@@ -156,17 +205,57 @@
                 </span>
                 {% else %}
                 <span class="connection-status status-disconnected">
-                    <i class="fas fa-times-circle"></i> No conectado
+                    <i class="fas fa-times-circle"></i> No conectado a Fitbit
+                </span>
+                {% endif %}
+                
+                {% if user and user.telegram_id %}
+                <span class="connection-status status-connected">
+                    <i class="fab fa-telegram-plane"></i> Conectado a Telegram
+                </span>
+                {% else %}
+                <span class="connection-status status-disconnected">
+                    <i class="fab fa-telegram-plane"></i> No conectado a Telegram
                 </span>
                 {% endif %}
             </p>
-            <p>Conecta tu cuenta de Fitbit para visualizar tus datos de actividad, ritmo cardíaco, sueño y más.</p>
         </div>
+    </div>
+    
+    <!-- Sección de Telegram -->
+    <div class="telegram-section">
+        <h3><i class="fab fa-telegram-plane"></i> Cuenta de Telegram</h3>
+        
+        {% if user and user.telegram_id %}
+            <p>Tu cuenta está vinculada con Telegram. Puedes usar el bot para registrar tus entrenamientos.</p>
+            <a href="https://t.me/RoonieColemAi_dev_bot" class="connect-btn" target="_blank">
+                <i class="fab fa-telegram-plane"></i> Abrir chat con el bot
+            </a>
+        {% else %}
+            <p>Vincula tu cuenta con Telegram para registrar tus entrenamientos desde cualquier lugar.</p>
+            
+            <div class="telegram-content">
+                <button id="generate-link-code-btn" class="connect-btn">
+                    <i class="fas fa-link"></i> Generar código de vinculación
+                </button>
+                
+                <div id="link-instructions" class="telegram-instructions" style="display: none;">
+                    <h4>Sigue estos pasos:</h4>
+                    <ol>
+                        <li>Abre nuestro <a href="https://t.me/RoonieColemAi_dev_bot" target="_blank">bot de Telegram</a></li>
+                        <li>Envía el comando <code>/vincular</code> al bot</li>
+                        <li>Cuando el bot lo solicite, envía este código:</li>
+                    </ol>
+                    <div id="link-code-display">XXXXXX</div>
+                    <p class="text-sm"><i class="fas fa-info-circle"></i> El código expira en 10 minutos</p>
+                </div>
+            </div>
+        {% endif %}
     </div>
     
     <div class="profile-content">
         {% if not is_connected %}
-            <h3><i class="fas fa-link"></i> Conecta tus dispositivos</h3>
+            <h3><i class="fas fa-link"></i> Conecta tus dispositivos Fitbit</h3>
             <p>Conecta tu cuenta de Fitbit para visualizar tus datos de actividad, ritmo cardíaco, sueño y más en esta plataforma.</p>
             
             <a href="/connect-fitbit?user_id={{ user_id }}" class="connect-btn">
@@ -191,27 +280,41 @@
                     <h4><i class="fas fa-user-circle"></i> Perfil</h4>
                     {% if fitbit_profile.user %}
                     <div class="stat-grid">
+                        {% if fitbit_profile.user.age %}
                         <div class="stat-box">
                             <div class="stat-value">{{ fitbit_profile.user.age }}</div>
                             <div class="stat-label">Años</div>
                         </div>
+                        {% endif %}
                         
+                        {% if fitbit_profile.user.height %}
                         <div class="stat-box">
                             <div class="stat-value">{{ fitbit_profile.user.height }}</div>
                             <div class="stat-label">Altura (cm)</div>
                         </div>
+                        {% endif %}
                         
+                        {% if fitbit_profile.user.weight %}
                         <div class="stat-box">
                             <div class="stat-value">{{ fitbit_profile.user.weight }}</div>
                             <div class="stat-label">Peso (kg)</div>
                         </div>
+                        {% endif %}
                         
+                        {% if fitbit_profile.user.averageDailySteps %}
                         <div class="stat-box">
                             <div class="stat-value">{{ fitbit_profile.user.averageDailySteps }}</div>
                             <div class="stat-label">Pasos diarios</div>
                         </div>
+                        {% endif %}
                     </div>
+                    
+                    {% if fitbit_profile.user.memberSince %}
                     <p>Miembro desde: {{ fitbit_profile.user.memberSince }}</p>
+                    {% endif %}
+                    
+                    {% else %}
+                    <p>No se pudieron obtener los datos de perfil de Fitbit.</p>
                     {% endif %}
                 </div>
                 
@@ -256,4 +359,48 @@
         {% endif %}
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Solo inicializar si el botón existe
+    const generateBtn = document.getElementById('generate-link-code-btn');
+    if (generateBtn) {
+        generateBtn.addEventListener('click', async function() {
+            const btn = this;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando código...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/api/generate-link-code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.code) {
+                    // Mostrar instrucciones y código
+                    document.getElementById('link-instructions').style.display = 'block';
+                    document.getElementById('link-code-display').textContent = data.code;
+                    btn.style.display = 'none';
+                } else {
+                    alert(data.message || 'No se pudo generar el código');
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al conectar con el servidor');
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        });
+    }
+});
+</script>
 {% endblock %}
