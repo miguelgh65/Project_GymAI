@@ -5,16 +5,20 @@ os.environ["LANGCHAIN_TRACING_V2"] = "false"
 os.environ["LANGCHAIN_ENDPOINT"] = ""
 os.environ["LANGCHAIN_API_KEY"] = ""
 os.environ["LANGCHAIN_PROJECT"] = ""
+
 # Cargar las variables del archivo .env
 load_dotenv()
+
 # Configuración de la base de datos usando las variables de entorno
 DB_CONFIG = {
     'dbname': os.getenv('DB_NAME'),
     'user': os.getenv('DB_USER'),
     'password': os.getenv('DB_PASSWORD'),
     'host': os.getenv('DB_HOST', 'postgres_gymdb'),
-    'port': os.getenv('DB_PORT', '5432')
+    'port': os.getenv('DB_PORT', '5432'),
+    'options': f'-c search_path=gym,public'  # Añadir búsqueda en esquema 'gym'
 }
+
 
 # Configuración de Fitbit
 FITBIT_CONFIG = {

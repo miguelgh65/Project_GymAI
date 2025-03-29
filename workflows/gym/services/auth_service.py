@@ -346,7 +346,51 @@ def generate_link_code(user_id):
         if 'conn' in locals() and conn:
             conn.close()
         return None
-
+def get_user_by_email(email):
+    """
+    Obtiene un usuario por su correo electrónico.
+    
+    Args:
+        email (str): Correo electrónico del usuario
+        
+    Returns:
+        dict: Información del usuario o None si no se encuentra
+    """
+    try:
+        conn = psycopg2.connect(**DB_CONFIG)
+        cur = conn.cursor()
+        
+        cur.execute(
+            """
+            SELECT id, telegram_id, google_id, email, display_name, profile_picture,
+                  created_at, updated_at
+            FROM users
+            WHERE email = %s
+            """,
+            (email,)
+        )
+        
+        result = cur.fetchone()
+        cur.close()
+        conn.close()
+        
+        if result:
+            return {
+                'id': result[0],
+                'telegram_id': result[1],
+                'google_id': result[2],
+                'email': result[3],
+                'display_name': result[4],
+                'profile_picture': result[5],
+                'created_at': result[6],
+                'updated_at': result[7]
+            }
+        else:
+            return None
+    except Exception as e:
+        print(f"Error en get_user_by_email: {str(e)}")
+        return None
+    
 def verify_link_code(code, telegram_id):
     """
     Verifica un código de vinculación y conecta la cuenta de Telegram.

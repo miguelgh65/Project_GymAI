@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificación de Telegram - Gym Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="bg-white p-8 rounded-xl shadow-2xl w-96">
+        <div class="text-center mb-6">
+            <div class="flex justify-center mb-4">
+                <svg class="w-16 h-16 text-blue-600" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm-2.824 16.884c-1.09 0-1.577-.831-1.09-1.742l1.52-2.757-1.255-.464c-1.088-.402-.908-1.461.235-1.755l5.293-1.559c1.191-.351 2.61.336 2.141 1.866l-1.742 5.475c-.292 1.024-1.138 1.936-2.261 1.936zm3.646-5.931c-.577 0-1.046-.469-1.046-1.046s.469-1.046 1.046-1.046 1.046.469 1.046 1.046-.469 1.046-1.046 1.046z"/>
+                </svg>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-800">Vincular Cuenta de Telegram</h1>
+            <p class="text-gray-600 mt-2">Verifica tu cuenta para {{ email }}</p>
+        </div>
+
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div class="text-center">
+                <h3 class="text-lg font-semibold text-blue-800 mb-3">Código de Vinculación</h3>
+                
+                <div class="mb-4">
+                    <div class="text-4xl font-bold text-blue-700 tracking-widest">
+                        {{ link_code }}
+                    </div>
+                    <p class="text-sm text-gray-500 mt-2">El código expira en 10 minutos</p>
+                </div>
+                
+                <div class="space-y-2 mt-4">
+                    <a href="https://t.me/RoonieColemAi_dev_bot" 
+                       target="_blank" 
+                       class="w-full inline-block bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition duration-300">
+                        <i class="fab fa-telegram-plane mr-2"></i> Abrir Bot de Telegram
+                    </a>
+                    
+                    <button id="copy-code-btn" 
+                            class="w-full bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 transition duration-300">
+                        <i class="far fa-copy mr-2"></i> Copiar Código
+                    </button>
+                </div>
+            </div>
+            
+            <div class="mt-4 text-sm text-gray-600">
+                <ol class="list-decimal list-inside space-y-2">
+                    <li>Abre nuestro bot de Telegram</li>
+                    <li>Envía el comando <code>/vincular</code></li>
+                    <li>Cuando te lo pida, envía este código</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="mt-6 text-center text-gray-500 text-sm">
+            © 2025 Gym Tracker. Todos los derechos reservados.
+        </div>
+    </div>
+
+    <script>
+        // Copiar código al portapapeles
+        document.getElementById('copy-code-btn').addEventListener('click', function() {
+            const code = "{{ link_code }}";
+            navigator.clipboard.writeText(code).then(() => {
+                alert('Código copiado al portapapeles');
+            }).catch(err => {
+                console.error('Error al copiar:', err);
+                alert('No se pudo copiar el código');
+            });
+        });
+    </script>
+</body>
+</html>

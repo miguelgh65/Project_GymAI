@@ -8,6 +8,9 @@ import logging
 from starlette.middleware.sessions import SessionMiddleware
 from contextlib import asynccontextmanager
 
+# Importar middleware de autenticación
+from workflows.gym.middlewares import AuthenticationMiddleware
+
 # Disable LangSmith tracing
 os.environ["LANGCHAIN_TRACING_V2"] = "false"
 os.environ["LANGCHAIN_ENDPOINT"] = ""
@@ -43,6 +46,9 @@ app.add_middleware(
     SessionMiddleware,
     secret_key=os.getenv('SECRET_KEY', os.urandom(24).hex())
 )
+
+# Añadir middleware de autenticación
+app.add_middleware(AuthenticationMiddleware)
 
 # Mount static files directory
 app.mount("/static", StaticFiles(directory="/app/workflows/gym/static"), name="static")

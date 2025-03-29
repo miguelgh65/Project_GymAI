@@ -111,7 +111,7 @@ def is_user_whitelisted(user_id):
     Verifica si el id del usuario (user_id) está en la whitelist.
     Se asume que 'whitelist.txt' contiene un id por línea.
     """
-    whitelist_path = "whitelist.txt"
+    whitelist_path = os.path.join(os.path.dirname(__file__), "whitelist.txt")
     log_to_console(f"Verificando acceso para usuario {user_id}", "PROCESS")
     
     try:
@@ -125,6 +125,11 @@ def is_user_whitelisted(user_id):
         is_allowed = str(user_id) in whitelist
         log_to_console(f"Usuario {user_id} {'está' if is_allowed else 'NO está'} en la lista blanca", "INFO")
         return is_allowed
+        
+    except Exception as e:
+        # Si ocurre algún error, se niega el acceso por seguridad.
+        log_to_console(f"Error al leer {whitelist_path}: {e}", "ERROR")
+        return False
         
     except Exception as e:
         # Si ocurre algún error, se niega el acceso por seguridad.

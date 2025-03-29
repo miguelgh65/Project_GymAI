@@ -11,6 +11,7 @@ services:
       - ./workflows/gym/templates:/app/workflows/gym/templates
       - ./workflows/gym/static:/app/workflows/gym/static
       - ./telegram/gym:/app/telegram/gym
+      - ./init-scripts:/docker-entrypoint-initdb.d  # Ensure init scripts are mounted
     depends_on:
       - postgres_gymdb
     command: uvicorn workflows.gym.app_fastapi:app --host 0.0.0.0 --port=5050 --reload
@@ -27,7 +28,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-scripts:/docker-entrypoint-initdb.d
+      - ./init-scripts:/docker-entrypoint-initdb.d  # Mount init scripts
     ports:
       - "5432:5432"
     networks:

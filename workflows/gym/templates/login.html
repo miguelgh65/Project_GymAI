@@ -87,56 +87,48 @@
     <script>
         // Google Sign-In
         function handleCredentialResponse(response) {
-            const googleLoginBtn = document.getElementById('google-login-btn');
-            googleLoginBtn.innerHTML = '<div class="spinner"></div>Iniciando sesión...';
-            googleLoginBtn.disabled = true;
+    // Mostrar indicador de carga
+    const loadingIndicator = document.createElement('div');
+    loadingIndicator.innerHTML = '<div class="spinner"></div>Iniciando sesión...';
+    loadingIndicator.className = 'text-center text-blue-600 mt-4';
+    document.getElementById('google-login-btn').replaceWith(loadingIndicator);
 
-            // Obtener código de vinculación de Telegram si está visible
-            const linkCodeDisplay = document.getElementById('link-code-display');
-            const telegramCode = linkCodeDisplay.textContent !== 'XXXXXX' 
-                ? linkCodeDisplay.textContent 
-                : null;
+    // Obtener código de vinculación de Telegram si está visible
+    const linkCodeDisplay = document.getElementById('link-code-display');
+    const telegramCode = linkCodeDisplay && linkCodeDisplay.textContent !== 'XXXXXX' 
+        ? linkCodeDisplay.textContent 
+        : null;
 
-            // Verificar el token de Google
-            fetch('/auth/google/verify', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    id_token: response.credential,
-                    telegram_id: telegramCode
-                })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    // Redirigir a la página principal o dashboard
-                    window.location.href = '/dashboard';
-                } else {
-                    alert(data.message || 'Error al iniciar sesión');
-                    googleLoginBtn.innerHTML = 'Iniciar sesión con Google';
-                    googleLoginBtn.disabled = false;
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Error al conectar con el servidor');
-                googleLoginBtn.innerHTML = 'Iniciar sesión con Google';
-                googleLoginBtn.disabled = false;
-            });
+    // Verificar el token de Google
+    fetch('/auth/google/verify', {
+        method: 'POST',
+        credentials: 'include',  // Importante para manejar cookies
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            id_token: response.credential,
+            telegram_id: telegramCode
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        console.log('Respuesta del servidor:', data);
+        
+        if (data.success) {
+            // Forzar recarga completa de la página
+            window.location.href = '/';
+        } else {
+            alert(data.message || 'Error al iniciar sesión');
+            window.location.reload();
         }
-
-        window.onload = function () {
-            google.accounts.id.initialize({
-                client_id: '{{ google_client_id }}',
-                callback: handleCredentialResponse
-            });
-            google.accounts.id.renderButton(
-                document.getElementById("google-login-btn"),
-                { theme: "outline", size: "large" }
-            );
-        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al conectar con el servidor');
+        window.location.reload();
+    });
+}
 
         // Telegram Link Code Generation
         document.getElementById('generate-link-code-btn').addEventListener('click', async function() {
@@ -171,6 +163,62 @@
                 btn.disabled = false;
             }
         });
+    </script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script>
+        // Añadir esta función para manejar la respuesta de credenciales de Google
+        function handleCredentialResponse(response) {
+            // Mostrar indicador de carga
+            const loadingIndicator = document.createElement('div');
+            loadingIndicator.innerHTML = '<div class="spinner"></div>Iniciando sesión...';
+            loadingIndicator.className = 'text-center text-blue-600 mt-4';
+            document.getElementById('google-login-btn').replaceWith(loadingIndicator);
+
+            // Obtener código de vinculación de Telegram si está visible
+            const linkCodeDisplay = document.getElementById('link-code-display');
+            const telegramCode = linkCodeDisplay && linkCodeDisplay.textContent !== 'XXXXXX' 
+                ? linkCodeDisplay.textContent 
+                : null;
+
+            // Verificar el token de Google
+            fetch('/auth/google/verify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    id_token: response.credential,
+                    telegram_id: telegramCode
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    // Redirigir a la URL especificada o a la página principal
+                    window.location.href = data.redirect_url || '/';
+                } else {
+                    alert(data.message || 'Error al iniciar sesión');
+                    loadingIndicator.innerHTML = 'Error al iniciar sesión';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al conectar con el servidor');
+                loadingIndicator.innerHTML = 'Error de conexión';
+            });
+        }
+        // Inicializar Google Sign-In cuando la página carga
+        window.onload = function () {
+            // Renderizar botón de Google Sign-In
+            google.accounts.id.initialize({
+                client_id: '{{ google_client_id }}',
+                callback: handleCredentialResponse
+            });
+            google.accounts.id.renderButton(
+                document.getElementById("google-login-btn"),
+                { theme: "outline", size: "large" }
+            );
+        }
     </script>
 </body>
 </html>

@@ -158,9 +158,10 @@
                     // Limpiar el state guardado
                     localStorage.removeItem('oauth2_state');
                     
-                    // Redireccionar a la página principal después de 2 segundos
+                    // Redireccionar a la página especificada o a la principal después de 2 segundos
                     setTimeout(() => {
-                        window.location.href = '/';
+                        const redirect = new URLSearchParams(window.location.search).get('redirect_url') || '/';
+                        window.location.href = redirect;
                     }, 2000);
                 } else {
                     throw new Error(data.message || 'Error desconocido en la verificación del token');
