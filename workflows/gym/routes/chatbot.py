@@ -1,47 +1,37 @@
-# Archivo: workflows/gym/routes/chatbot.py
-
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from flask import Blueprint, request, jsonify, render_template
+from fastapi import APIRouter, Request, HTTPException
+from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.templating import Jinja2Templates
 from services.langgraph_agent.agent import process_message
 
-# Crear blueprint
-chatbot_bp = Blueprint('chatbot', __name__)
+router = APIRouter()
+templates = Jinja2Templates(directory="templates")  # Ajusta la ruta según tu estructura
 
-@chatbot_bp.route('/chatbot', methods=['GET'])
-def chatbot_page():
+@router.get("/chatbot", response_class=HTMLResponse)
+async def chatbot_page(request: Request, user_id: str = "3892415"):
     """Página principal del chatbot."""
-    user_id = request.args.get('user_id', "3892415")
-    return render_template('chatbot.html', user_id=user_id)
+    return templates.TemplateResponse("chatbot.html", {"request": request, "user_id": user_id})
 
-@chatbot_bp.route('/api/chatbot/send', methods=['POST'])
-def chatbot_send():
+@router.post("/api/chatbot/send", response_class=JSONResponse)
+async def chatbot_send(request: Request):
     """API para enviar mensajes al chatbot."""
-    data = request.json
-    if not data or 'message' not in data:
-        return jsonify({"success": False, "error": "No se proporcionó un mensaje"}), 400
+    data = await request.json()
+    if not data or "message" not in data:
+        raise HTTPException(status_code=400, detail="No se proporcionó un mensaje")
     
-    user_id = data.get('user_id', "3892415")
-    message = data.get('message', '')
+    user_id = data.get("user_id", "3892415")
+    message = data.get("message", "")
     
     # Procesar el mensaje con el agente
     responses = process_message(user_id, message)
     
-    return jsonify({
-        "success": True,
-        "responses": responses
-    })
+    return {"success": True, "responses": responses}
 
-@chatbot_bp.route('/api/chatbot/history', methods=['GET'])
-def chatbot_history():
+@router.get("/api/chatbot/history", response_class=JSONResponse)
+async def chatbot_history(user_id: str = "3892415"):
     """API para obtener el historial de conversación."""
-    user_id = request.args.get('user_id', "3892415")
-    
-    # Aquí podrías implementar la obtención del historial desde la base de datos
-    # Por ahora, retornamos un historial vacío
-    return jsonify({
-        "success": True,
-        "history": []
-    })
+    # Por ahora se retorna un historial vacío
+    return {"success": True, "history": []}

@@ -1,194 +1,125 @@
 import sys
 import os
+from dotenv import load_dotenv
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from flask import Blueprint, request, jsonify, render_template
+from fastapi import APIRouter, Request, Query, HTTPException, Depends, Form, Response
+from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
 import json
-from datetime import datetime
 import psycopg2
-from config import DB_CONFIG
-from utils.date_utils import get_weekday_name
+import requests
+import base64
+import secrets
+from datetime import datetime, timedelta
 
-# Crear blueprint
-routine_bp = Blueprint('routine', __name__)
+load_dotenv()
 
-@routine_bp.route('/rutina', methods=['GET', 'POST'])
-def manage_routine():
-    # Si es una solicitud simple GET y no tiene parámetros format=json, entonces es una solicitud de página HTML
-    if request.method == 'GET' and request.args.get('format') != 'json':
-        return render_template('rutina.html')
-    
-    # Obtener user_id de los parámetros o usar el valor predeterminado
-    user_id = request.args.get('user_id', "3892415")
-    if request.method == 'POST':
-        user_id = request.json.get('user_id', "3892415") if request.json else "3892415"
-    
-    # Obtener la rutina actual
-    if request.method == 'GET':
-        try:
-            conn = psycopg2.connect(**DB_CONFIG)
-            cur = conn.cursor()
-            
-            # Obtener la rutina para todos los días
-            cur.execute(
-                "SELECT dia_semana, ejercicios FROM rutinas WHERE user_id = %s ORDER BY dia_semana",
-                (user_id,)
-            )
-            rows = cur.fetchall()
-            
-            rutina = {}
-            for row in rows:
-                dia_semana = row[0]
-                # Verificar si el valor ya es un diccionario o necesita ser parseado
-                if isinstance(row[1], str):
-                    ejercicios = json.loads(row[1])
-                else:
-                    ejercicios = row[1]
-                rutina[str(dia_semana)] = ejercicios
-            
-            cur.close()
-            conn.close()
-            
-            return jsonify({
-                "success": True,
-                "message": "Rutina obtenida correctamente.",
-                "rutina": rutina
-            })
-        except Exception as e:
-            return jsonify({
-                "success": False, 
-                "message": f"Error al obtener la rutina: {str(e)}",
-                "rutina": {}
-            })
-    
-    # Guardar o actualizar la rutina
-    elif request.method == 'POST':
-        try:
-            data = request.json
-            if not data or 'rutina' not in data:
-                return jsonify({"success": False, "message": "Datos de rutina no proporcionados."})
-            
-            # La rutina debe ser un diccionario donde las claves son los días (1-7) y 
-            # los valores son listas de ejercicios
-            rutina = data['rutina']
-            
-            conn = psycopg2.connect(**DB_CONFIG)
-            cur = conn.cursor()
-            
-            # Primero eliminar cualquier rutina existente para este usuario
-            cur.execute("DELETE FROM rutinas WHERE user_id = %s", (user_id,))
-            
-            # Insertar la nueva rutina
-            for dia, ejercicios in rutina.items():
-                try:
-                    dia_semana = int(dia)
-                    if not 1 <= dia_semana <= 7:
-                        continue
-                        
-                    ejercicios_json = json.dumps(ejercicios)
-                    cur.execute(
-                        "INSERT INTO rutinas (user_id, dia_semana, ejercicios) VALUES (%s, %s, %s::jsonb)",
-                        (user_id, dia_semana, ejercicios_json)
-                    )
-                except ValueError:
-                    # Ignorar claves que no sean números entre 1-7
-                    continue
-            
-            conn.commit()
-            cur.close()
-            conn.close()
-            
-            return jsonify({"success": True, "message": "Rutina guardada correctamente."})
-        except Exception as e:
-            return jsonify({"success": False, "message": f"Error al guardar la rutina: {str(e)}"})
-@routine_bp.route('/rutina_hoy', methods=['GET'])
-def get_todays_routine():
-    # Si es una solicitud simple GET y no tiene parámetros format=json, entonces es una solicitud de página HTML
-    if request.args.get('format') != 'json':
-        return render_template('rutina_hoy.html')
-    
-    # Obtener user_id de los parámetros o usar el valor predeterminado
-    user_id = request.args.get('user_id', "3892415")
-    
+templates = Jinja2Templates(directory="templates")
+router = APIRouter()
+
+DB_CONFIG = {
+    'host': os.getenv('DB_HOST'),
+    'port': os.getenv('DB_PORT'),
+    'user': os.getenv('DB_USER'),
+    'password': os.getenv('DB_PASSWORD'),
+    'dbname': os.getenv('DB_NAME'),
+}
+
+FITBIT_AUTH_URL = os.getenv("FITBIT_AUTH_URL", "https://www.fitbit.com/oauth2/authorize")
+FITBIT_TOKEN_URL = os.getenv("FITBIT_TOKEN_URL", "https://api.fitbit.com/oauth2/token")
+FITBIT_PROFILE_URL = os.getenv("FITBIT_PROFILE_URL", "https://api.fitbit.com/1/user/-/profile.json")
+
+def get_fitbit_credentials():
+    return {
+        'client_id': os.getenv('FITBIT_CLIENT_ID'),
+        'client_secret': os.getenv('FITBIT_CLIENT_SECRET'),
+        'redirect_uri': os.getenv('FITBIT_REDIRECT_URI')
+    }
+
+@router.get('/profile', response_class=HTMLResponse)
+async def profile(request: Request, user_id: str = Query("3892415")):
+    return templates.TemplateResponse('profile.html', {"request": request, "user_id": user_id})
+
+@router.get('/connect-fitbit')
+async def connect_fitbit(request: Request, response: Response, user_id: str = Query("3892415")):
+    credentials = get_fitbit_credentials()
+    state = secrets.token_urlsafe(16)
+    response.set_cookie(key="oauth_state", value=state, httponly=True)
+    response.set_cookie(key="user_id", value=user_id, httponly=True)
+
+    auth_url = (
+        f"{FITBIT_AUTH_URL}?response_type=code"
+        f"&client_id={credentials['client_id']}"
+        f"&redirect_uri={credentials['redirect_uri']}"
+        f"&scope=activity%20heartrate%20location%20nutrition%20profile%20settings%20sleep%20weight"
+        f"&state={state}"
+    )
+    return RedirectResponse(auth_url)
+
+@router.get('/fitbit-callback')
+async def fitbit_callback(request: Request, code: str = Query(None), state: str = Query(None), error: str = Query(None)):
+    expected_state = request.cookies.get('oauth_state')
+    user_id = request.cookies.get('user_id', "3892415")
+
+    if error:
+        return templates.TemplateResponse('profile_callback.html', {"request": request, "success": False, "message": error})
+
+    if expected_state != state:
+        raise HTTPException(status_code=400, detail="Invalid state parameter")
+
+    tokens = exchange_code_for_tokens(code)
+
+    if tokens:
+        success = save_fitbit_tokens(user_id, tokens)
+        message = "Cuenta de Fitbit conectada correctamente" if success else "Error al guardar tokens"
+    else:
+        success = False
+        message = "Error al obtener tokens de acceso"
+
+    response = templates.TemplateResponse('profile_callback.html', {"request": request, "success": success, "message": message})
+    response.delete_cookie('oauth_state')
+    response.delete_cookie('user_id')
+
+    return response
+
+@router.get('/api/fitbit-data')
+async def get_fitbit_data(user_id: str = Query("3892415"), type: str = Query('profile')):
+    return JSONResponse({"success": True, "data": {"type_requested": type}})
+
+@router.post('/disconnect-fitbit')
+async def disconnect_fitbit(user_id: str = Form("3892415")):
     try:
-        # Obtener el día de la semana actual (1=Lunes, 7=Domingo)
-        dia_actual = datetime.now().isoweekday()
-        print(f"Día actual: {dia_actual}, Nombre: {get_weekday_name(dia_actual)}")
-        
         conn = psycopg2.connect(**DB_CONFIG)
         cur = conn.cursor()
-        
-        # Verificar conexión a la base de datos
-        cur.execute("SELECT 1")
-        print("Conexión a la base de datos establecida correctamente")
-        
-        # Obtener la rutina para el día actual
-        query = "SELECT ejercicios FROM rutinas WHERE user_id = %s AND dia_semana = %s"
-        print(f"Ejecutando consulta: {query} con parámetros: {user_id}, {dia_actual}")
-        
-        cur.execute(query, (user_id, dia_actual))
-        row = cur.fetchone()
-        
-        if not row:
-            print(f"No se encontró rutina para el día {dia_actual}")
-            cur.close()
-            conn.close()
-            return jsonify({
-                "success": False, 
-                "message": "No hay rutina definida para hoy.",
-                "dia_nombre": get_weekday_name(dia_actual),
-                "rutina": []  # Enviar array vacío en lugar de None
-            })
-        
-        print(f"Rutina encontrada para el día {dia_actual}")
-        
-        # Verificar si el valor ya es un diccionario o necesita ser parseado
-        if isinstance(row[0], str):
-            ejercicios_hoy = json.loads(row[0])
-        else:
-            ejercicios_hoy = row[0]
-        
-        print(f"Ejercicios para hoy: {ejercicios_hoy}")
-        
-        # Obtener los ejercicios ya realizados hoy
-        hoy = datetime.now().strftime('%Y-%m-%d')
-        cur.execute(
-            """
-            SELECT ejercicio FROM ejercicios 
-            WHERE user_id = %s AND fecha::date = %s::date
-            """,
-            (user_id, hoy)
-        )
-        ejercicios_realizados = [row[0] for row in cur.fetchall()]
-        print(f"Ejercicios realizados hoy: {ejercicios_realizados}")
-        
-        # Marcar los ejercicios ya realizados
-        rutina_resultado = []
-        for ejercicio in ejercicios_hoy:
-            rutina_resultado.append({
-                "ejercicio": ejercicio,
-                "realizado": ejercicio in ejercicios_realizados
-            })
-        
+        cur.execute("DELETE FROM fitbit_tokens WHERE user_id = %s", (user_id,))
+        conn.commit()
         cur.close()
         conn.close()
-        
-        result = {
-            "success": True,
-            "message": "Rutina para hoy obtenida correctamente.",
-            "rutina": rutina_resultado,
-            "dia_nombre": get_weekday_name(dia_actual)
-        }
-        print(f"Respuesta final: {result}")
-        return jsonify(result)
+        return RedirectResponse(url=f'/profile?user_id={user_id}', status_code=302)
     except Exception as e:
-        print(f"Error al obtener la rutina del día: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        
-        return jsonify({
-            "success": False, 
-            "message": f"Error al obtener la rutina: {str(e)}",
-            "dia_nombre": get_weekday_name(datetime.now().isoweekday()),
-            "rutina": []  # Enviar array vacío en lugar de None
-        })
+        raise HTTPException(status_code=500, detail=f"Error al desconectar cuenta: {str(e)}")
+
+def exchange_code_for_tokens(code):
+    credentials = get_fitbit_credentials()
+    auth_string = f"{credentials['client_id']}:{credentials['client_secret']}"
+    headers = {"Authorization": f"Basic {base64.b64encode(auth_string.encode()).decode()}", "Content-Type": "application/x-www-form-urlencoded"}
+    data = {"client_id": credentials['client_id'], "grant_type": "authorization_code", "code": code, "redirect_uri": credentials['redirect_uri']}
+    response = requests.post(FITBIT_TOKEN_URL, headers=headers, data=data)
+    return response.json() if response.status_code == 200 else None
+
+def save_fitbit_tokens(user_id, tokens):
+    try:
+        conn = psycopg2.connect(**DB_CONFIG)
+        cur = conn.cursor()
+        expires_at = datetime.now() + timedelta(seconds=tokens.get('expires_in', 28800))
+        cur.execute("DELETE FROM fitbit_tokens WHERE user_id = %s", (user_id,))
+        cur.execute("""INSERT INTO fitbit_tokens (user_id, access_token, refresh_token, expires_at)
+                    VALUES (%s, %s, %s, %s)""",
+                    (user_id, tokens['access_token'], tokens['refresh_token'], expires_at))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return True
+    except:
+        return False

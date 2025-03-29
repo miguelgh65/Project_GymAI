@@ -2,61 +2,61 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from flask import Blueprint, request, jsonify, render_template
+from fastapi import APIRouter, Request, Query, HTTPException
+from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.templating import Jinja2Templates
 import json
 import psycopg2
 from datetime import datetime
 from config import DB_CONFIG
 
-# Crear blueprint
-dashboard_bp = Blueprint('dashboard', __name__)
+router = APIRouter()
+templates = Jinja2Templates(directory="templates")  # Ajusta la ruta si es necesario
 
-@dashboard_bp.route('/dashboard', methods=['GET'])
-def dashboard():
+@router.get("/dashboard", response_class=HTMLResponse)
+async def dashboard(request: Request, user_id: str = "3892415"):
     """Página principal del dashboard de análisis."""
-    user_id = request.args.get('user_id', "3892415")
-    return render_template('dashboard.html', user_id=user_id)
+    return templates.TemplateResponse("dashboard.html", {"request": request, "user_id": user_id})
 
-@dashboard_bp.route('/api/ejercicios_stats', methods=['GET'])
-def get_ejercicios_stats():
+@router.get("/api/ejercicios_stats", response_class=JSONResponse)
+async def get_ejercicios_stats(
+    user_id: str = Query("3892415"),
+    ejercicio: str = Query(None),
+    desde: str = Query(None),
+    hasta: str = Query(None)
+):
     """API para obtener estadísticas de los ejercicios."""
-    user_id = request.args.get('user_id', "3892415")
-    exercise = request.args.get('ejercicio', None)
-    date_from = request.args.get('desde', None)
-    date_to = request.args.get('hasta', None)
-    
     # Construir la consulta base
     query_conditions = ["user_id = %s"]
     query_params = [user_id]
-    
-    if exercise:
+
+    if ejercicio:
         query_conditions.append("ejercicio = %s")
-        query_params.append(exercise)
-    
-    if date_from:
+        query_params.append(ejercicio)
+
+    if desde:
         query_conditions.append("fecha >= %s")
-        query_params.append(date_from)
-    
-    if date_to:
+        query_params.append(desde)
+
+    if hasta:
         query_conditions.append("fecha <= %s")
-        query_params.append(date_to)
-    
+        query_params.append(hasta)
+
     where_clause = " AND ".join(query_conditions)
-    
+
     try:
         conn = psycopg2.connect(**DB_CONFIG)
         cur = conn.cursor()
-        
+
         # Obtener lista de ejercicios para el selector
         cur.execute(
             "SELECT DISTINCT ejercicio FROM ejercicios WHERE user_id = %s ORDER BY ejercicio",
             (user_id,)
         )
         ejercicios_list = [row[0] for row in cur.fetchall()]
-        
+
         # Si se especificó un ejercicio, obtener sus datos detallados
-        if exercise:
-            # Para ejercicios de fuerza (con series y repeticiones)
+        if ejercicio:
             cur.execute(
                 f"""
                 SELECT fecha, repeticiones 
@@ -67,32 +67,32 @@ def get_ejercicios_stats():
                 query_params
             )
             rows = cur.fetchall()
-            
+
             exercise_data = []
             for row in rows:
                 fecha = row[0]
                 series_json = row[1]  # Esto es un JSON con las series
-                
+
                 # Calcular métricas para cada entrada
                 if series_json:
                     try:
                         series = json.loads(series_json) if isinstance(series_json, str) else series_json
-                        
+
                         # Calcular peso máximo, promedio y volumen total
                         max_peso = 0
                         total_volumen = 0
                         total_reps = 0
-                        
+
                         for serie in series:
                             reps = serie.get('repeticiones', 0)
                             peso = serie.get('peso', 0)
-                            
+
                             total_reps += reps
                             total_volumen += reps * peso
                             max_peso = max(max_peso, peso)
-                        
+
                         avg_peso = total_volumen / total_reps if total_reps > 0 else 0
-                        
+
                         exercise_data.append({
                             "fecha": fecha.strftime('%Y-%m-%d'),
                             "series": series,
@@ -103,17 +103,16 @@ def get_ejercicios_stats():
                         })
                     except Exception as e:
                         print(f"Error al procesar series JSON: {e}")
-            
+
             # Obtener métricas resumen
             total_sesiones = len(exercise_data)
-            
+
             if total_sesiones > 0:
                 max_weight_ever = max(entry['max_peso'] for entry in exercise_data)
                 max_volume_session = max(entry['volumen'] for entry in exercise_data)
                 max_reps_session = max(entry['total_reps'] for entry in exercise_data)
                 avg_volume = sum(entry['volumen'] for entry in exercise_data) / total_sesiones
-                
-                # Calcular progreso (comparación entre primera y última sesión)
+
                 if len(exercise_data) >= 2:
                     first_session = exercise_data[0]
                     last_session = exercise_data[-1]
@@ -124,7 +123,7 @@ def get_ejercicios_stats():
                     weight_progress = 0
                     volume_progress = 0
                     progress_percent = 0
-                
+
                 summary = {
                     "total_sesiones": total_sesiones,
                     "max_weight_ever": max_weight_ever,
@@ -146,41 +145,36 @@ def get_ejercicios_stats():
                     "volume_progress": 0,
                     "progress_percent": 0
                 }
-            
+
             result = {
                 "success": True,
-                "ejercicio": exercise,
+                "ejercicio": ejercicio,
                 "datos": exercise_data,
                 "resumen": summary
             }
         else:
-            # Si no se especificó ejercicio, devolver solo la lista de ejercicios
             result = {
                 "success": True,
                 "ejercicios": ejercicios_list
             }
-        
+
         cur.close()
         conn.close()
-        return jsonify(result)
-        
+        return JSONResponse(content=result)
+
     except Exception as e:
-        return jsonify({
+        return JSONResponse(content={
             "success": False,
             "message": f"Error al obtener estadísticas: {str(e)}"
         })
 
-@dashboard_bp.route('/api/calendar_heatmap', methods=['GET'])
-def get_calendar_heatmap():
+@router.get("/api/calendar_heatmap", response_class=JSONResponse)
+async def get_calendar_heatmap(user_id: str = Query("3892415"), year: int = Query(datetime.now().year)):
     """Datos para el mapa de calor del calendario de actividad."""
-    user_id = request.args.get('user_id', "3892415")
-    year = request.args.get('year', datetime.now().year)
-    
     try:
         conn = psycopg2.connect(**DB_CONFIG)
         cur = conn.cursor()
-        
-        # Consulta para obtener conteo de ejercicios por día
+
         query = """
             SELECT 
                 fecha::date as day,
@@ -190,27 +184,21 @@ def get_calendar_heatmap():
             GROUP BY day
             ORDER BY day
         """
-        
         cur.execute(query, (user_id, year))
         rows = cur.fetchall()
-        
         heatmap_data = []
         for row in rows:
             heatmap_data.append({
                 "date": row[0].strftime('%Y-%m-%d'),
                 "count": row[1]
             })
-        
+
         cur.close()
         conn.close()
-        
-        return jsonify({
-            "success": True,
-            "data": heatmap_data
-        })
-        
+        return JSONResponse(content={"success": True, "data": heatmap_data})
+
     except Exception as e:
-        return jsonify({
+        return JSONResponse(content={
             "success": False,
             "message": f"Error al obtener datos del calendario: {str(e)}"
         })

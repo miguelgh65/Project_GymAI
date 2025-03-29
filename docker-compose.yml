@@ -2,7 +2,7 @@ version: "3.8"
 services:
   gym-app:
     build: .
-    container_name: gym-flask-app
+    container_name: gym-fastapi-app
     restart: always
     ports:
       - "5050:5050"
@@ -11,10 +11,10 @@ services:
     volumes:
       - ./workflows/gym/templates:/app/workflows/gym/templates
       - ./workflows/gym/static:/app/workflows/gym/static
-      # Si deseas que los cambios en handlers.py sean inmediatos:
       - ./telegram/gym:/app/telegram/gym
     depends_on:
       - postgres_gymdb
+    command: uvicorn workflows.gym.app_fastapi:app --host 0.0.0.0 --port=5050 --reload
     networks:
       - gym_network
       

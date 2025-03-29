@@ -2,52 +2,55 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from flask import Blueprint, request, jsonify, render_template
-from datetime import datetime, timedelta
-from services.database import get_exercise_logs
+from fastapi import APIRouter, Request, Form, Query, HTTPException
+from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.templating import Jinja2Templates
+from services.database import get_exercise_logs, insert_into_db
 from services.prompt_service import format_for_postgres
 from utils.formatting import clean_input
-from services.database import insert_into_db
 
-# Crear blueprint
-main_bp = Blueprint('main', __name__)
+router = APIRouter()
+templates = Jinja2Templates(directory="templates")  # Ajusta la ruta si es necesario
 
-@main_bp.route('/', methods=['GET', 'POST'])
-def index():
-    if request.method == 'POST':
-        # Usar siempre el ID 3892415 como usuario predeterminado
-        user_id = request.form.get('user_id', "3892415")
+# Endpoint GET para renderizar la plantilla index.html
+@router.get("/", response_class=HTMLResponse)
+async def get_index(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
-        raw_text = request.form.get('exercise_data')
-        if not raw_text:
-            return jsonify({"success": False, "message": "No se proporcionó información de ejercicios."})
-        
-        cleaned_text = clean_input(raw_text)
-        formatted_json = format_for_postgres(cleaned_text)
-        if formatted_json is None:
-            return jsonify({"success": False, "message": "Error en el procesamiento del LLM."})
-        
-        # Se pasa user_id a la función de inserción
-        success = insert_into_db(formatted_json, user_id)
-        return jsonify({
-            "success": success,
-            "message": "Datos insertados correctamente." if success else "Error al insertar en la base de datos."
-        })
+# Endpoint POST para procesar el formulario
+@router.post("/", response_class=JSONResponse)
+async def post_index(
+    request: Request,
+    user_id: str = Form("3892415"),
+    exercise_data: str = Form(...)
+):
+    if not exercise_data:
+        return JSONResponse(content={"success": False, "message": "No se proporcionó información de ejercicios."})
     
-    return render_template('index.html')
+    cleaned_text = clean_input(exercise_data)
+    formatted_json = format_for_postgres(cleaned_text)
+    if formatted_json is None:
+        return JSONResponse(content={"success": False, "message": "Error en el procesamiento del LLM."})
+    
+    success = insert_into_db(formatted_json, user_id)
+    return JSONResponse(content={
+        "success": success,
+        "message": "Datos insertados correctamente." if success else "Error al insertar en la base de datos."
+    })
 
-@main_bp.route('/logs', methods=['GET'])
-def get_logs():
-    # Obtener user_id de los parámetros o usar el valor predeterminado
-    user_id = request.args.get('user_id', "3892415")
-
+# Endpoint GET para obtener los logs
+@router.get("/logs", response_class=JSONResponse)
+async def get_logs_endpoint(
+    user_id: str = Query("3892415"),
+    days: int = Query(7)
+):
     try:
-        days = int(request.args.get('days', 7))
+        days_int = int(days)
     except ValueError:
-        return jsonify({"error": "El parámetro 'days' debe ser un entero."}), 400
-
-    logs = get_exercise_logs(user_id, days)
-    if logs is None:
-        return jsonify({"error": "Error al obtener los logs."}), 500
+        raise HTTPException(status_code=400, detail="El parámetro 'days' debe ser un entero.")
     
-    return jsonify(logs)
+    logs = get_exercise_logs(user_id, days_int)
+    if logs is None:
+        raise HTTPException(status_code=500, detail="Error al obtener los logs.")
+    
+    return logs
