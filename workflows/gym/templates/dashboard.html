@@ -3,7 +3,7 @@
 {% block title %}RoonieColemAI - Dashboard de Análisis{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+<link rel="stylesheet" href="/static/dashboard.css">
 {% endblock %}
 
 {% block content %}
@@ -131,5 +131,5 @@
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
-<script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+<script src="/static/dashboard.js"></script>
 {% endblock %}

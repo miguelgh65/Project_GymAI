@@ -15,8 +15,10 @@ from datetime import datetime, timedelta
 from config import DB_CONFIG
 
 load_dotenv()
-templates = Jinja2Templates(directory="templates")
+# Use absolute path for templates
+templates = Jinja2Templates(directory="/app/workflows/gym/templates")
 router = APIRouter()
+
 
 # Endpoints de Fitbit
 FITBIT_AUTH_URL = "https://www.fitbit.com/oauth2/authorize"
@@ -78,24 +80,60 @@ async def connect_fitbit(request: Request, user_id: str = Query("3892415")):
     )
     return RedirectResponse(auth_url)
 
-@router.get('/fitbit-callback', response_class=HTMLResponse)
-async def profile_callback(request: Request, code: str = Query(None), state: str = Query(None), error: str = Query(None)):
-    """Callback para recibir el código de autorización de Fitbit."""
-    # En ausencia de un sistema de sesiones, se asume que el state es correcto
-    if error:
-        return templates.TemplateResponse('profile_callback.html', {"request": request, "success": False, "message": f"Error durante la autorización: {error}"})
-    if not code:
-        return templates.TemplateResponse('profile_callback.html', {"request": request, "success": False, "message": "No se recibió código de autorización"})
-    redirect_uri = request.url_for('profile_callback')
-    tokens = exchange_code_for_tokens(code, redirect_uri)
-    if not tokens:
-        return templates.TemplateResponse('profile_callback.html', {"request": request, "success": False, "message": "Error al obtener tokens de acceso"})
-    credentials = get_fitbit_credentials()
-    # Se asume que user_id se conoce (podrías obtenerlo de otra forma en producción)
-    user_id = "3892415"
-    success = save_fitbit_tokens(user_id, credentials['client_id'], tokens)
-    return templates.TemplateResponse('profile_callback.html', {"request": request, "success": success, "message": "Cuenta de Fitbit conectada correctamente" if success else "Error al guardar tokens"})
+@router.get('/fitbit-callback')
+async def fitbit_callback(request: Request, code: str = Query(None), state: str = Query(None), error: str = Query(None)):
+    expected_state = request.cookies.get('oauth_state')
+    user_id = request.cookies.get('user_id', "3892415")
+    
+    # For debugging
+    print(f"Callback received - state: {state}, expected_state: {expected_state}")
+    print(f"Cookies: {request.cookies}")
 
+    if error:
+        return templates.TemplateResponse('profile_callback.html', {
+            "request": request, 
+            "success": False, 
+            "message": f"Error durante la autorización: {error}"
+        })
+
+    # More graceful handling of state mismatch
+    if expected_state != state:
+        return templates.TemplateResponse('profile_callback.html', {
+            "request": request, 
+            "success": False, 
+            "message": "Error de seguridad: El parámetro de estado no coincide. Esto puede ocurrir si las cookies están bloqueadas o se ha interrumpido la sesión. Por favor, inténtelo de nuevo."
+        })
+
+    if not code:
+        return templates.TemplateResponse('profile_callback.html', {
+            "request": request, 
+            "success": False, 
+            "message": "No se recibió código de autorización"
+        })
+
+    try:
+        tokens = exchange_code_for_tokens(code)
+        if not tokens:
+            return templates.TemplateResponse('profile_callback.html', {
+                "request": request, 
+                "success": False, 
+                "message": "Error al obtener tokens de acceso"
+            })
+
+        success = save_fitbit_tokens(user_id, tokens)
+        return templates.TemplateResponse('profile_callback.html', {
+            "request": request, 
+            "success": success, 
+            "message": "Cuenta de Fitbit conectada correctamente" if success else "Error al guardar tokens"
+        })
+    except Exception as e:
+        print(f"Error in Fitbit callback: {str(e)}")
+        return templates.TemplateResponse('profile_callback.html', {
+            "request": request, 
+            "success": False, 
+            "message": f"Error inesperado: {str(e)}"
+        })
+    
 @router.get('/api/fitbit-data', response_class=JSONResponse)
 async def get_fitbit_data(user_id: str = Query("3892415"), type: str = Query('profile')):
     """API para obtener datos de Fitbit."""

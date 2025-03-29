@@ -11,7 +11,8 @@ from datetime import datetime
 from config import DB_CONFIG
 
 router = APIRouter()
-templates = Jinja2Templates(directory="templates")  # Ajusta la ruta si es necesario
+# Use absolute path for templates
+templates = Jinja2Templates(directory="/app/workflows/gym/templates")
 
 @router.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request, user_id: str = "3892415"):

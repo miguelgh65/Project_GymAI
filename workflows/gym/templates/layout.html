@@ -4,10 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}RoonieColemAI - Sistema de Entrenamiento{% endblock %}</title>
-    <!-- Favicon -->
-    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+    <!-- Favicon - SVG version that works in all browsers -->
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+    <!-- Fallback for browsers that don't support SVG -->
+    <link rel="alternate icon" href="/static/favicon.ico" type="image/x-icon">
     <!-- CSS Principal -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="/static/styles.css">
     <!-- CSS Adicional específico de página -->
     {% block extra_css %}{% endblock %}
     <!-- Font Awesome para iconos -->
@@ -21,7 +23,6 @@
             <p class="subtitle">Sistema Inteligente de Entrenamiento Personalizado</p>
         </header>
         
-        <!-- Navegación principal -->
         <!-- Navegación principal -->
         <div class="tabs">
             <a href="/chatbot" class="tab-btn {% if request.path == '/chatbot' %}active{% endif %}">

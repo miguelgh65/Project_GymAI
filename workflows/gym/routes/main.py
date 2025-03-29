@@ -10,7 +10,9 @@ from services.prompt_service import format_for_postgres
 from utils.formatting import clean_input
 
 router = APIRouter()
-templates = Jinja2Templates(directory="templates")  # Ajusta la ruta si es necesario
+
+# Create a local templates instance
+templates = Jinja2Templates(directory="/app/workflows/gym/templates")
 
 # Endpoint GET para renderizar la plantilla index.html
 @router.get("/", response_class=HTMLResponse)

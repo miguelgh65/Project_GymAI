@@ -30,6 +30,22 @@ CREATE TABLE IF NOT EXISTS fitbit_auth_temp (
     UNIQUE (user_id, client_id)
 );
 
+-- Add to init-scripts/create-tables.sql or execute directly
+
+-- Crear tabla para las rutinas de entrenamiento
+CREATE TABLE IF NOT EXISTS rutinas (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL,
+    dia_semana INTEGER NOT NULL CHECK (dia_semana BETWEEN 1 AND 7),
+    ejercicios JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (user_id, dia_semana)
+);
+
+-- Crear índice para búsquedas rápidas
+CREATE INDEX IF NOT EXISTS idx_rutinas_user_id ON rutinas(user_id);
+
 -- Índices para mejorar el rendimiento
 CREATE INDEX IF NOT EXISTS idx_fitbit_tokens_user_id ON fitbit_tokens(user_id);
 CREATE INDEX IF NOT EXISTS idx_fitbit_auth_temp_user_id ON fitbit_auth_temp(user_id);

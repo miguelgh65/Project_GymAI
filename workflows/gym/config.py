@@ -1,7 +1,10 @@
 import os
 from dotenv import load_dotenv
 from langchain_deepseek import ChatDeepSeek
-
+os.environ["LANGCHAIN_TRACING_V2"] = "false"
+os.environ["LANGCHAIN_ENDPOINT"] = ""
+os.environ["LANGCHAIN_API_KEY"] = ""
+os.environ["LANGCHAIN_PROJECT"] = ""
 # Cargar las variables del archivo .env
 load_dotenv()
 # Configuración de la base de datos usando las variables de entorno

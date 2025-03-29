@@ -8,12 +8,14 @@ from fastapi.templating import Jinja2Templates
 from services.langgraph_agent.agent import process_message
 
 router = APIRouter()
-templates = Jinja2Templates(directory="templates")  # Ajusta la ruta según tu estructura
+# Use absolute path for templates
+templates = Jinja2Templates(directory="/app/workflows/gym/templates")
 
 @router.get("/chatbot", response_class=HTMLResponse)
 async def chatbot_page(request: Request, user_id: str = "3892415"):
     """Página principal del chatbot."""
     return templates.TemplateResponse("chatbot.html", {"request": request, "user_id": user_id})
+
 
 @router.post("/api/chatbot/send", response_class=JSONResponse)
 async def chatbot_send(request: Request):

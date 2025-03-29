@@ -1,5 +1,8 @@
-# Archivo: workflows/gym/services/langgraph_agent/agent.py
 from typing import Dict, Any, List
+import os
+
+
+
 from langchain_deepseek import ChatDeepSeek
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import StateGraph, START, END
@@ -10,7 +13,11 @@ from services.langgraph_agent.tools import (
     get_recent_exercises,
     get_today_workout
 )
-
+# Disable LangSmith tracing
+os.environ["LANGCHAIN_TRACING_V2"] = "false"
+os.environ["LANGCHAIN_ENDPOINT"] = ""
+os.environ["LANGCHAIN_API_KEY"] = ""
+os.environ["LANGCHAIN_PROJECT"] = ""
 def create_trainer_agent():
     """
     Crea un agente de entrenador personal utilizando LangGraph.
