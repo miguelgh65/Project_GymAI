@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 import logging
+from starlette.middleware.sessions import SessionMiddleware
+from contextlib import asynccontextmanager
 
 # Disable LangSmith tracing
 os.environ["LANGCHAIN_TRACING_V2"] = "false"
@@ -14,7 +16,33 @@ os.environ["LANGCHAIN_PROJECT"] = ""
 
 load_dotenv()
 
-app = FastAPI()
+# Import the Fitbit scheduler
+from services.fitbit_scheduler import start_scheduler
+
+# Define lifespan context manager
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup code (runs before app startup)
+    try:
+        scheduler = start_scheduler()
+        logging.info("Fitbit scheduler started successfully")
+    except Exception as e:
+        logging.error(f"Error starting Fitbit scheduler: {str(e)}")
+    
+    yield  # This is where the app runs
+    
+    # Shutdown code (runs when app is shutting down)
+    # Add any cleanup code here if needed
+    pass
+
+# Initialize FastAPI with lifespan
+app = FastAPI(lifespan=lifespan)
+
+# Configurar middleware de sesiones
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.getenv('SECRET_KEY', os.urandom(24).hex())
+)
 
 # Mount static files directory
 app.mount("/static", StaticFiles(directory="/app/workflows/gym/static"), name="static")
@@ -25,6 +53,7 @@ from routes.routine import router as routine_router
 from routes.dashboard import router as dashboard_router
 from routes.profile import router as profile_router
 from routes.chatbot import router as chatbot_router
+from routes.auth import router as auth_router
 
 # Include all routers
 app.include_router(main_router)
@@ -32,19 +61,7 @@ app.include_router(routine_router)
 app.include_router(dashboard_router)
 app.include_router(profile_router)
 app.include_router(chatbot_router)
-
-# Import and start the Fitbit scheduler
-from services.fitbit_scheduler import start_scheduler
-
-@app.on_event("startup")
-async def startup_event():
-    """Run when the application starts up"""
-    # Start the Fitbit token refresh scheduler
-    try:
-        scheduler = start_scheduler()
-        logging.info("Fitbit scheduler started successfully")
-    except Exception as e:
-        logging.error(f"Error starting Fitbit scheduler: {str(e)}")
+app.include_router(auth_router)  # Añadir el router de autenticación
 
 if __name__ == '__main__':
     import uvicorn

@@ -7,6 +7,7 @@ import datetime
 import psycopg2
 from config import DB_CONFIG
 from models.schemas import ExerciseData
+from services.auth_service import get_user_id_by_telegram, get_user_id_by_google
 
 def insert_into_db(json_data, user_id) -> bool:
     """
@@ -14,7 +15,7 @@ def insert_into_db(json_data, user_id) -> bool:
     
     Args:
         json_data (dict): Datos de ejercicios en formato JSON.
-        user_id (str): ID del usuario.
+        user_id (str): ID del usuario (puede ser Telegram ID o Google ID).
         
     Returns:
         bool: True si la inserción fue exitosa, False en caso contrario.
@@ -25,6 +26,17 @@ def insert_into_db(json_data, user_id) -> bool:
         parsed = ExerciseData.model_validate(json_data)
         exercises = parsed.get_exercises()
         print(f"\n📌 Se han parseado {len(exercises)} ejercicios.")
+        
+        # Intentar obtener el UUID interno del usuario desde Telegram o Google ID
+        user_uuid = None
+        telegram_user_id = get_user_id_by_telegram(user_id)
+        if telegram_user_id:
+            user_uuid = telegram_user_id
+        else:
+            google_user_id = get_user_id_by_google(user_id)
+            if google_user_id:
+                user_uuid = google_user_id
+        
         conn = psycopg2.connect(**DB_CONFIG)
         cur = conn.cursor()
         for exercise in exercises:
@@ -33,15 +45,32 @@ def insert_into_db(json_data, user_id) -> bool:
             print(f"📌 Preparando inserción para {nombre_ejercicio} en {fecha_hora_actual}")
             if exercise.series is not None:
                 series_json = json.dumps([s.model_dump() for s in exercise.series])
-                cur.execute(
-                    "INSERT INTO ejercicios (fecha, ejercicio, repeticiones, user_id) VALUES (%s, %s, %s::jsonb, %s)",
-                    (fecha_hora_actual, nombre_ejercicio, series_json, user_id)
-                )
+                
+                if user_uuid:
+                    # Si tenemos user_uuid, usamos ambos para compatibilidad
+                    cur.execute(
+                        "INSERT INTO ejercicios (fecha, ejercicio, repeticiones, user_id, user_uuid) VALUES (%s, %s, %s::jsonb, %s, %s)",
+                        (fecha_hora_actual, nombre_ejercicio, series_json, user_id, user_uuid)
+                    )
+                else:
+                    # Mantener compatibilidad con registros anteriores
+                    cur.execute(
+                        "INSERT INTO ejercicios (fecha, ejercicio, repeticiones, user_id) VALUES (%s, %s, %s::jsonb, %s)",
+                        (fecha_hora_actual, nombre_ejercicio, series_json, user_id)
+                    )
             elif exercise.duracion is not None:
-                cur.execute(
-                    "INSERT INTO ejercicios (fecha, ejercicio, duracion, user_id) VALUES (%s, %s, %s, %s)",
-                    (fecha_hora_actual, nombre_ejercicio, exercise.duracion, user_id)
-                )
+                if user_uuid:
+                    # Si tenemos user_uuid, usamos ambos para compatibilidad
+                    cur.execute(
+                        "INSERT INTO ejercicios (fecha, ejercicio, duracion, user_id, user_uuid) VALUES (%s, %s, %s, %s, %s)",
+                        (fecha_hora_actual, nombre_ejercicio, exercise.duracion, user_id, user_uuid)
+                    )
+                else:
+                    # Mantener compatibilidad con registros anteriores
+                    cur.execute(
+                        "INSERT INTO ejercicios (fecha, ejercicio, duracion, user_id) VALUES (%s, %s, %s, %s)",
+                        (fecha_hora_actual, nombre_ejercicio, exercise.duracion, user_id)
+                    )
         conn.commit()
         cur.close()
         conn.close()
@@ -65,16 +94,39 @@ def get_exercise_logs(user_id, days=7):
     try:
         cutoff = datetime.datetime.now() - datetime.timedelta(days=days)
         cutoff_str = cutoff.strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Intentar obtener el UUID interno del usuario
+        user_uuid = None
+        telegram_user_id = get_user_id_by_telegram(user_id)
+        if telegram_user_id:
+            user_uuid = telegram_user_id
+        else:
+            google_user_id = get_user_id_by_google(user_id)
+            if google_user_id:
+                user_uuid = google_user_id
 
         conn = psycopg2.connect(**DB_CONFIG)
         cur = conn.cursor()
-        query = """
-            SELECT fecha, ejercicio, repeticiones, duracion
-            FROM ejercicios
-            WHERE fecha >= %s AND user_id = %s
-            ORDER BY fecha DESC
-        """
-        cur.execute(query, (cutoff_str, user_id))
+        
+        if user_uuid:
+            # Si tenemos user_uuid, buscamos por ambos campos
+            query = """
+                SELECT fecha, ejercicio, repeticiones, duracion
+                FROM ejercicios
+                WHERE fecha >= %s AND (user_id = %s OR user_uuid = %s)
+                ORDER BY fecha DESC
+            """
+            cur.execute(query, (cutoff_str, user_id, user_uuid))
+        else:
+            # Si no, buscamos solo por user_id (compatibilidad hacia atrás)
+            query = """
+                SELECT fecha, ejercicio, repeticiones, duracion
+                FROM ejercicios
+                WHERE fecha >= %s AND user_id = %s
+                ORDER BY fecha DESC
+            """
+            cur.execute(query, (cutoff_str, user_id))
+        
         rows = cur.fetchall()
         cur.close()
         conn.close()
@@ -103,14 +155,38 @@ def get_routine(user_id):
         dict or None: Rutina del usuario o None si hay un error.
     """
     try:
+        # Intentar obtener el UUID interno del usuario
+        user_uuid = None
+        telegram_user_id = get_user_id_by_telegram(user_id)
+        if telegram_user_id:
+            user_uuid = telegram_user_id
+        else:
+            google_user_id = get_user_id_by_google(user_id)
+            if google_user_id:
+                user_uuid = google_user_id
+                
         conn = psycopg2.connect(**DB_CONFIG)
         cur = conn.cursor()
         
         # Obtener la rutina para todos los días
-        cur.execute(
-            "SELECT dia_semana, ejercicios FROM rutinas WHERE user_id = %s ORDER BY dia_semana",
-            (user_id,)
-        )
+        if user_uuid:
+            # Si tenemos user_uuid, buscamos por ambos campos
+            cur.execute(
+                """
+                SELECT dia_semana, ejercicios 
+                FROM rutinas 
+                WHERE user_id = %s OR user_uuid = %s 
+                ORDER BY dia_semana
+                """,
+                (user_id, user_uuid)
+            )
+        else:
+            # Si no, buscamos solo por user_id (compatibilidad hacia atrás)
+            cur.execute(
+                "SELECT dia_semana, ejercicios FROM rutinas WHERE user_id = %s ORDER BY dia_semana",
+                (user_id,)
+            )
+            
         rows = cur.fetchall()
         
         rutina = {}
@@ -143,11 +219,24 @@ def save_routine(user_id, routine_data):
         bool: True si la operación fue exitosa, False en caso contrario.
     """
     try:
+        # Intentar obtener el UUID interno del usuario
+        user_uuid = None
+        telegram_user_id = get_user_id_by_telegram(user_id)
+        if telegram_user_id:
+            user_uuid = telegram_user_id
+        else:
+            google_user_id = get_user_id_by_google(user_id)
+            if google_user_id:
+                user_uuid = google_user_id
+                
         conn = psycopg2.connect(**DB_CONFIG)
         cur = conn.cursor()
         
         # Primero eliminar cualquier rutina existente para este usuario
-        cur.execute("DELETE FROM rutinas WHERE user_id = %s", (user_id,))
+        if user_uuid:
+            cur.execute("DELETE FROM rutinas WHERE user_id = %s OR user_uuid = %s", (user_id, user_uuid))
+        else:
+            cur.execute("DELETE FROM rutinas WHERE user_id = %s", (user_id,))
         
         # Insertar la nueva rutina
         for dia, ejercicios in routine_data.items():
@@ -157,10 +246,19 @@ def save_routine(user_id, routine_data):
                     continue
                     
                 ejercicios_json = json.dumps(ejercicios)
-                cur.execute(
-                    "INSERT INTO rutinas (user_id, dia_semana, ejercicios) VALUES (%s, %s, %s::jsonb)",
-                    (user_id, dia_semana, ejercicios_json)
-                )
+                
+                if user_uuid:
+                    # Si tenemos user_uuid, usamos ambos campos
+                    cur.execute(
+                        "INSERT INTO rutinas (user_id, user_uuid, dia_semana, ejercicios) VALUES (%s, %s, %s, %s::jsonb)",
+                        (user_id, user_uuid, dia_semana, ejercicios_json)
+                    )
+                else:
+                    # Si no, solo user_id (compatibilidad hacia atrás)
+                    cur.execute(
+                        "INSERT INTO rutinas (user_id, dia_semana, ejercicios) VALUES (%s, %s, %s::jsonb)",
+                        (user_id, dia_semana, ejercicios_json)
+                    )
             except ValueError:
                 # Ignorar claves que no sean números entre 1-7
                 continue
@@ -189,14 +287,35 @@ def get_today_routine(user_id):
         from utils.date_utils import get_weekday_name
         dia_actual = datetime.datetime.now().isoweekday()
         
+        # Intentar obtener el UUID interno del usuario
+        user_uuid = None
+        telegram_user_id = get_user_id_by_telegram(user_id)
+        if telegram_user_id:
+            user_uuid = telegram_user_id
+        else:
+            google_user_id = get_user_id_by_google(user_id)
+            if google_user_id:
+                user_uuid = google_user_id
+        
         conn = psycopg2.connect(**DB_CONFIG)
         cur = conn.cursor()
         
         # Obtener la rutina para el día actual
-        cur.execute(
-            "SELECT ejercicios FROM rutinas WHERE user_id = %s AND dia_semana = %s",
-            (user_id, dia_actual)
-        )
+        if user_uuid:
+            cur.execute(
+                """
+                SELECT ejercicios 
+                FROM rutinas 
+                WHERE (user_id = %s OR user_uuid = %s) AND dia_semana = %s
+                """,
+                (user_id, user_uuid, dia_actual)
+            )
+        else:
+            cur.execute(
+                "SELECT ejercicios FROM rutinas WHERE user_id = %s AND dia_semana = %s",
+                (user_id, dia_actual)
+            )
+        
         row = cur.fetchone()
         
         if not row:
@@ -217,13 +336,24 @@ def get_today_routine(user_id):
         
         # Obtener los ejercicios ya realizados hoy
         hoy = datetime.datetime.now().strftime('%Y-%m-%d')
-        cur.execute(
-            """
-            SELECT ejercicio FROM ejercicios 
-            WHERE user_id = %s AND fecha::date = %s::date
-            """,
-            (user_id, hoy)
-        )
+        
+        if user_uuid:
+            cur.execute(
+                """
+                SELECT ejercicio FROM ejercicios 
+                WHERE (user_id = %s OR user_uuid = %s) AND fecha::date = %s::date
+                """,
+                (user_id, user_uuid, hoy)
+            )
+        else:
+            cur.execute(
+                """
+                SELECT ejercicio FROM ejercicios 
+                WHERE user_id = %s AND fecha::date = %s::date
+                """,
+                (user_id, hoy)
+            )
+            
         ejercicios_realizados = [row[0] for row in cur.fetchall()]
         
         # Marcar los ejercicios ya realizados

@@ -26,6 +26,15 @@ FITBIT_CONFIG = {
     'redirect_uri': os.getenv('FITBIT_REDIRECT_URI', 'http://localhost:5050/fitbit-callback')
 }
 
+# Configuración de Google OAuth
+GOOGLE_CONFIG = {
+    'client_id': os.getenv('GOOGLE_CLIENT_ID'),
+    'client_secret': os.getenv('GOOGLE_CLIENT_SECRET'),
+    'redirect_uri': os.getenv('GOOGLE_REDIRECT_URI', 'http://localhost:5050/google-callback'),
+    'auth_url': 'https://accounts.google.com/o/oauth2/v2/auth',
+    'token_url': 'https://oauth2.googleapis.com/token'
+}
+
 # Lista de ejercicios conocidos (en minúsculas y sin acentos)
 KNOWN_EXERCISES = {
     # Ejercicios originales

@@ -14,13 +14,122 @@
     {% block extra_css %}{% endblock %}
     <!-- Font Awesome para iconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Estilos para el menú de usuario */
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .site-branding {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .user-menu {
+            display: flex;
+            align-items: center;
+        }
+        
+        .user-profile {
+            display: flex;
+            align-items: center;
+            background-color: #f5f5f5;
+            padding: 5px 10px;
+            border-radius: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            margin-right: 8px;
+            object-fit: cover;
+        }
+        
+        .fa-user-circle {
+            font-size: 32px;
+            color: #3498db;
+            margin-right: 8px;
+        }
+        
+        .login-btn {
+            display: flex;
+            align-items: center;
+            background-color: #3498db;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .login-btn i {
+            margin-right: 5px;
+        }
+        
+        .login-btn:hover {
+            background-color: #2980b9;
+        }
+        
+        .logout-btn {
+            color: #e74c3c;
+            margin-left: 10px;
+            font-size: 16px;
+            transition: all 0.2s ease;
+        }
+        
+        .logout-btn:hover {
+            color: #c0392b;
+        }
+        
+        /* Media queries para dispositivos móviles */
+        @media (max-width: 768px) {
+            .header-container {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .user-profile span {
+                max-width: 100px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
         <!-- Encabezado principal -->
         <header>
-            <h1><i class="fas fa-dumbbell"></i> RoonieColemAI</h1>
-            <p class="subtitle">Sistema Inteligente de Entrenamiento Personalizado</p>
+            <div class="header-container">
+                <div class="site-branding">
+                    <h1><i class="fas fa-dumbbell"></i> RoonieColemAI</h1>
+                    <p class="subtitle">Sistema Inteligente de Entrenamiento Personalizado</p>
+                </div>
+                
+                <div class="user-menu">
+                    {% if user %}
+                        <div class="user-profile">
+                            {% if user.profile_picture %}
+                                <img src="{{ user.profile_picture }}" alt="{{ user.display_name }}" class="user-avatar">
+                            {% else %}
+                                <i class="fas fa-user-circle"></i>
+                            {% endif %}
+                            <span>{{ user.display_name }}</span>
+                            <a href="/logout" class="logout-btn" title="Cerrar sesión"><i class="fas fa-sign-out-alt"></i></a>
+                        </div>
+                    {% else %}
+                        <a href="/login" class="login-btn">
+                            <i class="fas fa-sign-in-alt"></i> Iniciar sesión
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
         </header>
         
         <!-- Navegación principal -->

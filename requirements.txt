@@ -18,3 +18,10 @@ python-multipart==0.0.20
 
 apscheduler>=3.11.0
 
+# Para autenticación con Google
+authlib>=1.5.1
+itsdangerous>=2.2.0
+python-jose[cryptography]>=3.4.0
+
+google-auth>=2.38.0
+google-auth-oauthlib>=1.2.1

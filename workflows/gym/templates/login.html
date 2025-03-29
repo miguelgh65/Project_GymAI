@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - Gym App</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
+    <style>
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="bg-white p-8 rounded-xl shadow-2xl w-96">
+        <div class="text-center mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">Gym Tracker</h1>
+            <p class="text-gray-600 mt-2">Accede a tu cuenta</p>
+        </div>
+
+        <div class="space-y-4">
+            <!-- Google Login Button -->
+            <div id="google-login-container">
+                <button id="google-login-btn" class="w-full flex items-center justify-center bg-white border border-gray-300 rounded-lg shadow-md px-6 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                    <svg class="w-6 h-6 mr-2" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="800px" height="800px" viewBox="-0.5 0 48 48" version="1.1">
+                        <title>Google</title>
+                        <g id="Icons" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+                            <g id="Color-" transform="translate(-401.000000, -860.000000)">
+                                <g id="Google" transform="translate(401.000000, 860.000000)">
+                                    <path d="M9.82727273,24 C9.82727273,22.4168286 10.0804318,20.9154186 10.5322727,19.5222078 L2.62345455,13.4476299 C1.08206818,16.5617313 0.213636364,20.1575325 0.213636364,24 C0.213636364,27.7757123 1.0517,31.3153691 2.54181818,34.3994556 L10.5086364,28.5099192 C10.0804318,27.2135678 9.82727273,25.6401052 9.82727273,24 Z" id="Path" fill="#FBBC05"></path>
+                                    <path d="M23.7136364,10.1333333 C27.025,10.1333333 30.0159091,11.3066667 32.3659091,13.2266667 L39.2022727,6.4 C35.0363636,2.77333333 29.6954545,0.533333333 23.7136364,0.533333333 C14.4268182,0.533333333 6.44540909,5.91066667 2.62345455,13.4469325 L10.5106364,19.5413669 C12.6539091,14.1879421 17.8575,10.1333333 23.7136364,10.1333333 Z" id="Path" fill="#EB4335"></path>
+                                    <path d="M23.7136364,37.8666667 C17.8575,37.8666667 12.6539091,33.8120579 10.5106364,28.4586331 L2.62345455,34.5530671 C6.44540909,42.0893333 14.4268182,47.4666667 23.7136364,47.4666667 C29.4455,47.4666667 34.9177273,45.4314667 39.0249091,41.7252667 L31.5536364,35.9936 C29.4455,37.1804444 26.7318182,37.8666667 23.7136364,37.8666667 Z" id="Path" fill="#34A853"></path>
+                                    <path d="M46.1454545,24 C46.1454545,22.6909091 45.9318182,21.2181818 45.6935455,19.9157578 L23.7136364,19.9157578 L23.7136364,28.2181735 L37.3181818,28.2181735 C36.7727273,31.0608696 34.9477273,33.3544828 32.3181818,34.8631579 L39.0249091,41.7252667 C43.3824091,37.5990141 46.1454545,31.6407592 46.1454545,24 Z" id="Path" fill="#4285F4"></path>
+                                </g>
+                            </g>
+                        </g>
+                    </svg>
+                    Iniciar sesión con Google
+                </button>
+            </div>
+
+            <!-- Telegram Linking Section -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div class="flex items-center mb-3">
+                    <svg class="w-6 h-6 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm-2.824 16.884c-1.09 0-1.577-.831-1.09-1.742l1.52-2.757-1.255-.464c-1.088-.402-.908-1.461.235-1.755l5.293-1.559c1.191-.351 2.61.336 2.141 1.866l-1.742 5.475c-.292 1.024-1.138 1.936-2.261 1.936zm3.646-5.931c-.577 0-1.046-.469-1.046-1.046s.469-1.046 1.046-1.046 1.046.469 1.046 1.046-.469 1.046-1.046 1.046z"/>
+                    </svg>
+                    <h3 class="text-lg font-semibold text-blue-800">Vincular Cuenta de Telegram</h3>
+                </div>
+
+                <div id="telegram-link-section">
+                    <button id="generate-link-code-btn" class="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition duration-300">
+                        Generar código de vinculación
+                    </button>
+                    
+                    <div id="link-instructions" class="mt-3 text-sm text-gray-600 hidden">
+                        <ol class="list-decimal list-inside space-y-2">
+                            <li>Abre nuestro <a href="https://t.me/RoonieColemAi_dev_bot" target="_blank" class="text-blue-600 underline">bot de Telegram</a></li>
+                            <li>Envía el comando <code>/vincular</code> al bot</li>
+                            <li>Cuando el bot lo solicite, envía este código:</li>
+                            <li class="font-bold text-blue-700 text-xl" id="link-code-display">XXXXXX</li>
+                            <li class="text-xs text-gray-500">El código expira en 10 minutos</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-6 text-center text-gray-500 text-sm">
+            © 2025 Gym Tracker. Todos los derechos reservados.
+        </div>
+    </div>
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script>
+        // Google Sign-In
+        function handleCredentialResponse(response) {
+            const googleLoginBtn = document.getElementById('google-login-btn');
+            googleLoginBtn.innerHTML = '<div class="spinner"></div>Iniciando sesión...';
+            googleLoginBtn.disabled = true;
+
+            // Obtener código de vinculación de Telegram si está visible
+            const linkCodeDisplay = document.getElementById('link-code-display');
+            const telegramCode = linkCodeDisplay.textContent !== 'XXXXXX' 
+                ? linkCodeDisplay.textContent 
+                : null;
+
+            // Verificar el token de Google
+            fetch('/auth/google/verify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    id_token: response.credential,
+                    telegram_id: telegramCode
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    // Redirigir a la página principal o dashboard
+                    window.location.href = '/dashboard';
+                } else {
+                    alert(data.message || 'Error al iniciar sesión');
+                    googleLoginBtn.innerHTML = 'Iniciar sesión con Google';
+                    googleLoginBtn.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al conectar con el servidor');
+                googleLoginBtn.innerHTML = 'Iniciar sesión con Google';
+                googleLoginBtn.disabled = false;
+            });
+        }
+
+        window.onload = function () {
+            google.accounts.id.initialize({
+                client_id: '{{ google_client_id }}',
+                callback: handleCredentialResponse
+            });
+            google.accounts.id.renderButton(
+                document.getElementById("google-login-btn"),
+                { theme: "outline", size: "large" }
+            );
+        }
+
+        // Telegram Link Code Generation
+        document.getElementById('generate-link-code-btn').addEventListener('click', async function() {
+            const btn = this;
+            btn.innerHTML = '<div class="spinner"></div>Generando código...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/api/generate-link-code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Mostrar instrucciones y código
+                    document.getElementById('link-instructions').classList.remove('hidden');
+                    document.getElementById('link-code-display').textContent = data.code;
+                    btn.style.display = 'none';
+                } else {
+                    alert(data.message || 'No se pudo generar el código');
+                    btn.innerHTML = 'Generar código de vinculación';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al conectar con el servidor');
+                btn.innerHTML = 'Generar código de vinculación';
+            } finally {
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

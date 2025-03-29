@@ -8,6 +8,8 @@ from fastapi.templating import Jinja2Templates
 from services.database import get_exercise_logs, insert_into_db
 from services.prompt_service import format_for_postgres
 from utils.formatting import clean_input
+from fastapi import Depends
+from workflows.gym.middlewares import get_current_user
 
 router = APIRouter()
 
@@ -16,9 +18,8 @@ templates = Jinja2Templates(directory="/app/workflows/gym/templates")
 
 # Endpoint GET para renderizar la plantilla index.html
 @router.get("/", response_class=HTMLResponse)
-async def get_index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
-
+async def get_index(request: Request, user = Depends(get_current_user)):
+    return templates.TemplateResponse("index.html", {"request": request, "user": user})
 # Endpoint POST para procesar el formulario
 @router.post("/", response_class=JSONResponse)
 async def post_index(

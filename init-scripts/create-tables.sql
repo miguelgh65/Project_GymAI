@@ -42,10 +42,35 @@ CREATE TABLE IF NOT EXISTS rutinas (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (user_id, dia_semana)
 );
+-- Crear tabla para gestionar usuarios
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    telegram_id VARCHAR(255),
+    google_id VARCHAR(255),
+    email VARCHAR(255),
+    display_name VARCHAR(255),
+    profile_picture VARCHAR(512),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(telegram_id),
+    UNIQUE(google_id)
+);
 
--- Crear índice para búsquedas rápidas
+-- Añadir columna user_uuid a la tabla ejercicios
+ALTER TABLE ejercicios 
+ADD COLUMN IF NOT EXISTS user_uuid INTEGER REFERENCES users(id);
+
+-- Añadir columna user_uuid a la tabla rutinas
+ALTER TABLE rutinas
+ADD COLUMN IF NOT EXISTS user_uuid INTEGER REFERENCES users(id);
+
+-- Añadir columna user_uuid a la tabla fitbit_tokens
+ALTER TABLE fitbit_tokens
+ADD COLUMN IF NOT EXISTS user_uuid INTEGER REFERENCES users(id);
+
+-- Índices para búsquedas rápidas
+CREATE INDEX IF NOT EXISTS idx_users_telegram_id ON users(telegram_id);
+CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
 CREATE INDEX IF NOT EXISTS idx_rutinas_user_id ON rutinas(user_id);
-
--- Índices para mejorar el rendimiento
 CREATE INDEX IF NOT EXISTS idx_fitbit_tokens_user_id ON fitbit_tokens(user_id);
 CREATE INDEX IF NOT EXISTS idx_fitbit_auth_temp_user_id ON fitbit_auth_temp(user_id);

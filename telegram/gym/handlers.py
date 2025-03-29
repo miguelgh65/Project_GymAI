@@ -710,3 +710,80 @@ def register_handlers(bot: telebot.TeleBot):
                 "*¡LIGHTWEIGHT BABY!*",
                 parse_mode="Markdown"
             )
+
+    # Añadir a handlers.py en telegram/gym
+
+    # Comando /vincular
+    @bot.message_handler(commands=["vincular"])
+    def link_account_command(message):
+        chat_id = get_chat_id(message)
+        if not check_whitelist(message):
+            return
+        
+        bot.send_message(
+            chat_id, 
+            "🔗 *Vincular con cuenta web*\n\n"
+            "Por favor, envía el código de vinculación que ves en la web.\n"
+            "El código debe ser de 6 caracteres (letras y números).",
+            parse_mode="Markdown"
+        )
+        
+        # Registrar el siguiente paso para procesar el código
+        bot.register_next_step_handler(message, process_link_code)
+
+    def process_link_code(message):
+        chat_id = get_chat_id(message)
+        if not check_whitelist(message):
+            return
+        
+        code = message.text.strip().upper()
+        telegram_id = str(chat_id)
+        
+        # Validar formato del código (6 caracteres alfanuméricos)
+        if not re.match(r'^[A-Z0-9]{6}$', code):
+            bot.send_message(
+                chat_id, 
+                "❌ El código debe ser de 6 caracteres (letras y números).\n"
+                "Por favor, intenta de nuevo con /vincular"
+            )
+            return
+        
+        # Enviar mensaje de "procesando"
+        bot.send_chat_action(chat_id, "typing")
+        
+        # Llamar a la API para verificar el código
+        url = f"{BASE_URL}/api/verify-link-code"
+        try:
+            response = requests.post(
+                url, 
+                json={"code": code, "telegram_id": telegram_id},
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("success"):
+                    bot.send_message(
+                        chat_id, 
+                        "✅ *¡Cuentas vinculadas con éxito!*\n\n"
+                        "Ahora puedes acceder a tus datos desde la web y desde Telegram.\n"
+                        "Tus entrenamientos se sincronizarán automáticamente entre ambas plataformas.",
+                        parse_mode="Markdown"
+                    )
+                else:
+                    bot.send_message(
+                        chat_id, 
+                        f"❌ Error: {data.get('message', 'Código inválido o expirado')}.\n"
+                        "Por favor, genera un nuevo código en la web e inténtalo de nuevo con /vincular"
+                    )
+            else:
+                bot.send_message(
+                    chat_id,
+                    "❌ Error al verificar el código. Por favor, intenta nuevamente."
+                )
+        except Exception as e:
+            bot.send_message(
+                chat_id,
+                "❌ Error al conectar con el servidor. Por favor, intenta más tarde."
+            )
+            log_to_console(f"Error en verificación de código: {str(e)}", "ERROR")
