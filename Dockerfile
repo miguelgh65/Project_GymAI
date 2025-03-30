@@ -15,8 +15,8 @@ COPY workflows/gym/ /app/workflows/gym/
 # Copiar archivos del bot de Telegram
 COPY telegram/ /app/telegram/
 
-# Asegurarse de que la estructura de directorios para LangGraph exista
-RUN mkdir -p /app/workflows/gym/services/langgraph_agent
+# Copiar archivos del módulo fitness_agent
+COPY fitness_agent/ /app/fitness_agent/
 
 # Copiar .env al directorio raíz
 COPY .env /app/
