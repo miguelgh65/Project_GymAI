@@ -26,7 +26,7 @@ GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
 GOOGLE_REDIRECT_URI = os.getenv('GOOGLE_REDIRECT_URI', 'http://localhost:5050/google-callback')
 
 # Configuración de plantillas
-templates = Jinja2Templates(directory="/app/workflows/gym/templates")
+templates = Jinja2Templates(directory="/app/front_end/templates")
 router = APIRouter()
 
 # Añadir la nueva ruta para generar códigos de vinculación

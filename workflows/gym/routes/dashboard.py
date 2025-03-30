@@ -16,7 +16,7 @@ from workflows.gym.middlewares import get_current_user
 
 router = APIRouter()
 # Use absolute path for templates
-templates = Jinja2Templates(directory="/app/workflows/gym/templates")
+templates = Jinja2Templates(directory="/app/front_end/templates")
 
 @router.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request, user = Depends(get_current_user)):

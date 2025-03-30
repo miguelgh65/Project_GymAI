@@ -23,6 +23,7 @@ COPY .env /app/
 
 # Copiar el script de inicio
 COPY start.sh /app/
+COPY front_end/ /app/front_end/
 RUN chmod +x /app/start.sh
 
 # Exponer el puerto que usará la aplicación Flask

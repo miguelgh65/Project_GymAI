@@ -15,7 +15,7 @@ from workflows.gym.middlewares import get_current_user
 router = APIRouter()
 
 # Create a local templates instance
-templates = Jinja2Templates(directory="/app/workflows/gym/templates")
+templates = Jinja2Templates(directory="/app/front_end/templates")
 
 @router.get("/", response_class=HTMLResponse)
 async def get_index(request: Request, user = Depends(get_current_user)):

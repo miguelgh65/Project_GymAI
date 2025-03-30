@@ -25,7 +25,7 @@ except ImportError:
     logging.warning("LangSmith not available, continuing without tracing")
 
 router = APIRouter()
-templates = Jinja2Templates(directory="/app/workflows/gym/templates")
+templates = Jinja2Templates(directory="/app/front_end/templates")
 
 # Import the fitness agent module - now that we've created the utils module
 try:

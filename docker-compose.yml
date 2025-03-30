@@ -8,8 +8,8 @@ services:
     env_file:
       - .env
     volumes:
-      - ./workflows/gym/templates:/app/workflows/gym/templates
-      - ./workflows/gym/static:/app/workflows/gym/static
+      - ./front_end/templates:/app/front_end/templates
+      - ./front_end/static:/app/front_end/static
       - ./telegram/gym:/app/telegram/gym
       - ./init-scripts:/docker-entrypoint-initdb.d  # Ensure init scripts are mounted
     depends_on:

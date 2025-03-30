@@ -19,7 +19,7 @@ from fastapi.templating import Jinja2Templates
 
 load_dotenv()
 # Use absolute path for templates
-templates = Jinja2Templates(directory="/app/workflows/gym/templates")
+templates = Jinja2Templates(directory="/app/front_end/templates")
 router = APIRouter()
 
 

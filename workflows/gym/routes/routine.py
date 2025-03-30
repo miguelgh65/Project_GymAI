@@ -25,7 +25,7 @@ from workflows.gym.middlewares import get_current_user
 # Make sure to load environment variables
 load_dotenv()
 # Use absolute path for templates
-templates = Jinja2Templates(directory="/app/workflows/gym/templates")
+templates = Jinja2Templates(directory="/app/front_end/templates")
 router = APIRouter()
 
 def get_fitbit_credentials():

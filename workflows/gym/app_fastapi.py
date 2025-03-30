@@ -55,7 +55,7 @@ app.add_middleware(
 app.add_middleware(AuthenticationMiddleware)
 
 # Mount static files directory
-app.mount("/static", StaticFiles(directory="/app/workflows/gym/static"), name="static")
+app.mount("/static", StaticFiles(directory="/app/front_end/static"), name="static")
 
 from routes.auth import router as auth_router
 from routes.chatbot import router as chatbot_router
