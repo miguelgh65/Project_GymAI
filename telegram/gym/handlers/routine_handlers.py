@@ -3,7 +3,7 @@ import re
 import json
 import requests
 from telebot.types import Message
-from .base_handlers import get_chat_id, check_whitelist, log_to_console
+from .base_handlers import get_telegram_id, get_api_user_id, check_whitelist, log_to_console
 from config import BASE_URL
 
 def register_routine_handlers(bot):
@@ -16,14 +16,18 @@ def register_routine_handlers(bot):
     # Comando /toca: Muestra los ejercicios programados para hoy
     @bot.message_handler(commands=["toca"])
     def send_todays_workout(message: Message) -> None:
-        chat_id = get_chat_id(message)
+        # ID para enviar respuestas por Telegram
+        chat_id = get_telegram_id(message)
+        # ID para enviar a las APIs (Google ID si está vinculado)
+        api_user_id = get_api_user_id(message)
+        
         if not check_whitelist(message, bot):
             return
 
         url = f"{BASE_URL}/rutina_hoy?format=json"  # Añadir format=json
-        params = {"user_id": chat_id}  # Añadir user_id como parámetro
+        params = {"user_id": api_user_id}  # Usar el Google ID para la API
 
-        log_to_console(f"Comando /toca - Usuario {chat_id} solicitando rutina de hoy", "PROCESS")
+        log_to_console(f"Comando /toca - Usuario {chat_id} solicitando rutina de hoy (API user_id: {api_user_id})", "PROCESS")
 
         try:
             response = requests.get(url, params=params)
@@ -68,14 +72,18 @@ def register_routine_handlers(bot):
     # Comando /rutina: Permite configurar la rutina semanal
     @bot.message_handler(commands=["rutina"])
     def config_routine(message: Message) -> None:
-        chat_id = get_chat_id(message)
+        # ID para enviar respuestas por Telegram
+        chat_id = get_telegram_id(message)
+        # ID para enviar a las APIs (Google ID si está vinculado)
+        api_user_id = get_api_user_id(message)
+        
         if not check_whitelist(message, bot):
             return
 
         url = f"{BASE_URL}/rutina?format=json"
-        params = {"user_id": chat_id}
+        params = {"user_id": api_user_id}
 
-        log_to_console(f"Comando /rutina - Usuario {chat_id} solicitando configuración de rutina", "PROCESS")
+        log_to_console(f"Comando /rutina - Usuario {chat_id} solicitando configuración de rutina (API user_id: {api_user_id})", "PROCESS")
 
         try:
             response = requests.get(url, params=params)
@@ -132,7 +140,11 @@ def register_routine_handlers(bot):
     # Handler para configurar rutina por día
     @bot.message_handler(regexp=r"^(Lunes|Martes|Miércoles|Jueves|Viernes|Sábado|Domingo):\s*(.+)$")
     def set_routine_day(message: Message) -> None:
-        chat_id = get_chat_id(message)
+        # ID para enviar respuestas por Telegram
+        chat_id = get_telegram_id(message)
+        # ID para enviar a las APIs (Google ID si está vinculado)
+        api_user_id = get_api_user_id(message)
+        
         if not check_whitelist(message, bot):
             return
 
@@ -166,9 +178,9 @@ def register_routine_handlers(bot):
             url = f"{BASE_URL}/rutina"
 
             try:
-                log_to_console(f"Intentando obtener rutina actual para usuario {chat_id}...", "INFO")
+                log_to_console(f"Intentando obtener rutina actual para usuario {chat_id} (API user_id: {api_user_id})...", "INFO")
                 bot.send_chat_action(chat_id, "typing")
-                response = requests.get(url, params={"user_id": chat_id})
+                response = requests.get(url, params={"user_id": api_user_id})
                 log_to_console(f"Respuesta del servidor: Status {response.status_code}", "DEBUG")
 
                 if response.status_code == 200:
@@ -184,7 +196,7 @@ def register_routine_handlers(bot):
                             if current_routine is None:
                                 current_routine = {}
                         current_routine[str(day_number)] = exercises
-                        payload = {"rutina": current_routine, "user_id": chat_id}
+                        payload = {"rutina": current_routine, "user_id": api_user_id}
                         log_to_console(f"Enviando payload: {json.dumps(payload)}", "INFO")
                         update_response = requests.post(
                             url,
@@ -215,7 +227,7 @@ def register_routine_handlers(bot):
                         log_to_console(f"Error al decodificar JSON: {e}. Respuesta: {response.text[:200]}", "ERROR")
                         current_routine = {}
                         current_routine[str(day_number)] = exercises
-                        payload = {"rutina": current_routine, "user_id": chat_id}
+                        payload = {"rutina": current_routine, "user_id": api_user_id}
                         log_to_console(f"Intentando crear nueva rutina: {json.dumps(payload)}", "INFO")
                         try:
                             update_response = requests.post(

@@ -31,16 +31,28 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         # También considerar como públicas todas las rutas que empiecen con estos prefijos
         public_prefixes = ['/static/', '/api/', '/auth/']
         
-        # Verificar si la ruta actual es pública
+        # Verificar si es una petición del bot de Telegram
+        is_telegram_bot_request = False
+        if 'user_id' in request.query_params:
+            user_id_param = request.query_params['user_id']
+            # Los Google IDs suelen ser largos y numéricos
+            if len(user_id_param) > 10:
+                is_telegram_bot_request = True
+                print(f"DEBUG - Detected Telegram bot request with user_id: {user_id_param}")
+        
+        # Verificar si la ruta actual es pública o es una petición del bot
         current_path = request.url.path
-        is_public = any(current_path.startswith(path) for path in public_paths) or \
-                   any(current_path.startswith(prefix) for prefix in public_prefixes)
+        is_public = (
+            any(current_path.startswith(path) for path in public_paths) or
+            any(current_path.startswith(prefix) for prefix in public_prefixes) or
+            is_telegram_bot_request
+        )
         
         # Obtener user_id de las cookies
         user_id = request.cookies.get("user_id")
         
         # Imprimir información de depuración
-        print(f"DEBUG - Path: {current_path}, Public: {is_public}, User ID: {user_id}")
+        print(f"DEBUG - Path: {current_path}, Public: {is_public}, User ID: {user_id}, Telegram Bot: {is_telegram_bot_request}")
         
         # Si hay user_id, intentar obtener datos del usuario
         user = None
@@ -53,8 +65,13 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 print(f"ERROR en AuthenticationMiddleware: {str(e)}")
                 request.state.user = None
         
+        # Si es una petición del bot, simular un usuario autenticado
+        if is_telegram_bot_request:
+            print("DEBUG - Bypassing authentication for Telegram bot request")
+            # No redirigir, permitir la petición
+            pass
         # Si no es una ruta pública y no hay usuario, redirigir al login
-        if not is_public and not user:
+        elif not is_public and not user:
             print("DEBUG - Redirecting to login (no user)")
             return RedirectResponse(url="/login")
         

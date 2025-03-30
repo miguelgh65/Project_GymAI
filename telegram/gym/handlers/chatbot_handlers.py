@@ -2,7 +2,7 @@
 import re
 import requests
 from telebot.types import Message
-from .base_handlers import get_chat_id, check_whitelist, log_to_console
+from .base_handlers import get_telegram_id, get_api_user_id, check_whitelist, log_to_console
 from utils import send_message_split
 from config import BASE_URL
 
@@ -16,7 +16,11 @@ def register_chatbot_handlers(bot):
     # Comando /ai: Interactúa con el entrenador personal AI
     @bot.message_handler(commands=["ai"])
     def chat_with_ai(message: Message) -> None:
-        chat_id = get_chat_id(message)
+        # ID para enviar respuestas por Telegram
+        chat_id = get_telegram_id(message)
+        # ID para enviar a las APIs (Google ID si está vinculado)
+        api_user_id = get_api_user_id(message)
+        
         if not check_whitelist(message, bot):
             return
 
@@ -36,14 +40,14 @@ def register_chatbot_handlers(bot):
 
         # Enviar indicador de "escribiendo..."
         bot.send_chat_action(chat_id, "typing")
-        log_to_console(f"Enviando pregunta al AI: {ai_prompt}", "PROCESS")
+        log_to_console(f"Enviando pregunta al AI: {ai_prompt} (API user_id: {api_user_id})", "PROCESS")
 
         try:
             # Opción 1: Usar directamente la función del fitness_agent
             try:
                 from fitness_agent.agent.nodes.router_node import process_message
                 
-                response = process_message(str(chat_id), ai_prompt)
+                response = process_message(api_user_id, ai_prompt)
                 
                 # Formatear la respuesta
                 answer = f"🤖 *ENTRENADOR AI:* 🤖\n\n{response.content}\n\n*¡LIGHTWEIGHT BABY!*"
@@ -58,7 +62,7 @@ def register_chatbot_handlers(bot):
                 
                 response = requests.post(
                     url,
-                    json={"user_id": chat_id, "message": ai_prompt},
+                    json={"user_id": api_user_id, "message": ai_prompt},
                     headers={"Content-Type": "application/json"},
                 )
                 
@@ -91,7 +95,11 @@ def register_chatbot_handlers(bot):
     # Este handler debe estar después del de ejercicios para no interferir
     @bot.message_handler(func=lambda message: True)
     def handle_general_message(message: Message) -> None:
-        chat_id = get_chat_id(message)
+        # ID para enviar respuestas por Telegram
+        chat_id = get_telegram_id(message)
+        # ID para enviar a las APIs (Google ID si está vinculado)
+        api_user_id = get_api_user_id(message)
+        
         if not check_whitelist(message, bot):
             return
             
@@ -100,14 +108,14 @@ def register_chatbot_handlers(bot):
         
         # Enviar indicador de "escribiendo..."
         bot.send_chat_action(chat_id, "typing")
-        log_to_console(f"Pregunta recibida - Usuario {chat_id}: {message.text}", "PROCESS")
+        log_to_console(f"Pregunta recibida - Usuario {chat_id} (API user_id: {api_user_id}): {message.text}", "PROCESS")
         
         try:
             # Opción 1: Usar directamente la función del fitness_agent
             try:
                 from fitness_agent.agent.nodes.router_node import process_message
                 
-                response = process_message(str(chat_id), message.text)
+                response = process_message(api_user_id, message.text)
                 
                 # Formatear la respuesta
                 answer = f"🤖 *ENTRENADOR AI:* 🤖\n\n{response.content}\n\n*¡LIGHTWEIGHT BABY!*"
@@ -122,7 +130,7 @@ def register_chatbot_handlers(bot):
                 
                 response = requests.post(
                     url,
-                    json={"user_id": chat_id, "message": message.text},
+                    json={"user_id": api_user_id, "message": message.text},
                     headers={"Content-Type": "application/json"},
                 )
                 

@@ -3,8 +3,8 @@ import re
 import random
 import requests
 from telebot.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
-from .base_handlers import get_chat_id, check_whitelist, log_to_console
-from utils import send_message_split, format_logs
+from .base_handlers import get_telegram_id, get_api_user_id, check_whitelist, log_to_console, get_google_id
+from utils import send_message_split, format_logs, is_user_whitelisted
 from config import BASE_URL, MOTIVATIONAL_PHRASES, ERROR_PHRASES
 
 def register_exercise_handlers(bot):
@@ -17,12 +17,16 @@ def register_exercise_handlers(bot):
     # Comando /logs (sin dígitos): Consulta los ejercicios de los últimos 7 días.
     @bot.message_handler(commands=["logs"])
     def send_logs_default(message: Message) -> None:
-        chat_id = get_chat_id(message)
+        # ID para enviar respuestas por Telegram
+        chat_id = get_telegram_id(message)
+        # ID para enviar a las APIs (Google ID si está vinculado)
+        api_user_id = get_api_user_id(message)
+        
         if not check_whitelist(message, bot):
             return
         days = 7
         url = f"{BASE_URL}/logs"
-        params = {"days": days, "user_id": chat_id}
+        params = {"days": days, "user_id": api_user_id}
 
         log_to_console(f"Comando /logs - Usuario {chat_id} solicitando registros de {days} días", "PROCESS")
 
@@ -47,14 +51,18 @@ def register_exercise_handlers(bot):
     # Handler para comandos /logsX, donde X es el número de días.
     @bot.message_handler(regexp=r"^/logs(\d+)$")
     def send_logs_days(message: Message) -> None:
-        chat_id = get_chat_id(message)
+        # ID para enviar respuestas por Telegram
+        chat_id = get_telegram_id(message)
+        # ID para enviar a las APIs (Google ID si está vinculado)
+        api_user_id = get_api_user_id(message)
+        
         if not check_whitelist(message, bot):
             return
         match = re.match(r"^/logs(\d+)$", message.text)
         if match:
             days = int(match.group(1))
             url = f"{BASE_URL}/logs"
-            params = {"days": days, "user_id": chat_id}
+            params = {"days": days, "user_id": api_user_id}
 
             log_to_console(f"Comando /logs{days} - Usuario {chat_id} solicitando registros de {days} días", "PROCESS")
 
@@ -79,14 +87,18 @@ def register_exercise_handlers(bot):
     # Handler para mensajes de texto que parezcan ejercicios
     @bot.message_handler(func=lambda message: is_exercise_message(message.text) if hasattr(message, "text") else False)
     def process_exercise_message(message: Message) -> None:
-        chat_id = get_chat_id(message)
+        # ID para enviar respuestas por Telegram
+        chat_id = get_telegram_id(message)
+        # ID para enviar a las APIs (Google ID si está vinculado)
+        api_user_id = get_api_user_id(message)
+        
         if not check_whitelist(message, bot):
             return
 
         text = message.text.lower()
         
         bot.send_chat_action(chat_id, "typing")
-        data = {"exercise_data": message.text, "user_id": chat_id}
+        data = {"exercise_data": message.text, "user_id": api_user_id}
         log_to_console(f"Ejercicio recibido - Usuario {chat_id}: {message.text}", "PROCESS")
         try:
             response = requests.post(f"{BASE_URL}", data=data)
@@ -127,7 +139,11 @@ def register_exercise_handlers(bot):
     # Manejar los botones inline
     @bot.callback_query_handler(func=lambda call: call.data in ["cmd_logs", "cmd_toca", "cmd_ai"])
     def handle_callback_query(call) -> None:
+        # Obtener ID de Telegram para enviar mensajes
         chat_id = str(call.message.chat.id)
+        # Obtener ID para APIs (Google ID si está disponible)
+        telegram_id = chat_id
+        api_user_id = get_google_id(telegram_id)
 
         # Verificamos directamente con el ID de Telegram
         if not is_user_whitelisted(chat_id):
@@ -137,9 +153,7 @@ def register_exercise_handlers(bot):
         if call.data == "cmd_toca":
             bot.answer_callback_query(call.id, "Obteniendo tu rutina de hoy...")
             url = f"{BASE_URL}/rutina_hoy?format=json"
-            # Aquí usamos get_chat_id para obtener el ID de Google (o Telegram como fallback)
-            user_id = get_chat_id(call.message)
-            params = {"user_id": user_id}
+            params = {"user_id": api_user_id}
             try:
                 response = requests.get(url, params=params)
                 if response.status_code == 200:
@@ -173,7 +187,7 @@ def register_exercise_handlers(bot):
             bot.answer_callback_query(call.id, "Obteniendo tus logs...")
             days = 7
             url = f"{BASE_URL}/logs"
-            params = {"days": days, "user_id": get_chat_id(call.message)}
+            params = {"days": days, "user_id": api_user_id}
             try:
                 response = requests.get(url, params=params)
                 if response.status_code == 200:
