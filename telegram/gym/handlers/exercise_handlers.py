@@ -1,11 +1,15 @@
 # telegram/gym/handlers/exercise_handlers.py
-import re
 import random
+import re
+
 import requests
-from telebot.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
-from .base_handlers import get_telegram_id, get_api_user_id, check_whitelist, log_to_console, get_google_id
-from utils import send_message_split, format_logs, is_user_whitelisted
-from config import BASE_URL, MOTIVATIONAL_PHRASES, ERROR_PHRASES
+from config import BASE_URL, ERROR_PHRASES, MOTIVATIONAL_PHRASES
+from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
+from utils import format_logs, is_user_whitelisted, send_message_split
+
+from .base_handlers import (check_whitelist, get_api_user_id, get_google_id,
+                            get_telegram_id, log_to_console)
+
 
 def register_exercise_handlers(bot):
     """

@@ -1,6 +1,7 @@
 # fitness_agent/agent/tools/fitbit_tools.py
 from typing import Dict, List, Optional
 
+
 def get_fitbit_activity_data(user_id: str, days: int = 7) -> List[Dict]:
     """
     Placeholder para obtener datos de actividad de Fitbit.

@@ -1,12 +1,14 @@
-import sys
 import os
+import sys
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+import logging
+from contextlib import asynccontextmanager
+
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-import logging
 from starlette.middleware.sessions import SessionMiddleware
-from contextlib import asynccontextmanager
 
 # Importar middleware de autenticación
 from workflows.gym.middlewares import AuthenticationMiddleware
@@ -22,6 +24,7 @@ load_dotenv()
 
 # Import the Fitbit scheduler
 from services.fitbit_scheduler import start_scheduler
+
 
 # Define lifespan context manager
 @asynccontextmanager
@@ -54,13 +57,13 @@ app.add_middleware(AuthenticationMiddleware)
 # Mount static files directory
 app.mount("/static", StaticFiles(directory="/app/workflows/gym/static"), name="static")
 
+from routes.auth import router as auth_router
+from routes.chatbot import router as chatbot_router
+from routes.dashboard import router as dashboard_router
 # Import routes after static files are mounted
 from routes.main import router as main_router
-from routes.routine import router as routine_router
-from routes.dashboard import router as dashboard_router
 from routes.profile import router as profile_router
-from routes.chatbot import router as chatbot_router
-from routes.auth import router as auth_router
+from routes.routine import router as routine_router
 
 # Include all routers
 app.include_router(main_router)

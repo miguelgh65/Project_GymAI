@@ -1,14 +1,17 @@
-import sys
 import os
+import sys
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from fastapi import APIRouter, Request, Query, HTTPException, Depends
-from fastapi.responses import JSONResponse, HTMLResponse
-from fastapi.templating import Jinja2Templates
 import json
-import psycopg2
 from datetime import datetime
+
+import psycopg2
 from config import DB_CONFIG
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.templating import Jinja2Templates
+
 from workflows.gym.middlewares import get_current_user
 
 router = APIRouter()

@@ -1,10 +1,14 @@
 # telegram/gym/handlers/routine_handlers.py
-import re
 import json
+import re
+
 import requests
-from telebot.types import Message
-from .base_handlers import get_telegram_id, get_api_user_id, check_whitelist, log_to_console
 from config import BASE_URL
+from telebot.types import Message
+
+from .base_handlers import (check_whitelist, get_api_user_id, get_telegram_id,
+                            log_to_console)
+
 
 def register_routine_handlers(bot):
     """

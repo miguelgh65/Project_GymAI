@@ -1,25 +1,21 @@
-from fastapi import APIRouter, Request, Response, HTTPException, Form, Query, Cookie, Depends
-from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 import json
-import secrets
-import requests
-from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
-from services.auth_service import (
-    verify_google_token, 
-    get_or_create_user, 
-    migrate_user_data,
-    get_user_by_id,
-    get_user_by_email,
-    get_user_id_by_telegram,
-    get_user_id_by_google,
-    generate_link_code,  
-    verify_link_code     
-)
-from config import GOOGLE_CONFIG
 import os
+import secrets
+
+import requests
+from config import GOOGLE_CONFIG
 from dotenv import load_dotenv
+from fastapi import (APIRouter, Cookie, Depends, Form, HTTPException, Query,
+                     Request, Response)
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token
+from services.auth_service import (generate_link_code, get_or_create_user,
+                                   get_user_by_email, get_user_by_id,
+                                   get_user_id_by_google,
+                                   get_user_id_by_telegram, migrate_user_data,
+                                   verify_google_token, verify_link_code)
 
 # Cargar variables de entorno
 load_dotenv()

@@ -1,11 +1,13 @@
 # fitness_agent/agent/chains/nutrition_chain.py
-from typing import Dict, Any, Optional
-from langgraph.graph import StateGraph, END
-from langchain_core.runnables import RunnableConfig
+from typing import Any, Dict, Optional
 
-from fitness_agent.schemas.agent_state import AgentState
-from fitness_agent.agent.utils.llm_utils import get_llm, format_llm_response
+from langchain_core.runnables import RunnableConfig
+from langgraph.graph import END, StateGraph
+
+from fitness_agent.agent.utils.llm_utils import format_llm_response, get_llm
 from fitness_agent.agent.utils.prompt_utils import get_formatted_prompt
+from fitness_agent.schemas.agent_state import AgentState
+
 
 class NutritionChain:
     def __init__(self, user_id: str):

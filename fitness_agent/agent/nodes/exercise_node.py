@@ -1,8 +1,8 @@
-import os
 import json
 import logging
+import os
 import random
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 # Configuración de logging
 logger = logging.getLogger("fitness_agent")
@@ -24,16 +24,14 @@ except ImportError:
 # Importaciones específicas del proyecto
 from fitness_agent.agent.core.state import AgentState
 from fitness_agent.agent.schemas import ExerciseResponseSchema
+from fitness_agent.agent.utils.llm_utils import format_llm_response, get_llm
 from fitness_agent.agent.utils.prompt_utils import get_formatted_prompt
-from fitness_agent.agent.utils.llm_utils import get_llm, format_llm_response
 
 # Importar herramientas
 try:
     from fitness_agent.agent.tools.exercise_tools import (
-        get_recent_exercises, 
-        get_exercise_stats,
-        recommend_exercise_progression
-    )
+        get_exercise_stats, get_recent_exercises,
+        recommend_exercise_progression)
     HAS_TOOLS = True
 except ImportError as e:
     logger.warning(f"Could not import exercise tools: {e}")

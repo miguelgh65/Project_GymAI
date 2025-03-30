@@ -1,9 +1,12 @@
 # telegram/gym/handlers/auth_handlers.py
 import re
+
 import requests
-from telebot.types import Message
-from .base_handlers import get_chat_id, check_whitelist, log_to_console
 from config import BASE_URL
+from telebot.types import Message
+
+from .base_handlers import check_whitelist, get_chat_id, log_to_console
+
 
 def register_auth_handlers(bot):
     """

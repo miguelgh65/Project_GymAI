@@ -1,11 +1,9 @@
-from fastapi import Request, Depends
+from fastapi import Depends, Request
+from services.auth_service import (get_user_by_id, get_user_id_by_google,
+                                   get_user_id_by_telegram)
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import RedirectResponse
-from services.auth_service import (
-    get_user_by_id, 
-    get_user_id_by_telegram, 
-    get_user_id_by_google
-)
+
 
 async def get_current_user(request: Request):
     """

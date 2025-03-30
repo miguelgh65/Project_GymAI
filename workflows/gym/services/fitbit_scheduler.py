@@ -1,13 +1,14 @@
-import sys
-import os
+import base64
 import logging
+import os
+import sys
 from datetime import datetime, timedelta
-from dotenv import load_dotenv
+
 import psycopg2
 import requests
-import base64
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+from dotenv import load_dotenv
 
 # Configure logging
 logging.basicConfig(level=logging.INFO,

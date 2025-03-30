@@ -1,13 +1,16 @@
-import sys
 import os
+import sys
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import json
 import datetime
-import psycopg2
+import json
 import traceback
+
+import psycopg2
 from config import DB_CONFIG
 from models.schemas import ExerciseData
+
 
 def insert_into_db(json_data, user_id) -> bool:
     """

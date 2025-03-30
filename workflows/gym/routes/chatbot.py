@@ -1,7 +1,7 @@
 # workflows/gym/routes/chatbot.py
-import sys
-import os
 import logging
+import os
+import sys
 
 # Add the project root to the path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
@@ -9,9 +9,10 @@ if project_root not in sys.path:
     sys.path.append(project_root)
     logging.info(f"Added {project_root} to Python path")
 
-from fastapi import APIRouter, Request, HTTPException, Depends, status
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
+
 from workflows.gym.middlewares import get_current_user
 
 # Configure LangSmith if available

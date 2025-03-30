@@ -1,6 +1,8 @@
 # fitness-agent/agent/core/state.py
-from typing import Annotated, Dict, TypedDict, List, Any
+from typing import Annotated, Any, Dict, List, TypedDict
+
 from langgraph.graph.message import add_messages
+
 
 class AgentState(TypedDict):
     """Estado del agente de fitness."""

@@ -1,9 +1,10 @@
 # telegram/gym/handlers/__init__.py
-from .base_handlers import register_middleware
 from .auth_handlers import register_auth_handlers
+from .base_handlers import register_middleware
+from .chatbot_handlers import register_chatbot_handlers
 from .exercise_handlers import register_exercise_handlers
 from .routine_handlers import register_routine_handlers
-from .chatbot_handlers import register_chatbot_handlers
+
 
 def register_all_handlers(bot):
     """

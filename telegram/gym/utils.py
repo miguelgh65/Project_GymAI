@@ -1,7 +1,7 @@
 # utils.py
 import datetime
-import sys
 import os
+import sys
 from datetime import datetime
 
 MAX_MESSAGE_LENGTH = 4096

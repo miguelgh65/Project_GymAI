@@ -1,10 +1,14 @@
 # telegram/gym/handlers/chatbot_handlers.py
 import re
+
 import requests
-from telebot.types import Message
-from .base_handlers import get_telegram_id, get_api_user_id, check_whitelist, log_to_console
-from utils import send_message_split
 from config import BASE_URL
+from telebot.types import Message
+from utils import send_message_split
+
+from .base_handlers import (check_whitelist, get_api_user_id, get_telegram_id,
+                            log_to_console)
+
 
 def register_chatbot_handlers(bot):
     """
@@ -45,7 +49,8 @@ def register_chatbot_handlers(bot):
         try:
             # Opción 1: Usar directamente la función del fitness_agent
             try:
-                from fitness_agent.agent.nodes.router_node import process_message
+                from fitness_agent.agent.nodes.router_node import \
+                    process_message
                 
                 response = process_message(api_user_id, ai_prompt)
                 
@@ -113,7 +118,8 @@ def register_chatbot_handlers(bot):
         try:
             # Opción 1: Usar directamente la función del fitness_agent
             try:
-                from fitness_agent.agent.nodes.router_node import process_message
+                from fitness_agent.agent.nodes.router_node import \
+                    process_message
                 
                 response = process_message(api_user_id, message.text)
                 

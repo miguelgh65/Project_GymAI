@@ -1,10 +1,11 @@
 # Archivo: fitness_agent/agent/tools/exercise_tools.py
 
-import json
 import datetime
-import psycopg2
-from typing import List, Dict, Any, Optional
+import json
 import logging
+from typing import Any, Dict, List, Optional
+
+import psycopg2
 
 # Configurar logger
 logger = logging.getLogger("fitness_agent")

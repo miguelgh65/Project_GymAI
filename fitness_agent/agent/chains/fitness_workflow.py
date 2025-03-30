@@ -1,14 +1,16 @@
 # fitness_agent/agent/chains/fitness_workflow.py
-from typing import Dict, Any, Optional
-from langgraph.graph import StateGraph, END
-from langgraph.prebuilt import ToolNode
-from langchain_core.runnables import RunnableConfig
+from typing import Any, Dict, Optional
 
-from fitness_agent.schemas.agent_state import AgentState, AgentIntentType
-from fitness_agent.agent.nodes.router_node import determine_intent
+from langchain_core.runnables import RunnableConfig
+from langgraph.graph import END, StateGraph
+from langgraph.prebuilt import ToolNode
+
 from fitness_agent.agent.chains.exercise_chain import ExerciseChain
 from fitness_agent.agent.chains.nutrition_chain import NutritionChain
 from fitness_agent.agent.chains.progress_chain import ProgressChain
+from fitness_agent.agent.nodes.router_node import determine_intent
+from fitness_agent.schemas.agent_state import AgentIntentType, AgentState
+
 
 class FitnessWorkflow:
     def __init__(self, user_id: str):

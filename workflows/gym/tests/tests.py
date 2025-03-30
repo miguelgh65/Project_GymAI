@@ -2,6 +2,7 @@
 import pytest
 from app import app
 
+
 # Clases "fake" para simular las funciones de formateo e inserción
 class FakePrompts:
     @staticmethod

@@ -1,14 +1,14 @@
 # fitness_agent/agent/utils/llm_utils.py
-import os
 import logging
-from typing import Optional, Any, Dict, List
+import os
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("fitness_agent")
 
 # Try to import language model libraries
 try:
     from langchain_core.language_models import BaseChatModel
-    from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+    from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
     from langchain_core.output_parsers import StrOutputParser
     
     HAS_LANGCHAIN = True

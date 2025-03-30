@@ -1,9 +1,9 @@
 # fitness_agent/agent/nodes/nutrition_node.py
 import logging
-from typing import Dict, Any
+from typing import Any, Dict
 
 from fitness_agent.agent.core.state import AgentState
-from fitness_agent.agent.utils.llm_utils import get_llm, format_llm_response
+from fitness_agent.agent.utils.llm_utils import format_llm_response, get_llm
 from fitness_agent.agent.utils.prompt_utils import get_formatted_prompt
 
 logger = logging.getLogger(__name__)

@@ -1,8 +1,10 @@
-from pydantic import BaseModel, field_validator, model_validator
-from typing import List, Optional, Union, Dict, Any
-import unicodedata
 import re
+import unicodedata
 from enum import Enum
+from typing import Any, Dict, List, Optional, Union
+
+from pydantic import BaseModel, field_validator, model_validator
+
 
 # Parte 1: Definición de tipos de ejercicios y normalización
 class ExerciseType(str, Enum):

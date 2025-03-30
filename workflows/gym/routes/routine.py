@@ -1,21 +1,26 @@
-import sys
 import os
+import sys
+
 from dotenv import load_dotenv
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from fastapi import APIRouter, Request, Query, HTTPException, Depends, Form, Response
-from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
-import json
-import psycopg2
-import requests
 import base64
+import json
 import secrets
 from datetime import datetime, timedelta
-from services.database import get_routine, save_routine, get_today_routine
-from workflows.gym.middlewares import get_current_user
+
+import psycopg2
+import requests
 # Add this import for DB_CONFIG
 from config import DB_CONFIG
+from fastapi import (APIRouter, Depends, Form, HTTPException, Query, Request,
+                     Response)
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
+from services.database import get_routine, get_today_routine, save_routine
+
+from workflows.gym.middlewares import get_current_user
 
 # Make sure to load environment variables
 load_dotenv()

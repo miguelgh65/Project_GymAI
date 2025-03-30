@@ -1,7 +1,9 @@
 # services/prompt_service.py
-import re
 import json
+import re
+
 from config import KNOWN_EXERCISES, llm
+
 
 def format_for_postgres(text: str):
     """

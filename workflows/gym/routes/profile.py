@@ -1,18 +1,21 @@
-import sys
 import os
+import sys
+
 from dotenv import load_dotenv
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from fastapi import APIRouter, Request, HTTPException, Form, Query
-from fastapi.responses import JSONResponse, HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
-import json
-import psycopg2
-import requests
 import base64
+import json
 import secrets
 from datetime import datetime, timedelta
+
+import psycopg2
+import requests
 from config import DB_CONFIG
+from fastapi import APIRouter, Form, HTTPException, Query, Request
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
 
 load_dotenv()
 # Use absolute path for templates

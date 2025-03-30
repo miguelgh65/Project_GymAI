@@ -1,19 +1,18 @@
 # fitness_agent/agent/chains/exercise_chain.py
-from typing import Dict, Any, Optional
-from langgraph.graph import StateGraph, END
-from langgraph.prebuilt import ToolNode
-from langchain_core.runnables import RunnableConfig
+from typing import Any, Dict, Optional
 
-from fitness_agent.schemas.agent_state import AgentState
+from langchain_core.runnables import RunnableConfig
+from langgraph.graph import END, StateGraph
+from langgraph.prebuilt import ToolNode
+
 from fitness_agent.agent.nodes.exercise_node import get_user_exercise_context
 from fitness_agent.agent.tools.exercise_tools import (
-    get_recent_exercises, 
-    get_exercise_stats,
-    recommend_exercise_progression
-)
-from fitness_agent.agent.utils.text_utils import extract_exercise_name
-from fitness_agent.agent.utils.llm_utils import get_llm, format_llm_response
+    get_exercise_stats, get_recent_exercises, recommend_exercise_progression)
+from fitness_agent.agent.utils.llm_utils import format_llm_response, get_llm
 from fitness_agent.agent.utils.prompt_utils import get_formatted_prompt
+from fitness_agent.agent.utils.text_utils import extract_exercise_name
+from fitness_agent.schemas.agent_state import AgentState
+
 
 class ExerciseChain:
     def __init__(self, user_id: str):

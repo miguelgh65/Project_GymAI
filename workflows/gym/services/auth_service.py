@@ -1,15 +1,17 @@
-import sys
 import os
+import sys
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import datetime
+import json
 import random
 import string
-import json
-import datetime
+
 import psycopg2
-from google.oauth2 import id_token
-from google.auth.transport import requests
 from config import DB_CONFIG
+from google.auth.transport import requests
+from google.oauth2 import id_token
 
 # Cargar configuración de Google Auth
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')

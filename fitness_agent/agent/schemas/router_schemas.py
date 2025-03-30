@@ -1,6 +1,8 @@
-from pydantic import BaseModel, Field, model_validator
 from enum import Enum
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, Field, model_validator
+
 
 class IntentType(str, Enum):
     """Tipos de intención que puede detectar el router."""

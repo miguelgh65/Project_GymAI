@@ -1,7 +1,7 @@
 # fitness_agent/agent/utils/prompt_utils.py
-import os
 import logging
-from typing import Optional, Dict, Any
+import os
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger("fitness_agent")
 

@@ -1,6 +1,7 @@
 # fitness_agent/agent/tools/nutrition_tools.py
 from typing import Dict, List, Optional
 
+
 def get_recent_nutrition_logs(user_id: str, days: int = 30) -> List[Dict]:
     """
     Placeholder para obtener registros nutricionales recientes.

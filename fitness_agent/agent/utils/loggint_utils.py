@@ -3,6 +3,7 @@ import logging
 import sys
 from typing import Optional
 
+
 def configure_logger(
     name: str = "fitness_agent", 
     level: int = logging.INFO, 

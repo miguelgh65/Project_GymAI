@@ -1,12 +1,13 @@
 # main.py
-import telebot
-from telebot import apihelper
 import os
-import time
 import sys
+import time
 import traceback
+
+import telebot
 from dotenv import load_dotenv
 from handlers import register_all_handlers
+from telebot import apihelper
 from utils import log_to_console
 
 # Habilitar middleware antes de crear el bot

@@ -1,17 +1,15 @@
 # telegram/gym/handlers/base_handlers.py
-import sys
 import os
+import sys
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import psycopg2
-from telebot.types import Message
-from utils import (
-    send_message_split,
-    is_user_whitelisted,
-    log_denied_access,
-    log_to_console,
-)
 from config import DB_CONFIG, DEFAULT_USER_ID, WHITELIST_PATH
+from telebot.types import Message
+from utils import (is_user_whitelisted, log_denied_access, log_to_console,
+                   send_message_split)
+
 
 def get_google_id(telegram_id: str) -> str:
     """

@@ -1,8 +1,10 @@
 # fitness-agent/agent/schemas/agent_schemas.py
-from pydantic import BaseModel, Field
-from typing import Dict, List, Optional, Union, Any
 from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional, Union
+
+from pydantic import BaseModel, Field
+
 
 class NodeType(str, Enum):
     DECISION = "decision"

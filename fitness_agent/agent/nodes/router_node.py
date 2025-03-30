@@ -1,9 +1,9 @@
-import os
+import datetime
 import json
 import logging
-from typing import Dict, Any
-import datetime
+import os
 import re
+from typing import Any, Dict
 
 # Configuración de logging
 logger = logging.getLogger("fitness_agent")
@@ -11,6 +11,7 @@ logger = logging.getLogger("fitness_agent")
 # Importar configuración de LangSmith
 try:
     import langsmith
+
     # Check if the required methods are available
     HAS_LANGSMITH_PROJECT = hasattr(langsmith, 'set_project')
     HAS_LANGSMITH_TAGS = hasattr(langsmith, 'set_tags')
@@ -69,10 +70,11 @@ def traceable(run_type="chain"):
             return func
     return decorator
 
+from fitness_agent.agent.schemas.router_schemas import (IntentType,
+                                                        RouterResponse)
+from fitness_agent.agent.utils.llm_utils import format_llm_response, get_llm
 # Importaciones específicas del proyecto
 from fitness_agent.agent.utils.prompt_utils import get_formatted_prompt
-from fitness_agent.agent.utils.llm_utils import get_llm, format_llm_response
-from fitness_agent.agent.schemas.router_schemas import RouterResponse, IntentType
 
 # Intentar importar los nodos especializados
 try:
@@ -265,7 +267,8 @@ def process_message(user_id: str, message: str) -> MessageResponse:
             # If intent is progress but we don't have the node, see if we can extract exercise name
             if intent == "progress" and not HAS_PROGRESS_NODE:
                 try:
-                    from fitness_agent.agent.nodes.progress_node import extract_exercise_name
+                    from fitness_agent.agent.nodes.progress_node import \
+                        extract_exercise_name
                     exercise_name = extract_exercise_name(message)
                     
                     if exercise_name and HAS_TOOLS:

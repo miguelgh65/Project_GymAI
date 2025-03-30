@@ -1,7 +1,8 @@
 # fitness_agent/agent/utils/text_utils.py
 import re
 import unicodedata
-from typing import Optional, List
+from typing import List, Optional
+
 
 def normalize_text(text: str) -> str:
     """

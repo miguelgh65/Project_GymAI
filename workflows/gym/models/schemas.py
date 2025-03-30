@@ -1,8 +1,10 @@
 # models/schemas.py
-from pydantic import BaseModel, field_validator, model_validator
-from typing import List, Optional, Union, Dict, Any
 import unicodedata
+from typing import Any, Dict, List, Optional, Union
+
 from config import KNOWN_EXERCISES
+from pydantic import BaseModel, field_validator, model_validator
+
 
 def normalize_exercise_name(name: str) -> str:
     """Elimina acentos y convierte a minúsculas."""

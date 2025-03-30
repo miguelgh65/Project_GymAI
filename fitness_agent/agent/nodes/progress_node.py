@@ -1,11 +1,11 @@
 # fitness_agent/agent/nodes/progress_node.py
 import json
 import logging
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
 from fitness_agent.agent.core.state import AgentState
 from fitness_agent.agent.tools.exercise_tools import get_recent_exercises
-from fitness_agent.agent.utils.llm_utils import get_llm, format_llm_response
+from fitness_agent.agent.utils.llm_utils import format_llm_response, get_llm
 from fitness_agent.agent.utils.prompt_utils import get_formatted_prompt
 
 logger = logging.getLogger(__name__)
