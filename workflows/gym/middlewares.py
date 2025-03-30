@@ -1,7 +1,11 @@
 from fastapi import Request, Depends
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import RedirectResponse
-from services.auth_service import get_user_by_id
+from services.auth_service import (
+    get_user_by_id, 
+    get_user_id_by_telegram, 
+    get_user_id_by_google
+)
 
 async def get_current_user(request: Request):
     """
@@ -23,7 +27,6 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             '/auth/google/verify', 
             '/api/verify-link-code', 
             '/static',
-            # Añadir más rutas públicas si es necesario
             '/favicon.ico',
             '/favicon.svg'
         ]
@@ -33,12 +36,29 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         
         # Verificar si es una petición del bot de Telegram
         is_telegram_bot_request = False
-        if 'user_id' in request.query_params:
-            user_id_param = request.query_params['user_id']
-            # Los Google IDs suelen ser largos y numéricos
-            if len(user_id_param) > 10:
-                is_telegram_bot_request = True
-                print(f"DEBUG - Detected Telegram bot request with user_id: {user_id_param}")
+        resolved_user_id = None
+        user_id_from_query = request.query_params.get('user_id')
+        
+        if user_id_from_query:
+            try:
+                # Intentar primero obtener el Google ID
+                google_user_id = get_user_id_by_google(user_id_from_query)
+                if google_user_id:
+                    resolved_user_id = google_user_id
+                else:
+                    # Si no se encuentra el Google ID, intentar convertir el valor a entero
+                    try:
+                        resolved_user_id = int(user_id_from_query)
+                    except ValueError:
+                        # Si falla la conversión, buscar por Telegram
+                        telegram_user_id = get_user_id_by_telegram(user_id_from_query)
+                        resolved_user_id = telegram_user_id
+                
+                if resolved_user_id:
+                    is_telegram_bot_request = True
+                    print(f"DEBUG - Telegram/Google request detected. Resolved User ID: {resolved_user_id}")
+            except Exception as e:
+                print(f"ERROR resolving user ID: {str(e)}")
         
         # Verificar si la ruta actual es pública o es una petición del bot
         current_path = request.url.path
@@ -48,34 +68,39 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             is_telegram_bot_request
         )
         
-        # Obtener user_id de las cookies
-        user_id = request.cookies.get("user_id")
+        # Obtener user_id de las cookies (si existe)
+        cookie_user_id = request.cookies.get("user_id")
         
         # Imprimir información de depuración
-        print(f"DEBUG - Path: {current_path}, Public: {is_public}, User ID: {user_id}, Telegram Bot: {is_telegram_bot_request}")
+        print(f"DEBUG - Path: {current_path}")
+        print(f"DEBUG - Public: {is_public}")
+        print(f"DEBUG - Cookie User ID: {cookie_user_id}")
+        print(f"DEBUG - Resolved User ID: {resolved_user_id}")
+        print(f"DEBUG - Telegram Bot Request: {is_telegram_bot_request}")
+        
+        # Determinar qué user_id usar: prioridad al ID resuelto vía query (bot) o bien a la cookie
+        user_id_to_use = resolved_user_id or (int(cookie_user_id) if cookie_user_id else None)
         
         # Si hay user_id, intentar obtener datos del usuario
         user = None
-        if user_id:
+        if user_id_to_use:
             try:
-                user = get_user_by_id(int(user_id))
+                user = get_user_by_id(user_id_to_use)
                 request.state.user = user
                 print(f"DEBUG - User found: {user}")
             except Exception as e:
                 print(f"ERROR en AuthenticationMiddleware: {str(e)}")
                 request.state.user = None
         
-        # Si es una petición del bot, simular un usuario autenticado
+        # Si es una petición del bot, se espera que ya se haya resuelto el usuario con el Google ID
         if is_telegram_bot_request:
-            print("DEBUG - Bypassing authentication for Telegram bot request")
-            # No redirigir, permitir la petición
-            pass
+            print("DEBUG - Request authenticated as Telegram bot with Google ID")
         # Si no es una ruta pública y no hay usuario, redirigir al login
         elif not is_public and not user:
             print("DEBUG - Redirecting to login (no user)")
             return RedirectResponse(url="/login")
         
-        # Si está en login y tiene usuario, redirigir a la página principal
+        # Si el usuario ya está autenticado y se encuentra en la ruta de login, redirigir al home
         if current_path == '/login' and user:
             print("DEBUG - Redirecting to home from login")
             return RedirectResponse(url="/")
@@ -84,12 +109,11 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         
         # Mantener la sesión del usuario como cookie (añadir nuevamente la cookie a la respuesta)
-        if user_id and current_path != '/logout':
-            # Asegurar que la cookie se mantenga con cada respuesta
+        if user_id_to_use and current_path != '/logout':
             cookie_max_age = 60 * 60 * 24 * 30  # 30 días
             response.set_cookie(
                 key="user_id",
-                value=str(user_id),
+                value=str(user_id_to_use),
                 max_age=cookie_max_age,
                 httponly=True,
                 samesite="lax",
