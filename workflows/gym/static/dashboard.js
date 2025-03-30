@@ -309,9 +309,35 @@ function setDefaultDateRange() {
     }
 }
 
-// Aplicar filtros y cargar datos
+// Modificación en la función applyFilters para recargar la lista de ejercicios
 async function applyFilters() {
     try {
+        // Validar el rango de fechas
+        const dateFrom = document.getElementById('date-from');
+        const dateTo = document.getElementById('date-to');
+        
+        if (!dateFrom || !dateTo) {
+            console.error("No se encontraron los elementos de fecha");
+            return;
+        }
+        
+        // Normalizar fechas - asegurarse que siempre tengan formato YYYY-MM-DD
+        let fromValue = dateFrom.value;
+        let toValue = dateTo.value;
+        
+        // Si ambas fechas están presentes, validar que desde <= hasta
+        if (fromValue && toValue) {
+            const fromDate = new Date(fromValue);
+            const toDate = new Date(toValue);
+            
+            if (fromDate > toDate) {
+                alert("La fecha 'Desde' no puede ser posterior a la fecha 'Hasta'");
+                dateFrom.value = toValue; // Ajustar 'desde' para que sea igual a 'hasta'
+                fromValue = toValue;
+                return;
+            }
+        }
+        
         const ejercicioSelect = document.getElementById('ejercicio-select');
         if (!ejercicioSelect) {
             console.error("No se encontró el elemento selector de ejercicios");
@@ -324,26 +350,29 @@ async function applyFilters() {
             return;
         }
         
-        const dateFrom = document.getElementById('date-from');
-        const dateTo = document.getElementById('date-to');
-        
-        if (!dateFrom || !dateTo) {
-            console.error("No se encontraron los elementos de fecha");
-            return;
-        }
-        
         console.log("Aplicando filtros:", {
             ejercicio,
-            desde: dateFrom.value,
-            hasta: dateTo.value
+            desde: fromValue,
+            hasta: toValue
         });
         
+        // Construir URL con parámetros normalizados
         let url = `/api/ejercicios_stats?ejercicio=${encodeURIComponent(ejercicio)}`;
-        if (dateFrom.value) url += `&desde=${dateFrom.value}`;
-        if (dateTo.value) url += `&hasta=${dateTo.value}`;
+        
+        if (fromValue) {
+            // Asegurarse que la fecha 'desde' comience a las 00:00:00
+            url += `&desde=${fromValue}`;
+        }
+        
+        if (toValue) {
+            // Intentar incluir todo el día hasta las 23:59:59
+            // Nota: Esto solo funcionará si el backend procesa correctamente esta sintaxis
+            url += `&hasta=${toValue}`;
+        }
         
         console.log("Solicitando datos con URL:", url);
         
+        // Resto de tu código igual...
         const response = await fetch(url);
         
         if (!response.ok) {
@@ -380,6 +409,93 @@ async function applyFilters() {
     }
 }
 
+// Cargar lista de ejercicios al selector
+async function loadExercises() {
+    try {
+        console.log("Solicitando lista de ejercicios...");
+        const response = await fetch('/api/ejercicios_stats');
+        
+        if (!response.ok) {
+            throw new Error(`Error HTTP: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log("Datos de ejercicios recibidos:", data);
+        
+        const selectElement = document.getElementById('ejercicio-select');
+        if (!selectElement) {
+            console.error("No se encontró el elemento selector de ejercicios");
+            return;
+        }
+        
+        // Guardar el valor seleccionado actualmente para restaurarlo después
+        const currentSelection = selectElement.value;
+        
+        if (data.success && Array.isArray(data.ejercicios)) {
+            selectElement.innerHTML = '<option value="">Selecciona un ejercicio</option>';
+            
+            data.ejercicios.forEach(ejercicio => {
+                const option = document.createElement('option');
+                option.value = ejercicio;
+                option.textContent = ejercicio;
+                selectElement.appendChild(option);
+            });
+            
+            // Restaurar la selección previa si existía y sigue siendo válida
+            if (currentSelection) {
+                const exists = Array.from(selectElement.options).some(option => option.value === currentSelection);
+                if (exists) {
+                    selectElement.value = currentSelection;
+                }
+            }
+            
+            // Añadir evento de cambio al selector si no se ha añadido antes
+            const hasChangeEvent = selectElement.getAttribute('data-has-change-event');
+            if (!hasChangeEvent) {
+                selectElement.addEventListener('change', function() {
+                    if (this.value) {
+                        applyFilters();
+                    } else {
+                        clearCharts();
+                    }
+                });
+                selectElement.setAttribute('data-has-change-event', 'true');
+            }
+            
+            console.log(`${data.ejercicios.length} ejercicios cargados con éxito`);
+        } else {
+            console.warn("La respuesta no contiene una lista de ejercicios válida");
+            selectElement.innerHTML = '<option value="">No hay ejercicios disponibles</option>';
+        }
+    } catch (error) {
+        console.error('Error al cargar ejercicios:', error);
+        
+        // Mostrar mensaje de error en el selector
+        const selectElement = document.getElementById('ejercicio-select');
+        if (selectElement) {
+            selectElement.innerHTML = '<option value="">Error al cargar ejercicios</option>';
+        }
+    }
+}
+// Añade esta nueva función en cualquier parte del archivo
+function validateDateRange() {
+    const dateFrom = document.getElementById('date-from');
+    const dateTo = document.getElementById('date-to');
+    
+    if (dateFrom && dateTo && dateFrom.value && dateTo.value) {
+        const fromDate = new Date(dateFrom.value);
+        const toDate = new Date(dateTo.value);
+        
+        if (fromDate > toDate) {
+            alert("La fecha 'Desde' no puede ser posterior a la fecha 'Hasta'");
+            // Ajustar la fecha 'Hasta' para que sea igual a 'Desde'
+            dateTo.value = dateFrom.value;
+            return false;
+        }
+    }
+    
+    return true;
+}
 // Actualizar tarjetas de métricas
 function updateMetricCards(resumen) {
     try {

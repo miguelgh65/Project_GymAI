@@ -148,6 +148,9 @@ def register_handlers(bot: telebot.TeleBot) -> None:
         log_to_console(f"Comando /help - Mostrando ayuda a {chat_id}", "OUTPUT")
 
     # Comando /ai: Interactúa con el entrenador personal AI
+    # En telegram/gym/handlers.py
+    # Busca la función chat_with_ai
+
     @bot.message_handler(commands=["ai"])
     def chat_with_ai(message: Message) -> None:
         chat_id = get_chat_id(message)
@@ -172,36 +175,15 @@ def register_handlers(bot: telebot.TeleBot) -> None:
         bot.send_chat_action(chat_id, "typing")
         log_to_console(f"Enviando pregunta al AI: {ai_prompt}", "PROCESS")
 
-        # Llamada a la API del chatbot
-        url = f"{BASE_URL}/api/chatbot/send"
         try:
-            response = requests.post(
-                url,
-                json={"user_id": chat_id, "message": ai_prompt},
-                headers={"Content-Type": "application/json"},
-            )
-
-            if response.status_code == 200:
-                data = response.json()
-                if data.get("success") and data.get("responses"):
-                    # Concatenar todas las respuestas en un solo mensaje
-                    answer = ""
-                    for resp in data["responses"]:
-                        answer += resp.get("content", "") + "\n\n"
-
-                    # Añadir estilo Ronnie Coleman
-                    answer = f"🤖 *ENTRENADOR AI:* 🤖\n\n{answer}\n\n*¡LIGHTWEIGHT BABY!*"
-                    send_message_split(bot, chat_id, answer)
-                else:
-                    bot.send_message(
-                        chat_id,
-                        "🤖 El entrenador AI está descansando ahora. ¡Inténtalo de nuevo en unos minutos! 🤖",
-                    )
-            else:
-                bot.send_message(
-                    chat_id,
-                    f"Error al comunicarse con el entrenador AI: {response.status_code}",
-                )
+            # Usar el nuevo agente en lugar de hacer una llamada API
+            from fitness_agent.agent.core.decisor import process_message
+            
+            response = process_message(str(chat_id), ai_prompt)
+            
+            # Formatear la respuesta
+            answer = f"🤖 *ENTRENADOR AI:* 🤖\n\n{response.content}\n\n*¡LIGHTWEIGHT BABY!*"
+            send_message_split(bot, chat_id, answer)
         except Exception as e:
             bot.send_message(
                 chat_id,

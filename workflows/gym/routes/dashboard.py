@@ -42,8 +42,13 @@ async def get_ejercicios_stats(
         query_params.append(desde)
 
     if hasta:
+        # Ajustar la fecha 'hasta' para incluir todo el día
+        hasta_con_hora = f"{hasta} 23:59:59"
         query_conditions.append("fecha <= %s")
-        query_params.append(hasta)
+        query_params.append(hasta_con_hora)
+    else:
+        # Si no se proporciona fecha 'hasta', no aplicar este filtro
+        pass
 
     where_clause = " AND ".join(query_conditions)
 

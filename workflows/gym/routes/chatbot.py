@@ -1,12 +1,18 @@
+# Primero importa los módulos del sistema
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Luego añade la ruta al path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
+
+# Después importa los módulos de terceros y tus propios módulos
 from fastapi import APIRouter, Request, HTTPException, Depends
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
-from services.langgraph_agent.agent import process_message
 from workflows.gym.middlewares import get_current_user
+
+# Y finalmente el módulo que requiere la modificación del path
+from fitness_agent.agent.core.decisor import process_message
 
 router = APIRouter()
 # Use absolute path for templates
@@ -28,8 +34,14 @@ async def chatbot_send(request: Request, user = Depends(get_current_user)):
     user_id = data.get("user_id", "3892415")
     message = data.get("message", "")
     
-    # Procesar el mensaje con el agente
-    responses = process_message(user_id, message)
+    # Procesar el mensaje con el nuevo agente
+    response = process_message(user_id, message)
+    
+    # Adaptar la respuesta al formato esperado por el frontend
+    responses = [{
+        "role": "assistant",
+        "content": response.content
+    }]
     
     return {"success": True, "responses": responses}
 
