@@ -24,17 +24,22 @@ async def get_index(request: Request, user = Depends(get_current_user)):
 @router.post("/", response_class=JSONResponse)
 async def post_index(
     request: Request,
-    user_id: str = Form("3892415"),
-    exercise_data: str = Form(...),
-    user = Depends(get_current_user)
+    user = Depends(get_current_user)  # Obtener el usuario autenticado
 ):
-    if not exercise_data:
-        return JSONResponse(content={"success": False, "message": "No se proporcionó información de ejercicios."})
+    # Usar el ID de Google del usuario actual
+    user_id = user['google_id']
+    
+    # Obtener los datos del formulario
+    exercise_data = (await request.form())['exercise_data']
     
     cleaned_text = clean_input(exercise_data)
     formatted_json = format_for_postgres(cleaned_text)
+    
     if formatted_json is None:
-        return JSONResponse(content={"success": False, "message": "Error en el procesamiento del LLM."})
+        return JSONResponse(content={
+            "success": False, 
+            "message": "Error en el procesamiento del LLM."
+        })
     
     success = insert_into_db(formatted_json, user_id)
     return JSONResponse(content={
