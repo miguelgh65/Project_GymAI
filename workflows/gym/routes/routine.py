@@ -42,37 +42,78 @@ def get_fitbit_credentials():
         'profile_url': os.getenv('FITBIT_PROFILE_URL')
     }
 
-# Route handlers for routine functionality
 @router.get("/rutina_hoy", response_class=HTMLResponse)
-async def rutina_hoy(request: Request, user_id: str = Query("3892415"), format: str = Query(None), user = Depends(get_current_user)):
+async def rutina_hoy(request: Request, format: str = Query(None), user = Depends(get_current_user)):
     """Página de rutina del día."""
+    # Asegurar que tenemos un usuario autenticado
+    if not user or not user.get('google_id'):
+        if format == "json":
+            return JSONResponse(content={
+                "success": False,
+                "message": "Usuario no autenticado o sin ID válido."
+            }, status_code=401)
+        return templates.TemplateResponse("rutina_hoy.html", {
+            "request": request, 
+            "user": user,
+            "error": "Debes iniciar sesión para ver tu rutina."
+        })
+    
+    # Usar exclusivamente el ID de Google
+    user_id = user['google_id']
+    
     # Check if the request is for JSON format
     if format == "json":
         result = get_today_routine(user_id)
         return JSONResponse(content=result)
     
     # Return HTML response
-    return templates.TemplateResponse("rutina_hoy.html", {"request": request, "user_id": user_id, "user": user})
+    return templates.TemplateResponse("rutina_hoy.html", {"request": request, "user": user})
 
 @router.get("/rutina", response_class=HTMLResponse)
-async def rutina(request: Request, user_id: str = Query("3892415"), format: str = Query(None), user = Depends(get_current_user)):
+async def rutina(request: Request, format: str = Query(None), user = Depends(get_current_user)):
     """Página de configuración de rutina."""
+    # Asegurar que tenemos un usuario autenticado
+    if not user or not user.get('google_id'):
+        if format == "json":
+            return JSONResponse(content={
+                "success": False,
+                "message": "Usuario no autenticado o sin ID válido."
+            }, status_code=401)
+        return templates.TemplateResponse("rutina.html", {
+            "request": request, 
+            "user": user,
+            "error": "Debes iniciar sesión para ver tu rutina."
+        })
+    
+    # Usar exclusivamente el ID de Google
+    user_id = user['google_id']
+    
     # Check if the request is for JSON format
     if format == "json":
         rutina_data = get_routine(user_id)
         return JSONResponse(content={"success": True, "rutina": rutina_data})
     
     # Return HTML response
-    return templates.TemplateResponse("rutina.html", {"request": request, "user_id": user_id, "user": user})
+    return templates.TemplateResponse("rutina.html", {"request": request, "user": user})
 
 @router.post("/rutina", response_class=JSONResponse)
 async def save_rutina(request: Request, user = Depends(get_current_user)):
     """Guarda la configuración de rutina."""
     try:
+        # Asegurar que tenemos un usuario autenticado
+        if not user or not user.get('google_id'):
+            return JSONResponse(content={
+                "success": False,
+                "message": "Usuario no autenticado o sin ID válido."
+            }, status_code=401)
+        
+        # Usar exclusivamente el ID de Google
+        user_id = user['google_id']
+        
         data = await request.json()
         rutina_data = data.get("rutina", {})
-        user_id = data.get("user_id", "3892415")
         
+        print(f"Guardando rutina para usuario con Google ID: {user_id}")
         success = save_routine(user_id, rutina_data)
         
         return JSONResponse(content={

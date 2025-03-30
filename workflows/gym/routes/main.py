@@ -15,18 +15,23 @@ router = APIRouter()
 # Create a local templates instance
 templates = Jinja2Templates(directory="/app/workflows/gym/templates")
 
-# Endpoint GET para renderizar la plantilla index.html
 @router.get("/", response_class=HTMLResponse)
 async def get_index(request: Request, user = Depends(get_current_user)):
     return templates.TemplateResponse("index.html", {"request": request, "user": user})
 
-# Endpoint POST para procesar el formulario
 @router.post("/", response_class=JSONResponse)
 async def post_index(
     request: Request,
-    user = Depends(get_current_user)  # Obtener el usuario autenticado
+    user = Depends(get_current_user)
 ):
-    # Usar el ID de Google del usuario actual
+    # Asegurar que tenemos un usuario autenticado
+    if not user or not user.get('google_id'):
+        return JSONResponse(content={
+            "success": False, 
+            "message": "Usuario no autenticado o sin ID válido."
+        }, status_code=401)
+    
+    # Usar exclusivamente el ID de Google
     user_id = user['google_id']
     
     # Obtener los datos del formulario
@@ -47,13 +52,20 @@ async def post_index(
         "message": "Datos insertados correctamente." if success else "Error al insertar en la base de datos."
     })
 
-# Endpoint GET para obtener los logs
 @router.get("/logs", response_class=JSONResponse)
 async def get_logs_endpoint(
-    user_id: str = Query("3892415"),
     days: int = Query(7),
     user = Depends(get_current_user)
 ):
+    if not user or not user.get('google_id'):
+        return JSONResponse(content={
+            "success": False, 
+            "message": "Usuario no autenticado o sin ID válido."
+        }, status_code=401)
+    
+    # Usar exclusivamente el ID de Google
+    user_id = user['google_id']
+    
     try:
         days_int = int(days)
     except ValueError:

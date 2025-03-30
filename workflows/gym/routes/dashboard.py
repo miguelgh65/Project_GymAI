@@ -16,19 +16,37 @@ router = APIRouter()
 templates = Jinja2Templates(directory="/app/workflows/gym/templates")
 
 @router.get("/dashboard", response_class=HTMLResponse)
-async def dashboard(request: Request, user_id: str = "3892415", user = Depends(get_current_user)):
+async def dashboard(request: Request, user = Depends(get_current_user)):
     """Página principal del dashboard de análisis."""
-    return templates.TemplateResponse("dashboard.html", {"request": request, "user_id": user_id, "user": user})
+    # Verificar si el usuario está autenticado
+    if not user or not user.get('google_id'):
+        return templates.TemplateResponse("dashboard.html", {
+            "request": request, 
+            "user": user,
+            "error": "Debes iniciar sesión para ver tu dashboard."
+        })
+        
+    return templates.TemplateResponse("dashboard.html", {"request": request, "user": user})
 
 @router.get("/api/ejercicios_stats", response_class=JSONResponse)
 async def get_ejercicios_stats(
-    user_id: str = Query("3892415"),
     ejercicio: str = Query(None),
     desde: str = Query(None),
     hasta: str = Query(None),
     user = Depends(get_current_user)
 ):
     """API para obtener estadísticas de los ejercicios."""
+    # Verificar si el usuario está autenticado
+    if not user or not user.get('google_id'):
+        return JSONResponse(content={
+            "success": False,
+            "message": "Usuario no autenticado o sin ID válido."
+        }, status_code=401)
+    
+    # Usar exclusivamente el ID de Google
+    user_id = user['google_id']
+    print(f"Obteniendo estadísticas para usuario con Google ID: {user_id}")
+    
     # Construir la consulta base
     query_conditions = ["user_id = %s"]
     query_params = [user_id]
@@ -55,10 +73,13 @@ async def get_ejercicios_stats(
     try:
         conn = psycopg2.connect(**DB_CONFIG)
         cur = conn.cursor()
+        
+        # Asegurar que se use el esquema correcto
+        cur.execute("SET search_path TO gym, public;")
 
         # Obtener lista de ejercicios para el selector
         cur.execute(
-            "SELECT DISTINCT ejercicio FROM ejercicios WHERE user_id = %s ORDER BY ejercicio",
+            "SELECT DISTINCT ejercicio FROM gym.ejercicios WHERE user_id = %s ORDER BY ejercicio",
             (user_id,)
         )
         ejercicios_list = [row[0] for row in cur.fetchall()]
@@ -68,7 +89,7 @@ async def get_ejercicios_stats(
             cur.execute(
                 f"""
                 SELECT fecha, repeticiones 
-                FROM ejercicios 
+                FROM gym.ejercicios 
                 WHERE {where_clause} AND repeticiones IS NOT NULL
                 ORDER BY fecha
                 """,
@@ -177,17 +198,31 @@ async def get_ejercicios_stats(
         })
 
 @router.get("/api/calendar_heatmap", response_class=JSONResponse)
-async def get_calendar_heatmap(user_id: str = Query("3892415"), year: int = Query(datetime.now().year), user = Depends(get_current_user)):
+async def get_calendar_heatmap(year: int = Query(datetime.now().year), user = Depends(get_current_user)):
     """Datos para el mapa de calor del calendario de actividad."""
+    # Verificar si el usuario está autenticado
+    if not user or not user.get('google_id'):
+        return JSONResponse(content={
+            "success": False,
+            "message": "Usuario no autenticado o sin ID válido."
+        }, status_code=401)
+    
+    # Usar exclusivamente el ID de Google
+    user_id = user['google_id']
+    print(f"Obteniendo datos de calendario para usuario con Google ID: {user_id}")
+    
     try:
         conn = psycopg2.connect(**DB_CONFIG)
         cur = conn.cursor()
+        
+        # Asegurar que se use el esquema correcto
+        cur.execute("SET search_path TO gym, public;")
 
         query = """
             SELECT 
                 fecha::date as day,
                 COUNT(*) as count
-            FROM ejercicios
+            FROM gym.ejercicios
             WHERE user_id = %s AND EXTRACT(YEAR FROM fecha) = %s
             GROUP BY day
             ORDER BY day

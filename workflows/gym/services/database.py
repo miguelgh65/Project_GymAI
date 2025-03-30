@@ -11,7 +11,7 @@ from models.schemas import ExerciseData
 
 def insert_into_db(json_data, user_id) -> bool:
     """
-    Inserta los datos de ejercicios en la base de datos.
+    Inserta los datos de ejercicios en la base de datos utilizando solo user_id.
     
     Args:
         json_data (dict): Datos de ejercicios en formato JSON.
@@ -27,9 +27,13 @@ def insert_into_db(json_data, user_id) -> bool:
         parsed = ExerciseData.model_validate(json_data)
         exercises = parsed.get_exercises()
         print(f"\n📌 Se han parseado {len(exercises)} ejercicios.")
+        print(f"📌 Usuario: ID={user_id}")
         
         conn = psycopg2.connect(**DB_CONFIG)
         cur = conn.cursor()
+        
+        # Asegurarnos de usar el esquema correcto
+        cur.execute("SET search_path TO gym, public;")
         
         for exercise in exercises:
             nombre_ejercicio = exercise.ejercicio
@@ -39,22 +43,25 @@ def insert_into_db(json_data, user_id) -> bool:
             if exercise.series is not None:
                 series_json = json.dumps([s.model_dump() for s in exercise.series])
                 
+                # Solo insertar con user_id (string)
+                user_id_str = str(user_id)
+                
                 cur.execute(
                     """
-                    INSERT INTO ejercicios 
+                    INSERT INTO gym.ejercicios 
                     (fecha, ejercicio, repeticiones, user_id) 
                     VALUES (%s, %s, %s::jsonb, %s)
                     """,
-                    (fecha_hora_actual, nombre_ejercicio, series_json, user_id)
+                    (fecha_hora_actual, nombre_ejercicio, series_json, user_id_str)
                 )
             elif exercise.duracion is not None:
                 cur.execute(
                     """
-                    INSERT INTO ejercicios 
+                    INSERT INTO gym.ejercicios 
                     (fecha, ejercicio, duracion, user_id) 
                     VALUES (%s, %s, %s, %s)
                     """,
-                    (fecha_hora_actual, nombre_ejercicio, exercise.duracion, user_id)
+                    (fecha_hora_actual, nombre_ejercicio, exercise.duracion, str(user_id))
                 )
         
         conn.commit()
@@ -62,7 +69,10 @@ def insert_into_db(json_data, user_id) -> bool:
         return True
     except Exception as e:
         print(f"❌ Error al insertar en la base de datos: {e}")
+        import traceback
         traceback.print_exc()
+        if conn:
+            conn.rollback()
         return False
     finally:
         if conn:
@@ -70,7 +80,7 @@ def insert_into_db(json_data, user_id) -> bool:
                 conn.close()
             except Exception as close_error:
                 print(f"Error al cerrar la conexión: {close_error}")
-
+                
 def get_exercise_logs(user_id, days=7):
     """
     Obtiene los logs de ejercicios de un usuario usando su ID de Google.
@@ -90,10 +100,13 @@ def get_exercise_logs(user_id, days=7):
         conn = psycopg2.connect(**DB_CONFIG)
         cur = conn.cursor()
         
+        # Asegurarnos de usar el esquema correcto
+        cur.execute("SET search_path TO gym, public;")
+        
         # Buscar logs usando el user_id (Google ID)
         query = """
             SELECT fecha, ejercicio, repeticiones, duracion
-            FROM ejercicios
+            FROM gym.ejercicios
             WHERE fecha >= %s AND user_id = %s
             ORDER BY fecha DESC
         """
@@ -123,10 +136,10 @@ def get_exercise_logs(user_id, days=7):
 
 def save_routine(user_id, routine_data):
     """
-    Guarda la rutina de un usuario usando su ID de Google.
+    Guarda la rutina de un usuario usando su ID.
     
     Args:
-        user_id (str): ID de Google del usuario.
+        user_id (str): ID del usuario (Google ID).
         routine_data (dict): Datos de la rutina.
         
     Returns:
@@ -134,12 +147,16 @@ def save_routine(user_id, routine_data):
     """
     conn = None
     try:
+        print(f"Guardando rutina para usuario ID={user_id}")
         conn = psycopg2.connect(**DB_CONFIG)
         cur = conn.cursor()
         
+        # Asegurarnos de usar el esquema gym
+        cur.execute("SET search_path TO gym, public;")
+        
         # Primero eliminar cualquier rutina existente para este usuario
         cur.execute(
-            "DELETE FROM rutinas WHERE user_id = %s", 
+            "DELETE FROM gym.rutinas WHERE user_id = %s", 
             (user_id,)
         )
         
@@ -152,9 +169,10 @@ def save_routine(user_id, routine_data):
                     
                 ejercicios_json = json.dumps(ejercicios)
                 
+                # Usar explícitamente gym.rutinas
                 cur.execute(
                     """
-                    INSERT INTO rutinas 
+                    INSERT INTO gym.rutinas 
                     (user_id, dia_semana, ejercicios) 
                     VALUES (%s, %s, %s::jsonb)
                     """,
@@ -189,14 +207,18 @@ def get_routine(user_id):
     """
     conn = None
     try:
+        print(f"Obteniendo rutina para usuario ID={user_id}")
         conn = psycopg2.connect(**DB_CONFIG)
         cur = conn.cursor()
+        
+        # Asegurarnos de usar el esquema gym
+        cur.execute("SET search_path TO gym, public;")
         
         # Obtener la rutina para todos los días
         cur.execute(
             """
             SELECT dia_semana, ejercicios 
-            FROM rutinas 
+            FROM gym.rutinas 
             WHERE user_id = %s 
             ORDER BY dia_semana
             """,
@@ -249,11 +271,14 @@ def get_today_routine(user_id):
         conn = psycopg2.connect(**DB_CONFIG)
         cur = conn.cursor()
         
+        # Asegurarnos de usar el esquema gym
+        cur.execute("SET search_path TO gym, public;")
+        
         # Obtener la rutina para el día actual
         cur.execute(
             """
             SELECT ejercicios 
-            FROM rutinas 
+            FROM gym.rutinas 
             WHERE user_id = %s AND dia_semana = %s
             """,
             (user_id, dia_actual)
@@ -280,7 +305,7 @@ def get_today_routine(user_id):
         
         cur.execute(
             """
-            SELECT ejercicio FROM ejercicios 
+            SELECT ejercicio FROM gym.ejercicios 
             WHERE user_id = %s AND fecha::date = %s::date
             """,
             (user_id, hoy)

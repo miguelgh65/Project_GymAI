@@ -225,19 +225,25 @@ async def verify_google_signin(request: Request, response: Response):
 # Ruta para cerrar sesión
 @router.get("/logout")
 async def logout(
-    response: Response,
     redirect_url: str = "/",
     user_id: str = Cookie(None)
 ):
     """Cierra la sesión del usuario."""
-    # Eliminar la cookie de user_id de forma explícita
-    response.delete_cookie(key="user_id", path="/")
+    # Create the redirect response
+    response = RedirectResponse(url=redirect_url, status_code=303)  # Use 303 See Other
     
-    # También usar headers para asegurar que se elimine
-    response.headers["Set-Cookie"] = "user_id=; Path=/; Max-Age=0; HttpOnly"
+    # Delete the cookie on the actual response that will be sent to the client
+    response.delete_cookie(
+        key="user_id", 
+        path="/",
+        httponly=True,
+        samesite="lax"
+    )
     
-    # Redirigir a la página principal o a la URL especificada
-    return RedirectResponse(url=redirect_url)
+    # For extra assurance, also set an expired cookie via headers
+    response.headers["Set-Cookie"] = "user_id=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax"
+    
+    return response
 
 @router.get("/verify-telegram", response_class=HTMLResponse)
 async def verify_telegram_page(request: Request, email: str = Query(None)):

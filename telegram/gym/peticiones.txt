@@ -6,3 +6,4 @@
 2025-03-29 12:37:01 - Acceso denegado para usuario 3892415: /start
 2025-03-29 12:42:45 - Acceso denegado para usuario 3892415: /vincular
 2025-03-29 12:47:39 - Acceso denegado para usuario 3892415: /vincular
+2025-03-30 17:45:14 - Acceso denegado para usuario 3892415: /vincular
