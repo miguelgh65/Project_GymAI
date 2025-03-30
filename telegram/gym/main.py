@@ -6,7 +6,7 @@ import time
 import sys
 import traceback
 from dotenv import load_dotenv
-from handlers import register_handlers
+from handlers import register_all_handlers
 from utils import log_to_console
 
 # Habilitar middleware antes de crear el bot
@@ -29,7 +29,7 @@ def start_bot():
     bot = telebot.TeleBot(TOKEN)
     
     # Registrar todos los handlers
-    register_handlers(bot)
+    register_all_handlers(bot)
     
     log_to_console("Bot iniciado y listo para recibir mensajes...")
     
