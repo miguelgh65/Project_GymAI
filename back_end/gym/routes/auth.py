@@ -1,5 +1,3 @@
-# Archivo: back_end/gym/routes/auth.py
-
 import os
 import json
 import logging
@@ -16,24 +14,23 @@ try:
         get_user_by_email,
         get_user_by_id,
         get_user_id_by_google,
-        get_user_id_by_telegram,
+        get_user_id_by_telegram, # Necesario para devolver has_telegram
         migrate_user_data,
         verify_google_token,
         verify_link_code
     )
 except ImportError as e:
     logging.critical(f"Error Crítico de importación en auth.py: {e}. ¡Las funciones de Auth no estarán disponibles!")
-    raise e # Relanzar el error para que sea visible que algo falla al iniciar
+    raise e
 
 # Cargar variables de entorno
 load_dotenv()
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
 if not GOOGLE_CLIENT_ID:
     logging.warning("La variable de entorno GOOGLE_CLIENT_ID no está configurada.")
-    # Considera lanzar un error si es absolutamente esencial para arrancar
 
 # Router con prefijo /api
-router = APIRouter(prefix="/api", tags=["authentication"])
+router = APIRouter(prefix="/api", tags=["authentication"]) # Asume que el router se define aquí
 logger = logging.getLogger(__name__)
 
 # --- Rutas API ---
@@ -101,7 +98,10 @@ async def verify_link_code_route(request: Request):
 # Ruta: /api/auth/google/verify (Usada por el frontend Login.js)
 @router.post("/auth/google/verify", response_class=JSONResponse)
 async def verify_google_signin(request: Request, response: Response):
-    """Verifica el token de Google Sign-In, crea/actualiza usuario y establece cookie."""
+    """
+    Verifica el token de Google Sign-In, crea/actualiza usuario,
+    establece cookie y devuelve datos básicos del usuario.
+    """
     logger.info("Recibida solicitud para verificar token de Google.")
     try:
         data = await request.json()
@@ -136,35 +136,59 @@ async def verify_google_signin(request: Request, response: Response):
              logger.error(f"get_or_create_user devolvió None o 0 para Google ID {google_id}")
              raise HTTPException(status_code=500, detail="Error al crear o actualizar el usuario en la base de datos")
 
-        # --- Lógica de Cookie ---
+        # --- INICIO: Preparar datos de usuario para devolver ---
+        # Intenta obtener el estado de vinculación de Telegram (puede devolver None)
+        # Es crucial que get_user_id_by_telegram maneje el user_id_internal como input
+        # y devuelva algo interpretable (ej. el ID de telegram si existe, None si no).
+        # Asumiendo que get_user_by_id puede obtener el telegram_id:
+        # user_details = get_user_by_id(user_id_internal) # Obtener detalles completos
+        # has_telegram_linked = user_details.get("telegram_id") is not None if user_details else False
+
+        # Alternativa: Llamar a get_user_id_by_telegram si está adaptada
+        # Nota: get_user_id_by_telegram originalmente buscaba por telegram_id, necesita adaptarse
+        # o usar get_user_by_id como arriba. Por simplicidad, asumimos get_user_by_id:
+        temp_user_details = get_user_by_id(user_id_internal)
+        has_telegram_linked = temp_user_details.get("telegram_id") is not None if temp_user_details else False
+
+
+        user_data_for_frontend = {
+             "id": user_id_internal,
+             "display_name": display_name, # Obtenido de Google
+             "email": email,               # Obtenido de Google
+             "profile_picture": profile_picture, # Obtenido de Google
+             "has_telegram": has_telegram_linked, # Obtenido de nuestra BD
+             "has_google": True # Acaba de autenticarse con Google
+        }
+        logger.info(f"Preparados datos para frontend: {user_data_for_frontend}")
+        # --- FIN: Preparar datos de usuario ---
+
+        # --- Lógica de Cookie (Sin cambios) ---
         cookie_max_age = 86400 * 30 # 30 días en segundos
         cookie_key = "user_id"
         cookie_value = str(user_id_internal)
-
         is_secure_env = request.url.scheme == "https"
-        cookie_samesite = "lax" # Lax es el recomendado por defecto
-        cookie_secure = is_secure_env # True solo si la conexión es HTTPS
-
-        logger.info(f"Configurando cookie: key={cookie_key}, value={cookie_value}, httponly=True, secure={cookie_secure}, samesite='{cookie_samesite}', max_age={cookie_max_age}, path='/'")
-
+        cookie_samesite = "lax"
+        cookie_secure = is_secure_env
+        logger.info(f"Configurando cookie: key={cookie_key}, value={cookie_value}, httponly={True}, secure={cookie_secure}, samesite='{cookie_samesite}', max_age={cookie_max_age}, path='/'")
         response.set_cookie(
             key=cookie_key,
             value=cookie_value,
-            httponly=True,           # Esencial para seguridad (no accesible por JS)
-            secure=cookie_secure,    # True si es HTTPS, False para HTTP (como localhost)
-            samesite=cookie_samesite,# 'lax' es buen punto de partida
-            max_age=cookie_max_age,  # Tiempo de vida
-            path="/"                 # Válida para todo el dominio/subdominios
+            httponly=True,
+            secure=cookie_secure,
+            samesite=cookie_samesite,
+            max_age=cookie_max_age,
+            path="/"
         )
         logger.info(f"Cookie '{cookie_key}={cookie_value}' configurada para ser enviada en la respuesta.")
         # --- Fin Lógica de Cookie ---
 
+        # --- Devolver éxito Y los datos del usuario ---
         return JSONResponse(
             content={
                 "success": True,
-                "user_id": user_id_internal, # Devuelve el ID interno por si el frontend lo necesita
+                "user": user_data_for_frontend, # <<< DATOS DEL USUARIO INCLUIDOS
                 "message": "Autenticación exitosa",
-                "redirect": "/" # Sugerencia para el frontend
+                "redirect": "/" # Sugerencia para frontend
             }
         )
 
@@ -172,13 +196,14 @@ async def verify_google_signin(request: Request, response: Response):
         logger.warning("Error al decodificar JSON en /api/auth/google/verify")
         raise HTTPException(status_code=400, detail="JSON inválido.")
     except HTTPException as http_exc:
-        # Loguear la excepción HTTP antes de relanzarla
         logger.warning(f"HTTPException en verify_google_signin: {http_exc.status_code} - {http_exc.detail}")
         raise http_exc
     except Exception as e:
-        logger.exception(f"Error inesperado en verify_google_signin: {str(e)}") # Loguea el traceback completo
+        logger.exception(f"Error inesperado en verify_google_signin: {str(e)}")
         raise HTTPException(status_code=500, detail="Error interno del servidor durante la autenticación.")
 
+# Aquí irían las otras funciones del router de autenticación...
+# como logout, get_current_user_api, generate_link_code, etc.
 
 # Ruta: /api/logout
 @router.get("/logout", status_code=status.HTTP_307_TEMPORARY_REDIRECT)

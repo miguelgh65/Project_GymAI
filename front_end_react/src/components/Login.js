@@ -21,37 +21,34 @@ function Login({ onLoginSuccess }) {
     setIsLoading(true);
     console.log('Google auth response received:', response);
     try {
-      const verifyResponse = await axios.post('/api/auth/google/verify', { // Ruta corregida
-        id_token: response.credential,
-      });
+        const verifyResponse = await axios.post('/api/auth/google/verify', {
+            id_token: response.credential,
+        });
 
-      console.log('Verify response:', verifyResponse.data);
+        console.log('Verify response:', verifyResponse.data);
 
-      if (verifyResponse.data.success) {
-        console.log("Login verificado con éxito en backend.");
+        // --- CAMBIO PRINCIPAL AQUÍ ---
+        // Verificar que la respuesta sea exitosa Y que contenga el objeto 'user'
+        if (verifyResponse.data.success && verifyResponse.data.user) {
+            console.log("Login verificado, usuario recibido:", verifyResponse.data.user);
 
-        // <<< INICIO: AÑADIR RETRASO >>>
-        console.log("Esperando 200ms antes de proceder...");
-        setTimeout(() => {
-            console.log("Procediendo después de la espera...");
-            // Avisa a App.js (o componente padre) que el login fue exitoso
+            // Llamar a onLoginSuccess INMEDIATAMENTE con los datos del usuario recibidos
             if (onLoginSuccess) {
-                onLoginSuccess(); // Esto debería disparar la actualización del estado del usuario en App.js
+                onLoginSuccess(verifyResponse.data.user); // <<< PASAR DATOS DEL USUARIO AL PADRE (App.js)
             }
-            // Navega a la página principal usando React Router
-            navigate('/');
-            // Ya no necesitamos setIsLoading(false) aquí porque navegamos fuera
-        }, 200); // Esperar 200 milisegundos
-        // <<< FIN: AÑADIR RETRASO >>>
 
-      } else {
-        alert(verifyResponse.data.message || 'Error al verificar con el servidor');
-        setIsLoading(false); // Detener carga si hay error de verificación del backend
-      }
+            // Navegar a la página principal (ya no se necesita setTimeout)
+            navigate('/');
+
+        } else {
+            // Error en la respuesta del backend
+            alert(verifyResponse.data.message || 'Error al verificar con el servidor');
+            setIsLoading(false);
+        }
     } catch (error) {
-      console.error('Error durante Google Sign-In:', error);
-      alert('Error al conectar con el servidor: ' + (error.response?.data?.detail || error.response?.data?.message || error.message));
-      setIsLoading(false); // Detener carga si hay error de red/servidor
+        console.error('Error durante Google Sign-In:', error);
+        alert('Error al conectar con el servidor: ' + (error.response?.data?.detail || error.response?.data?.message || error.message));
+        setIsLoading(false);
     }
     // No poner setIsLoading(false) aquí si el setTimeout se inicia
   }, [navigate, onLoginSuccess]); // Actualizar dependencias

@@ -27,6 +27,9 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
     """Middleware para autenticación y gestión básica de sesión."""
 
     async def dispatch(self, request: Request, call_next):
+        logger.info(f"Cookies recibidas: {dict(request.cookies)}")
+        cookie_user_id = request.cookies.get("user_id")
+        logger.info(f"Cookie user_id: {cookie_user_id}")
         # Rutas que NO requieren autenticación para acceder
         public_paths = [
             '/docs', # Documentación Swagger/OpenAPI

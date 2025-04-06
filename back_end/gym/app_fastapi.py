@@ -57,7 +57,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 # Configurar CORS desde las variables de entorno
-cors_origins = os.getenv('CORS_ORIGINS', 'https://localhost:3000,https://localhost:5050').split(',')
+cors_origins = os.getenv('CORS_ORIGINS', 'http://localhost:3000,http://localhost').split(',')
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
