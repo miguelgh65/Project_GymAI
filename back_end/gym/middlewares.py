@@ -1,106 +1,109 @@
 # Archivo: back_end/gym/middlewares.py
 
 from fastapi import Depends, Request
-# <<< Importar servicios y logging (si no está configurado globalmente) >>>
 import logging
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import RedirectResponse, Response
+
+# --- Importaciones Corregidas ---
 try:
-    # Asegúrate que estas rutas de importación son correctas para tu estructura
-    from services.auth_service import get_user_by_id, get_user_id_by_google, get_user_id_by_telegram
+    # Usar importación relativa (. significa desde el mismo directorio gym)
+    from .services.auth_service import get_user_by_id, get_user_id_by_google, get_user_id_by_telegram
 except ImportError as e:
-    logging.error(f"Error importando servicios en middleware: {e}")
+    logging.error(f"Error importando servicios en middleware (relativa): {e}")
     # Define stubs si es absolutamente necesario para arrancar, pero es mejor arreglar imports
     def get_user_by_id(id): logging.error(f"STUB: get_user_by_id({id}) llamado"); return None
     def get_user_id_by_google(gid): return None
     def get_user_id_by_telegram(tid): return None
+# --- Fin Importaciones Corregidas ---
 
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import RedirectResponse, Response # Añadir Response
 
-logger = logging.getLogger(__name__) # Usa el nombre del módulo como logger
+# Asegúrate que el logger se configure en app_fastapi.py con nivel DEBUG
+logger = logging.getLogger(__name__)
 
 async def get_current_user(request: Request):
     """Dependencia para obtener el usuario autenticado."""
-    # logger.debug(f"Dependencia get_current_user llamada. request.state.user: {getattr(request.state, 'user', 'No establecido')}")
     return getattr(request.state, "user", None)
 
 class AuthenticationMiddleware(BaseHTTPMiddleware):
     """Middleware para autenticación y gestión básica de sesión."""
 
     async def dispatch(self, request: Request, call_next):
-        logger.info(f"Cookies recibidas: {dict(request.cookies)}")
-        cookie_user_id = request.cookies.get("user_id")
-        logger.info(f"Cookie user_id: {cookie_user_id}")
-        # Rutas que NO requieren autenticación para acceder
-        public_paths = [
-            '/docs', # Documentación Swagger/OpenAPI
-            '/openapi.json',
-            '/login', # Página/ruta de login del frontend (si es manejada por backend redirect)
-            '/api/auth/google/verify', # Endpoint de verificación de Google
-            '/api/verify-link-code', # Endpoint de verificación de Telegram
-            '/favicon.ico',
-            # '/api/logout', # Logout necesita saber quién eres (cookie) pero la acción es pública
-            # '/api/generate-link-code', # Requiere login, por tanto NO es pública
-            # '/api/current-user' # NO es pública
-        ]
-        # Prefijos públicos (para assets estáticos, etc.)
-        public_prefixes = ['/static/']
-
+        # --- LOGS DETALLADOS AQUÍ ---
         current_path = request.url.path
-        # Usar nivel INFO para logs importantes del flujo
-        logger.info(f"--- MIDDLEWARE REQ START --- Path='{current_path}', Method='{request.method}'")
+        method = request.method
+        origin = request.headers.get('origin', 'N/A')
+        raw_cookies = request.headers.get('cookie', 'N/A')
+
+        logger.debug(f"--- 🪵 MIDDLEWARE REQ START 🪵 ---")
+        logger.debug(f"➡️ Path: '{current_path}', Method: '{method}'")
+        logger.debug(f"🌍 Origin Header: {origin}")
+        logger.debug(f"🍪 Raw Cookie Header: {raw_cookies}")
+        logger.debug(f"🍪 Parsed Cookies Dict: {dict(request.cookies)}")
+
+        cookie_user_id = request.cookies.get("user_id")
+        logger.info(f"❓ Extracted 'user_id' Cookie Value: '{cookie_user_id}'")
+
+        public_paths = [
+            '/docs', '/openapi.json', '/login',
+            '/api/auth/google/verify', '/api/verify-link-code', '/favicon.ico',
+        ]
+        public_prefixes = ['/static/']
 
         is_public = current_path in public_paths or \
                     any(current_path.startswith(prefix) for prefix in public_prefixes)
-        logger.info(f"MIDDLEWARE CHECK: Path '{current_path}' es público: {is_public}")
+        logger.debug(f"🧐 Path '{current_path}' es público: {is_public}")
 
-        cookie_user_id = request.cookies.get("user_id")
         user = None
         user_id_to_use = None
 
         if cookie_user_id:
-            # Loguea la cookie encontrada SIEMPRE que exista
-            logger.info(f"MIDDLEWARE AUTH: Cookie 'user_id={cookie_user_id}' encontrada.")
+            logger.info(f"✅ Cookie 'user_id' ENCONTRADA: '{cookie_user_id}'")
             if cookie_user_id.isdigit():
                 user_id_to_use = int(cookie_user_id)
                 try:
-                    logger.info(f"MIDDLEWARE AUTH: Intentando buscar usuario ID={user_id_to_use} en DB.")
-                    user = get_user_by_id(user_id_to_use) # Llama a la función real
+                    logger.debug(f"🕵️ Intentando buscar usuario ID={user_id_to_use} en DB...")
+                    # Asegúrate que get_user_by_id está correctamente importado arriba
+                    user = get_user_by_id(user_id_to_use)
                     if user:
-                        logger.info(f"MIDDLEWARE AUTH: Usuario ID={user_id_to_use} ENCONTRADO en DB. Email: {user.get('email', 'N/A')}")
-                        request.state.user = user # Poner usuario en el estado para la dependencia
+                        logger.info(f"👤✅ Usuario ID={user_id_to_use} ENCONTRADO en DB. Email: {user.get('email', 'N/A')}")
+                        request.state.user = user
                     else:
-                        # Este es un punto CRÍTICO si ocurre justo después del login
-                        logger.warning(f"MIDDLEWARE AUTH: Usuario ID={user_id_to_use} NO encontrado en DB (cookie inválida o DB error?).")
+                        logger.warning(f"👤❌ Usuario ID={user_id_to_use} NO encontrado en DB (cookie inválida o error DB?).")
                         request.state.user = None
                 except Exception as e:
-                    logger.error(f"MIDDLEWARE ERROR: Excepción buscando usuario ID '{user_id_to_use}': {e}", exc_info=True)
+                    logger.error(f"💥 ERROR buscando usuario ID '{user_id_to_use}': {e}", exc_info=True)
                     request.state.user = None
             else:
-                 logger.warning(f"MIDDLEWARE AUTH: Cookie 'user_id={cookie_user_id}' encontrada pero no es un dígito válido.")
+                 logger.warning(f"⚠️ Cookie 'user_id={cookie_user_id}' no es un dígito válido.")
                  request.state.user = None
         else:
-            logger.info(f"MIDDLEWARE AUTH: No se encontró cookie 'user_id' en la petición.")
+            logger.info(f"❌ Cookie 'user_id' NO encontrada en la petición.")
             request.state.user = None
 
-        # --- Lógica de Redirección/Acceso ---
-        # 1. Si la ruta NO es pública Y NO hay usuario (user es None) -> Redirigir a Login
         if not is_public and not user:
-            # Loguear con más detalle por qué se redirige
-            logger.warning(f"MIDDLEWARE DECISION: Path '{current_path}' NO es público y NO hay usuario (user object is None). Cookie raw leída: '{cookie_user_id}'. Redirigiendo a /login.")
-            # Redirigir a la página de login del frontend
-            return RedirectResponse(url="/login?redirect_url=" + current_path, status_code=307) # 307 es común para redirects post-auth check
+            logger.warning(f"🚦 DECISIÓN: Path '{current_path}' NO público y SIN usuario. Cookie leída: '{cookie_user_id}'. Redirigiendo a /login.")
+            return RedirectResponse(url="/login?redirect_url=" + current_path, status_code=307)
 
-        # 2. Si la ruta ES /login PERO SÍ hay usuario -> Redirigir a Inicio
         elif current_path == '/login' and user:
-            logger.info(f"MIDDLEWARE DECISION: Path es /login pero usuario SÍ está autenticado (ID: {user.get('id', 'N/A')}). Redirigiendo a /.")
+            logger.info(f"🚦 DECISIÓN: Path es /login pero usuario SÍ autenticado (ID: {user.get('id', 'N/A')}). Redirigiendo a /.")
             return RedirectResponse(url="/", status_code=307)
 
-        # 3. En cualquier otro caso (ruta pública, o ruta privada con usuario) -> Continuar
         else:
             user_status = f"Autenticado (ID: {user.get('id', 'N/A')})" if user else "No autenticado"
-            logger.info(f"MIDDLEWARE DECISION: Path '{current_path}' (Público: {is_public}, Usuario: {user_status}). Proceeding.")
-            response = await call_next(request)
-            logger.info(f"MIDDLEWARE ACTION: Response received for '{current_path}'. Status: {response.status_code}")
+            logger.debug(f"🚦 DECISIÓN: Path '{current_path}' (Público: {is_public}, Usuario: {user_status}). Dejando pasar.")
+            try:
+                response = await call_next(request)
+                logger.info(f"⬅️ Response Status: {response.status_code} for '{current_path}'")
+                set_cookie_header = response.headers.get('set-cookie')
+                allow_origin_header = response.headers.get('access-control-allow-origin')
+                allow_creds_header = response.headers.get('access-control-allow-credentials')
+                logger.debug(f"🍪 Response Set-Cookie Header (si existe): {set_cookie_header}")
+                logger.debug(f"🌍 Response Access-Control-Allow-Origin: {allow_origin_header}")
+                logger.debug(f"🔑 Response Access-Control-Allow-Credentials: {allow_creds_header}")
+            except Exception as call_next_err:
+                 logger.error(f"💥 ERROR durante call_next para '{current_path}': {call_next_err}", exc_info=True)
+                 raise call_next_err
 
-        logger.info(f"--- MIDDLEWARE REQ END --- Path='{current_path}'. Finished.")
+        logger.debug(f"--- 🪵 MIDDLEWARE REQ END 🪵 --- Path='{current_path}'. Finished.")
         return response
