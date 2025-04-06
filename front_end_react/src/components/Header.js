@@ -1,5 +1,11 @@
-import React from 'react';
-import { Link, NavLink } from 'react-router-dom';
+// src/components/Header.js
+import React, { useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { 
+  AppBar, Toolbar, Typography, Button, Avatar, Menu, MenuItem, 
+  IconButton, Drawer, List, ListItem, ListItemIcon, ListItemText,
+  Box, Divider, useMediaQuery, useTheme
+} from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faDumbbell, 
@@ -11,104 +17,209 @@ import {
   faCalendarDay,
   faCalendarAlt,
   faChartLine,
-  faUser
+  faUser,
+  faBars,
+  faTimes
 } from '@fortawesome/free-solid-svg-icons';
 import AuthService from '../services/AuthService';
 
 function Header({ user, onLogout }) {
-  // En Header.js - función handleLogout
-const handleLogout = async (e) => {
-  e.preventDefault();
-  
-  console.log("Iniciando proceso de logout...");
-  
-  try {
-    // Usar el servicio de autenticación
-    AuthService.logout();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleLogout = async (e) => {
+    // Prevenir comportamiento predeterminado
+    e.preventDefault();
     
-    // Notifica al componente padre
-    if (typeof onLogout === 'function') {
-      onLogout();
+    console.log("Iniciando proceso de logout...");
+    
+    try {
+      // Usa el servicio de autenticación
+      AuthService.logout();
+      
+      // Notifica al componente padre (si proporcionó un callback)
+      if (typeof onLogout === 'function') {
+        onLogout();
+      }
+      
+      // Navegar a la página de login usando navigate en lugar de manipular window.location
+      navigate('/login');
+    } catch (error) {
+      console.error('Error en proceso de logout:', error);
     }
+  };
+
+  const handleUserMenuOpen = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleUserMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const toggleDrawer = () => {
+    setDrawerOpen(!drawerOpen);
+  };
+
+  // Usamos el componente Link para navegación
+  const renderNavLink = (to, icon, label) => {
+    const isActive = location.pathname === to;
     
-    // Redirigir a la página de login
-    window.location.href = '/login';
-  } catch (error) {
-    console.error('Error en proceso de logout:', error);
-  }
-};
+    return (
+      <Button
+        component={Link}
+        to={to}
+        color={isActive ? "primary" : "inherit"}
+        sx={{
+          mx: 1,
+          textTransform: 'none',
+          fontWeight: isActive ? 600 : 400,
+          '&:hover': {
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+          }
+        }}
+        startIcon={<FontAwesomeIcon icon={icon} />}
+      >
+        {label}
+      </Button>
+    );
+  };
 
   return (
-    <header>
-      <div className="header-container">
-        <div className="site-branding">
-          <h1>
-            <FontAwesomeIcon icon={faDumbbell} /> RoonieColemAI
-          </h1>
-          <p className="subtitle">Sistema Inteligente de Entrenamiento Personalizado</p>
-        </div>
+    <AppBar position="static">
+      <Toolbar>
+        {isMobile ? (
+          <>
+            <IconButton
+              color="inherit"
+              aria-label="menu"
+              onClick={toggleDrawer}
+              edge="start"
+              sx={{ mr: 2 }}
+            >
+              <FontAwesomeIcon icon={faBars} />
+            </IconButton>
+            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+              <FontAwesomeIcon icon={faDumbbell} /> GymAI
+            </Typography>
+          </>
+        ) : (
+          <>
+            <Typography variant="h6" component={Link} to="/" sx={{ color: 'white', textDecoration: 'none', flexGrow: 0 }}>
+              <FontAwesomeIcon icon={faDumbbell} /> GymAI
+            </Typography>
+            <Box sx={{ display: 'flex', mx: 2, flexGrow: 1 }}>
+              {renderNavLink("/chatbot", faRobot, "Entrenador AI")}
+              {renderNavLink("/", faPlusCircle, "Registrar")}
+              {renderNavLink("/rutina_hoy", faCalendarDay, "Hoy")}
+              {renderNavLink("/rutina", faCalendarAlt, "Mi Rutina")}
+              {renderNavLink("/dashboard", faChartLine, "Dashboard")}
+              {renderNavLink("/profile", faUser, "Perfil")}
+            </Box>
+          </>
+        )}
         
-        <div className="user-menu">
+        <Box>
           {user ? (
-            <div className="user-profile">
-              {user.profile_picture ? (
-                <img src={user.profile_picture} alt={user.display_name} className="user-avatar" />
-              ) : (
-                <FontAwesomeIcon icon={faUserCircle} className="user-avatar" />
-              )}
-              <span>{user.display_name}</span>
-              {/* Botón de logout prominente y más visible */}
-              <button 
-                className="logout-btn" 
-                title="Cerrar sesión" 
-                onClick={handleLogout}
-                style={{ 
-                  marginLeft: '10px',
-                  background: '#dc3545',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  padding: '6px 12px',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  fontSize: '14px',
-                  fontWeight: 'bold'
-                }}
-              >
-                <FontAwesomeIcon icon={faSignOutAlt} style={{ marginRight: '6px' }} />
-                <span>Cerrar Sesión</span>
-              </button>
-            </div>
+            <Button 
+              color="inherit"
+              onClick={handleUserMenuOpen}
+              startIcon={
+                user.profile_picture ? (
+                  <Avatar src={user.profile_picture} alt={user.display_name} sx={{ width: 24, height: 24 }} />
+                ) : (
+                  <FontAwesomeIcon icon={faUserCircle} />
+                )
+              }
+            >
+              {!isMobile && user.display_name}
+            </Button>
           ) : (
-            <Link to="/login" className="login-btn">
-              <FontAwesomeIcon icon={faSignInAlt} /> Iniciar sesión
-            </Link>
+            <Button 
+              color="inherit" 
+              component={Link} 
+              to="/login"
+              startIcon={<FontAwesomeIcon icon={faSignInAlt} />}
+            >
+              {!isMobile && "Iniciar sesión"}
+            </Button>
           )}
-        </div>
-      </div>
-      
-      <nav className="tabs">
-        <NavLink to="/chatbot" className={({ isActive }) => isActive ? 'tab-btn active' : 'tab-btn'}>
-          <FontAwesomeIcon icon={faRobot} /> Entrenador AI
-        </NavLink>
-        <NavLink to="/" className={({ isActive }) => isActive ? 'tab-btn active' : 'tab-btn'}>
-          <FontAwesomeIcon icon={faPlusCircle} /> Registrar
-        </NavLink>
-        <NavLink to="/rutina_hoy" className={({ isActive }) => isActive ? 'tab-btn active' : 'tab-btn'}>
-          <FontAwesomeIcon icon={faCalendarDay} /> Hoy
-        </NavLink>
-        <NavLink to="/rutina" className={({ isActive }) => isActive ? 'tab-btn active' : 'tab-btn'}>
-          <FontAwesomeIcon icon={faCalendarAlt} /> Mi Rutina
-        </NavLink>
-        <NavLink to="/dashboard" className={({ isActive }) => isActive ? 'tab-btn active' : 'tab-btn'}>
-          <FontAwesomeIcon icon={faChartLine} /> Dashboard
-        </NavLink>
-        <NavLink to="/profile" className={({ isActive }) => isActive ? 'tab-btn active' : 'tab-btn'}>
-          <FontAwesomeIcon icon={faUser} /> Perfil
-        </NavLink>
-      </nav>
-    </header>
+        </Box>
+        
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={handleUserMenuClose}
+        >
+          <MenuItem component={Link} to="/profile" onClick={handleUserMenuClose}>
+            <ListItemIcon>
+              <FontAwesomeIcon icon={faUser} />
+            </ListItemIcon>
+            <ListItemText primary="Mi Perfil" />
+          </MenuItem>
+          <Divider />
+          <MenuItem onClick={handleLogout}>
+            <ListItemIcon>
+              <FontAwesomeIcon icon={faSignOutAlt} />
+            </ListItemIcon>
+            <ListItemText primary="Cerrar Sesión" />
+          </MenuItem>
+        </Menu>
+        
+        <Drawer
+          anchor="left"
+          open={drawerOpen}
+          onClose={toggleDrawer}
+        >
+          <Box
+            sx={{ width: 250 }}
+            role="presentation"
+          >
+            <List>
+              {[
+                { text: 'Entrenador AI', icon: faRobot, path: '/chatbot' },
+                { text: 'Registrar', icon: faPlusCircle, path: '/' },
+                { text: 'Hoy', icon: faCalendarDay, path: '/rutina_hoy' },
+                { text: 'Mi Rutina', icon: faCalendarAlt, path: '/rutina' },
+                { text: 'Dashboard', icon: faChartLine, path: '/dashboard' },
+                { text: 'Perfil', icon: faUser, path: '/profile' }
+              ].map((item) => (
+                <ListItem 
+                  button 
+                  key={item.text} 
+                  component={Link}
+                  to={item.path}
+                  onClick={toggleDrawer}
+                  selected={location.pathname === item.path}
+                >
+                  <ListItemIcon>
+                    <FontAwesomeIcon icon={item.icon} />
+                  </ListItemIcon>
+                  <ListItemText primary={item.text} />
+                </ListItem>
+              ))}
+            </List>
+            <Divider />
+            {user && (
+              <Button
+                fullWidth
+                color="error"
+                variant="contained"
+                onClick={handleLogout}
+                sx={{ m: 2 }}
+                startIcon={<FontAwesomeIcon icon={faSignOutAlt} />}
+              >
+                Cerrar Sesión
+              </Button>
+            )}
+          </Box>
+        </Drawer>
+      </Toolbar>
+    </AppBar>
   );
 }
 

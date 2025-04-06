@@ -1,18 +1,18 @@
+// src/index.js
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import axios from 'axios'; // Import axios here
-import './index.css'; // Or your main CSS file
+import { ThemeProvider } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
 import App from './App';
-import { BrowserRouter } from 'react-router-dom';
-
-// *** SET AXIOS DEFAULTS GLOBALLY HERE ***
-axios.defaults.withCredentials = true;
+import theme from './theme';
+import './index.css';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <BrowserRouter>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
       <App />
-    </BrowserRouter>
+    </ThemeProvider>
   </React.StrictMode>
 );
