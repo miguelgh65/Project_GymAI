@@ -16,24 +16,27 @@ import {
 import AuthService from '../services/AuthService';
 
 function Header({ user, onLogout }) {
-  const handleLogout = async (e) => {
-    // Prevenir comportamiento predeterminado
-    e.preventDefault();
+  // En Header.js - función handleLogout
+const handleLogout = async (e) => {
+  e.preventDefault();
+  
+  console.log("Iniciando proceso de logout...");
+  
+  try {
+    // Usar el servicio de autenticación
+    AuthService.logout();
     
-    console.log("Iniciando proceso de logout...");
-    
-    try {
-      // Usa el servicio de autenticación
-      await AuthService.logout();
-      
-      // Notifica al componente padre (si proporcionó un callback)
-      if (typeof onLogout === 'function') {
-        onLogout();
-      }
-    } catch (error) {
-      console.error('Error en proceso de logout:', error);
+    // Notifica al componente padre
+    if (typeof onLogout === 'function') {
+      onLogout();
     }
-  };
+    
+    // Redirigir a la página de login
+    window.location.href = '/login';
+  } catch (error) {
+    console.error('Error en proceso de logout:', error);
+  }
+};
 
   return (
     <header>

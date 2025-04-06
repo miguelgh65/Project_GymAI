@@ -1,109 +1,123 @@
-# Archivo: back_end/gym/middlewares.py
+# back_end/gym/middlewares.py
 
-from fastapi import Depends, Request
+import os
 import logging
+from typing import Optional, List, Callable, Dict, Any, Union
+import json
+
+from fastapi import Request, Response, status
+from fastapi.responses import RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import RedirectResponse, Response
 
-# --- Importaciones Corregidas ---
-try:
-    # Usar importación relativa (. significa desde el mismo directorio gym)
-    from .services.auth_service import get_user_by_id, get_user_id_by_google, get_user_id_by_telegram
-except ImportError as e:
-    logging.error(f"Error importando servicios en middleware (relativa): {e}")
-    # Define stubs si es absolutamente necesario para arrancar, pero es mejor arreglar imports
-    def get_user_by_id(id): logging.error(f"STUB: get_user_by_id({id}) llamado"); return None
-    def get_user_id_by_google(gid): return None
-    def get_user_id_by_telegram(tid): return None
-# --- Fin Importaciones Corregidas ---
+# NO importar verify_token aquí para evitar el error circular
+# from .services.jwt_service import verify_token
 
-
-# Asegúrate que el logger se configure en app_fastapi.py con nivel DEBUG
 logger = logging.getLogger(__name__)
 
-async def get_current_user(request: Request):
-    """Dependencia para obtener el usuario autenticado."""
-    return getattr(request.state, "user", None)
+# Rutas públicas que no requieren autenticación
+PUBLIC_PATHS = [
+    "/login",        # Página de login
+    "/docs",         # Swagger UI
+    "/redoc",        # ReDoc
+    "/openapi.json", # Esquema OpenAPI
+    "/api/auth/google/verify", # Endpoint para verificación de Google
+    "/static/",      # Archivos estáticos
+    "/favicon.ico",  # Favicon
+    "/api/verify-link-code", # Verificación de código para vincular Telegram
+    "/fitbit-callback", # Callback de Fitbit OAuth
+    "/google-callback", # Callback de Google OAuth
+]
 
 class AuthenticationMiddleware(BaseHTTPMiddleware):
-    """Middleware para autenticación y gestión básica de sesión."""
-
-    async def dispatch(self, request: Request, call_next):
-        # --- LOGS DETALLADOS AQUÍ ---
-        current_path = request.url.path
-        method = request.method
-        origin = request.headers.get('origin', 'N/A')
-        raw_cookies = request.headers.get('cookie', 'N/A')
-
-        logger.debug(f"--- 🪵 MIDDLEWARE REQ START 🪵 ---")
-        logger.debug(f"➡️ Path: '{current_path}', Method: '{method}'")
-        logger.debug(f"🌍 Origin Header: {origin}")
-        logger.debug(f"🍪 Raw Cookie Header: {raw_cookies}")
-        logger.debug(f"🍪 Parsed Cookies Dict: {dict(request.cookies)}")
-
-        cookie_user_id = request.cookies.get("user_id")
-        logger.info(f"❓ Extracted 'user_id' Cookie Value: '{cookie_user_id}'")
-
-        public_paths = [
-            '/docs', '/openapi.json', '/login',
-            '/api/auth/google/verify', '/api/verify-link-code', '/favicon.ico',
-        ]
-        public_prefixes = ['/static/']
-
-        is_public = current_path in public_paths or \
-                    any(current_path.startswith(prefix) for prefix in public_prefixes)
-        logger.debug(f"🧐 Path '{current_path}' es público: {is_public}")
-
-        user = None
-        user_id_to_use = None
-
-        if cookie_user_id:
-            logger.info(f"✅ Cookie 'user_id' ENCONTRADA: '{cookie_user_id}'")
-            if cookie_user_id.isdigit():
-                user_id_to_use = int(cookie_user_id)
-                try:
-                    logger.debug(f"🕵️ Intentando buscar usuario ID={user_id_to_use} en DB...")
-                    # Asegúrate que get_user_by_id está correctamente importado arriba
-                    user = get_user_by_id(user_id_to_use)
-                    if user:
-                        logger.info(f"👤✅ Usuario ID={user_id_to_use} ENCONTRADO en DB. Email: {user.get('email', 'N/A')}")
-                        request.state.user = user
-                    else:
-                        logger.warning(f"👤❌ Usuario ID={user_id_to_use} NO encontrado en DB (cookie inválida o error DB?).")
-                        request.state.user = None
-                except Exception as e:
-                    logger.error(f"💥 ERROR buscando usuario ID '{user_id_to_use}': {e}", exc_info=True)
-                    request.state.user = None
-            else:
-                 logger.warning(f"⚠️ Cookie 'user_id={cookie_user_id}' no es un dígito válido.")
-                 request.state.user = None
-        else:
-            logger.info(f"❌ Cookie 'user_id' NO encontrada en la petición.")
-            request.state.user = None
-
-        if not is_public and not user:
-            logger.warning(f"🚦 DECISIÓN: Path '{current_path}' NO público y SIN usuario. Cookie leída: '{cookie_user_id}'. Redirigiendo a /login.")
-            return RedirectResponse(url="/login?redirect_url=" + current_path, status_code=307)
-
-        elif current_path == '/login' and user:
-            logger.info(f"🚦 DECISIÓN: Path es /login pero usuario SÍ autenticado (ID: {user.get('id', 'N/A')}). Redirigiendo a /.")
-            return RedirectResponse(url="/", status_code=307)
-
-        else:
-            user_status = f"Autenticado (ID: {user.get('id', 'N/A')})" if user else "No autenticado"
-            logger.debug(f"🚦 DECISIÓN: Path '{current_path}' (Público: {is_public}, Usuario: {user_status}). Dejando pasar.")
+    """Middleware para verificar autenticación del usuario en cada solicitud."""
+    
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        """Procesa cada solicitud verificando la autenticación del usuario."""
+        path = request.url.path
+        
+        # Verificar si la ruta es pública
+        is_public_path = any(path.startswith(public_path) for public_path in PUBLIC_PATHS)
+        
+        if is_public_path:
+            logger.info(f"✅ Path '{path}' es público y no requiere autenticación.")
+            response = await call_next(request)
+            logger.info(f"⬅️ Response Status: {response.status_code} for '{path}'")
+            return response
+        
+        # Verificar token JWT del header Authorization
+        auth_header = request.headers.get("Authorization")
+        user_id = None
+        
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.replace("Bearer ", "")
+            logger.info(f"🔑 Token JWT encontrado en header")
+            
+            # Verificar token y extraer user_id
             try:
-                response = await call_next(request)
-                logger.info(f"⬅️ Response Status: {response.status_code} for '{current_path}'")
-                set_cookie_header = response.headers.get('set-cookie')
-                allow_origin_header = response.headers.get('access-control-allow-origin')
-                allow_creds_header = response.headers.get('access-control-allow-credentials')
-                logger.debug(f"🍪 Response Set-Cookie Header (si existe): {set_cookie_header}")
-                logger.debug(f"🌍 Response Access-Control-Allow-Origin: {allow_origin_header}")
-                logger.debug(f"🔑 Response Access-Control-Allow-Credentials: {allow_creds_header}")
-            except Exception as call_next_err:
-                 logger.error(f"💥 ERROR durante call_next para '{current_path}': {call_next_err}", exc_info=True)
-                 raise call_next_err
-
-        logger.debug(f"--- 🪵 MIDDLEWARE REQ END 🪵 --- Path='{current_path}'. Finished.")
+                # Importar aquí para evitar la importación circular
+                from .services.jwt_service import verify_token
+                payload = verify_token(token)
+                if payload:
+                    user_id = payload.get("sub")
+                    logger.info(f"✅ Token JWT válido para usuario ID: {user_id}")
+            except ImportError as e:
+                logger.error(f"Error importando verify_token: {e}")
+        
+        if not user_id:
+            logger.warning(f"🚦 DECISIÓN: Path '{path}' NO público y SIN token JWT válido. Redirigiendo a /login.")
+            redirect_path = f"/login?redirect_url={request.url.path}"
+            logger.info(f"🔀 Redirigiendo a: {redirect_path}")
+            return RedirectResponse(url=redirect_path, status_code=status.HTTP_307_TEMPORARY_REDIRECT)
+        
+        # Usuario autenticado, continuar con la solicitud
+        # Añadir user_id al estado de la solicitud para usarlo en las dependencias
+        request.state.user_id = user_id
+        response = await call_next(request)
+        logger.info(f"⬅️ Response Status: {response.status_code} for '{path}'")
         return response
+
+async def get_current_user(request: Request) -> Optional[Dict[str, Any]]:
+    """
+    Dependencia para obtener el usuario actual desde el token JWT.
+    Retorna None si no hay usuario autenticado.
+    """
+    
+    # Primero intentar obtener user_id del estado (establecido por el middleware)
+    user_id = getattr(request.state, "user_id", None)
+    
+    # Si no está en el estado, intentar extraerlo del token
+    if not user_id:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.replace("Bearer ", "")
+            try:
+                # Importar aquí para evitar la importación circular
+                from .services.jwt_service import verify_token
+                payload = verify_token(token)
+                if payload:
+                    user_id = payload.get("sub")
+            except ImportError as e:
+                logger.error(f"Error importando verify_token: {e}")
+    
+    if not user_id:
+        logger.debug(f"❌ No se encontró token JWT válido o user_id en el estado de la petición.")
+        return None
+    
+    try:
+        # Importar get_user_by_id localmente para evitar importaciones circulares
+        from .services.auth_service import get_user_by_id
+        
+        # Obtener usuario de la base de datos
+        user = get_user_by_id(int(user_id))
+        if user:
+            logger.debug(f"✅ Usuario obtenido por ID {user_id}: {user.get('display_name', 'Unknown')}")
+            return user
+        else:
+            logger.warning(f"⚠️ No se encontró usuario con ID {user_id} en la base de datos.")
+            return None
+    except (ValueError, TypeError) as e:
+        logger.error(f"❌ Error al obtener usuario con ID {user_id}: {str(e)}")
+        return None
+    except Exception as e:
+        logger.exception(f"❌ Error inesperado al obtener usuario: {str(e)}")
+        return None

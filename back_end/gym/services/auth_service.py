@@ -1,5 +1,8 @@
 import os
 import sys
+# Añade esta línea al principio del archivo auth_service.py
+import logging
+
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -18,33 +21,37 @@ GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
 GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
 GOOGLE_REDIRECT_URI = os.getenv('GOOGLE_REDIRECT_URI', 'http://localhost:5050/google-callback')
 
-def verify_google_token(token):
-    """
-    Verifica un token de ID de Google y devuelve la información del usuario.
-    
-    Args:
-        token (str): El token de ID de Google a verificar
-        
-    Returns:
-        dict: Información del usuario si el token es válido, None en caso contrario
-    """
-    try:
-        # Verificar el token con Google
-        idinfo = id_token.verify_oauth2_token(
-            token, 
-            requests.Request(), 
-            GOOGLE_CLIENT_ID
-        )
-        
-        # Verificar que el token es para nuestra aplicación
-        if idinfo['aud'] != GOOGLE_CLIENT_ID:
-            return None
-        
-        return idinfo
-    except Exception as e:
-        print(f"Error verificando token de Google: {e}")
-        return None
+# En auth_service.py, añade/modifica la función verify_google_token:
 
+def verify_google_token(token):
+    """Verifica un token de Google y devuelve la información si es válido."""
+    try:
+        # Asegúrate que GOOGLE_CLIENT_ID esté correctamente cargado
+        client_id = os.getenv("GOOGLE_CLIENT_ID")
+        logging.info(f"Verificando token con GOOGLE_CLIENT_ID: {client_id[:10] if client_id else 'No configurado'}...")
+        
+        # Aquí muestra un pequeño fragmento del token para debugging
+        logging.info(f"Intentando verificar token Google (primeros 20 chars): {token[:20] if token else 'None'}...")
+        
+        # Hacer la solicitud a Google para verificar
+        idinfo = id_token.verify_oauth2_token(token, requests.Request(), client_id)
+        
+        # Verificar el emisor del token
+        if idinfo['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
+            logging.warning(f"Emisor del token no es Google: {idinfo.get('iss')}")
+            raise ValueError('Emisor del token no es Google.')
+        
+        logging.info(f"Token Google verificado correctamente para sub: {idinfo.get('sub')}, email: {idinfo.get('email')}")
+        return idinfo
+    except ValueError as e:
+        # Capturar valores inválidos (token expirado, etc.)
+        logging.error(f"Error validando token Google: {str(e)}")
+        return None
+    except Exception as e:
+        # Capturar otros errores
+        logging.exception(f"Error inesperado al verificar token Google: {str(e)}")
+        return None
+    
 def get_or_create_user(google_id=None, telegram_id=None, email=None, display_name=None, profile_picture=None):
     """
     Obtiene o crea un usuario basado en su ID de Google o Telegram.

@@ -25,3 +25,4 @@ python-jose[cryptography]>=3.4.0
 
 google-auth>=2.38.0
 google-auth-oauthlib>=1.2.1
+pyjwt>=2.10.1

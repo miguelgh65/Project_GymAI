@@ -4,8 +4,9 @@ import sys
 import logging
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -24,6 +25,7 @@ except ImportError as e:
 
 # Cargar variables de entorno
 load_dotenv()
+
 
 # --- Configuración de Logging (Nivel DEBUG) ---
 logging.basicConfig(
@@ -70,18 +72,26 @@ async def lifespan(app: FastAPI):
 # Inicializar FastAPI
 app = FastAPI(lifespan=lifespan)
 
-# Configurar CORS
-cors_origins_str = os.getenv('CORS_ORIGINS', 'http://localhost,http://localhost:3000') # Valor por defecto más seguro
+# Configurar CORS - MEJORADA
+cors_origins_str = os.getenv('CORS_ORIGINS', 'http://localhost,http://localhost:3000,http://localhost:5050') # Valor por defecto más permisivo
 cors_origins = [origin.strip() for origin in cors_origins_str.split(',') if origin.strip()]
 
+# Añadir comodín en desarrollo si es necesario
+if os.getenv('ENV', 'development') == 'development':
+    if '*' not in cors_origins:
+        cors_origins.append('*')
+        logger.info("Añadido comodín '*' a CORS para desarrollo")
+
 logger.info("--- 🌍 Configuración CORS 🌍 ---")
+logger.info(f"Entorno: {os.getenv('ENV', 'development')}")
 logger.info(f"Raw CORS_ORIGINS string from env: '{cors_origins_str}'")
 logger.info(f"Parsed origins list for CORSMiddleware: {cors_origins}")
 logger.info("---------------------------------")
 
+# En app_fastapi.py - Reemplaza la configuración CORS actual
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,
+    allow_origins=["http://localhost", "http://localhost:3000"], # Solo orígenes específicos para credentials
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -114,8 +124,10 @@ try:
     from .routes import main as main_routes
     from .routes import profile as profile_routes
     from .routes import routine as routine_routes
+    from .routes import login_handler as login_routes  # NUEVO: Importar login_handler.py
 
     logger.info("Incluyendo routers...")
+    app.include_router(login_routes.router)  # NUEVO: Incluir login_handler primero
     app.include_router(main_routes.router)
     app.include_router(routine_routes.router)
     app.include_router(dashboard_routes.router)
@@ -129,20 +141,25 @@ except ImportError as e:
     logger.critical(f"💥 Error Crítico importando routers (relativa): {e}", exc_info=True)
     sys.exit(f"Error importando routers: {e}")
 
+# Servir archivos estáticos del frontend
+frontend_build_dir = os.getenv('FRONTEND_BUILD_DIR', '../front_end/build')
+if os.path.exists(frontend_build_dir):
+    logger.info(f"🖥️ Sirviendo archivos estáticos desde: {frontend_build_dir}")
+    app.mount("/static", StaticFiles(directory=f"{frontend_build_dir}/static"), name="static")
+    
+    # Ruta para manejar otras rutas de frontend (SPA)
+    @app.get("/{rest_of_path:path}")
+    async def serve_spa(request: Request, rest_of_path: str):
+        if rest_of_path.startswith("api/"):
+            # No servir rutas de API desde esta función
+            raise HTTPException(status_code=404)
+        index_path = f"{frontend_build_dir}/index.html"
+        if os.path.exists(index_path):
+            return FileResponse(index_path)
+        else:
+            logger.warning(f"No se encontró el archivo index.html en {frontend_build_dir}")
+            raise HTTPException(status_code=404, detail="Frontend no encontrado") 
 
 # Punto de entrada principal
 if __name__ == '__main__':
     import uvicorn
-    logger.info("Iniciando servidor Uvicorn directamente...")
-    # Nota: Las opciones de SSL se pasan aquí si ejecutas directamente,
-    # pero en Docker se suelen manejar en el start.sh o comando de uvicorn
-    uvicorn.run(
-        "app_fastapi:app",
-        host="0.0.0.0",
-        port=5050,
-        reload=True, # Cambia a False en producción
-        log_level="debug",
-        # Añade aquí las opciones SSL si necesitas ejecutar con HTTPS directamente
-        # ssl_keyfile=os.getenv("SSL_KEY_PATH_IN_CONTAINER"),
-        # ssl_certfile=os.getenv("SSL_CERT_PATH_IN_CONTAINER")
-    )

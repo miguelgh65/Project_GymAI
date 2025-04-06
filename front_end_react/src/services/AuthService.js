@@ -1,88 +1,90 @@
+// src/services/AuthService.js
 import axios from 'axios';
 
-/**
- * Servicio centralizado para el manejo de autenticación
- */
-const AuthService = {
-  /**
-   * Obtiene el usuario actualmente autenticado
-   * @returns {Promise<Object|null>} Datos del usuario o null si no está autenticado o hay error
-   */
-  getCurrentUser: async () => {
-    try {
-      // *** CAMBIO AQUÍ: Añadir /api/ ***
-      const response = await axios.get('/api/current-user');
-      // Asume que la cookie HttpOnly se envía automáticamente por el navegador
-      // si axios está configurado con withCredentials=true (hecho en App.js o index.js)
+class AuthService {
+  constructor() {
+    // Configurar interceptores al inicializar
+    this.setupAxiosInterceptors();
+  }
 
-      if (response.data.success && response.data.user) {
-        console.log("Usuario actual obtenido:", response.data.user);
-        return response.data.user;
-      }
-      console.log("Respuesta de /api/current-user no exitosa o sin usuario:", response.data);
-      return null;
-    } catch (error) {
-      // Es normal recibir 401 si no hay sesión, no loggear como error grave en ese caso
-      if (error.response && error.response.status === 401) {
-         console.log('No hay sesión de usuario activa (401)');
-      } else {
-         console.error('Error al obtener usuario actual:', error.response?.data || error.message);
-      }
-      return null; // Devuelve null en caso de error o no autenticado
-    }
-  },
-
-  /**
-   * Cierra la sesión del usuario
-   * @returns {Promise<boolean>} Éxito del cierre de sesión
-   */
-  logout: async () => {
-    try {
-      console.log("Iniciando proceso de logout...");
-      const cacheBuster = new Date().getTime();
-
-      // *** CAMBIO AQUÍ: Añadir /api/ ***
-      // Usar la ruta correcta del backend para logout
-      const logoutUrl = `/api/logout?_=${cacheBuster}`;
-
-      // Hacer la petición GET para logout. Axios seguirá redirecciones por defecto.
-      // No necesitamos manejar la redirección manualmente aquí si el backend la hace.
-      await axios.get(logoutUrl, {
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
+  // Configurar interceptores para añadir el token a todas las solicitudes
+  setupAxiosInterceptors() {
+    axios.interceptors.request.use(
+      (config) => {
+        const token = this.getToken();
+        if (token) {
+          config.headers["Authorization"] = `Bearer ${token}`;
         }
-        // No necesitamos maxRedirects: 0 aquí, dejamos que axios siga la redirección del backend
-      });
-
-      // Si la llamada a axios no lanza error, asumimos que el proceso va bien
-      // y la redirección ocurrirá o ya ocurrió.
-      console.log("Petición de logout enviada. El backend debería redirigir.");
-
-      // Forzar recarga a la página de login como fallback o para asegurar limpieza de estado en React
-      // Podrías querer esperar un poco o confiar en la redirección del backend.
-      // Comentado por ahora para confiar en la redirección del backend primero.
-      // window.location.href = '/login?logout=frontend';
-
-      return true;
-
-    } catch (error) {
-      // Incluso si la petición GET /api/logout falla (ej. 500), intentamos forzar
-      // la redirección al login en el cliente.
-      console.error('Error durante la petición de logout:', error.response?.data || error.message);
-
-      try {
-        const cacheBuster = new Date().getTime();
-        // Forzar redirección al login desde el frontend como último recurso
-        window.location.href = '/login?logout=error&t=' + cacheBuster;
-      } catch (e) {
-        console.error('Error en redirección forzada después de fallo de logout:', e);
+        return config;
+      },
+      (error) => {
+        return Promise.reject(error);
       }
+    );
+  }
 
-      return false; // Indicar que hubo un error en el proceso
+  // Iniciar sesión con Google
+  async loginWithGoogle(googleToken) {
+    try {
+      console.log("Enviando token a backend para verificación:", googleToken.substring(0, 20) + "...");
+      const response = await axios.post('/api/auth/google/verify', {
+        id_token: googleToken
+      });
+      
+      console.log("Respuesta de verificación:", response.data);
+      
+      if (response.data.success && response.data.access_token) {
+        // Guardar token en localStorage
+        localStorage.setItem('access_token', response.data.access_token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+        return response.data;
+      } else {
+        throw new Error(response.data.message || 'Token no recibido del servidor');
+      }
+    } catch (error) {
+      console.error('Error en loginWithGoogle:', error);
+      throw error;
     }
   }
-};
 
-export default AuthService;
+  // Obtener el token almacenado
+  getToken() {
+    return localStorage.getItem('access_token');
+  }
+
+  // Obtener usuario actual desde localStorage
+  getCurrentUser() {
+    const userJson = localStorage.getItem('user');
+    if (userJson) {
+      try {
+        return JSON.parse(userJson);
+      } catch (e) {
+        console.error('Error parseando usuario:', e);
+        return null;
+      }
+    }
+    return null;
+  }
+
+  // Verificar si el usuario está autenticado
+  isAuthenticated() {
+    return !!this.getToken();
+  }
+
+  // Cerrar sesión
+  logout() {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user');
+    
+    // Opcional: llamar al endpoint de logout en el backend
+    try {
+      axios.get('/api/logout').catch(err => console.log('Error al notificar logout al servidor:', err));
+    } catch (e) {
+      console.log('Error al cerrar sesión:', e);
+    }
+    
+    return true;
+  }
+}
+
+export default new AuthService();

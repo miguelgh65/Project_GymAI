@@ -17,41 +17,41 @@ function Login({ onLoginSuccess }) {
 
   const navigate = useNavigate();
 
-  const handleGoogleCredentialResponse = useCallback(async (response) => {
-    setIsLoading(true);
-    console.log('Google auth response received:', response);
-    try {
-        const verifyResponse = await axios.post('/api/auth/google/verify', {
-            id_token: response.credential,
-        });
+  // Modificar en Login.js - función handleGoogleCredentialResponse
+const handleGoogleCredentialResponse = useCallback(async (response) => {
+  setIsLoading(true);
+  console.log('Google auth response received:', response);
+  try {
+    const verifyResponse = await axios.post('/api/auth/google/verify', {
+      id_token: response.credential,
+    });
 
-        console.log('Verify response:', verifyResponse.data);
+    console.log('Verify response:', verifyResponse.data);
 
-        // --- CAMBIO PRINCIPAL AQUÍ ---
-        // Verificar que la respuesta sea exitosa Y que contenga el objeto 'user'
-        if (verifyResponse.data.success && verifyResponse.data.user) {
-            console.log("Login verificado, usuario recibido:", verifyResponse.data.user);
+    if (verifyResponse.data.success && verifyResponse.data.access_token) {
+      console.log("Login verificado, token JWT recibido");
+      
+      // Guardar token en localStorage
+      localStorage.setItem('access_token', verifyResponse.data.access_token);
+      localStorage.setItem('user', JSON.stringify(verifyResponse.data.user));
+      
+      // Llamar a onLoginSuccess con los datos del usuario recibidos
+      if (onLoginSuccess) {
+        onLoginSuccess(verifyResponse.data.user);
+      }
 
-            // Llamar a onLoginSuccess INMEDIATAMENTE con los datos del usuario recibidos
-            if (onLoginSuccess) {
-                onLoginSuccess(verifyResponse.data.user); // <<< PASAR DATOS DEL USUARIO AL PADRE (App.js)
-            }
-
-            // Navegar a la página principal (ya no se necesita setTimeout)
-            navigate('/');
-
-        } else {
-            // Error en la respuesta del backend
-            alert(verifyResponse.data.message || 'Error al verificar con el servidor');
-            setIsLoading(false);
-        }
-    } catch (error) {
-        console.error('Error durante Google Sign-In:', error);
-        alert('Error al conectar con el servidor: ' + (error.response?.data?.detail || error.response?.data?.message || error.message));
-        setIsLoading(false);
+      // Navegar a la página principal
+      navigate('/');
+    } else {
+      alert(verifyResponse.data.message || 'Error al verificar con el servidor');
+      setIsLoading(false);
     }
-    // No poner setIsLoading(false) aquí si el setTimeout se inicia
-  }, [navigate, onLoginSuccess]); // Actualizar dependencias
+  } catch (error) {
+    console.error('Error durante Google Sign-In:', error);
+    alert('Error al conectar con el servidor: ' + (error.response?.data?.detail || error.response?.data?.message || error.message));
+    setIsLoading(false);
+  }
+}, [navigate, onLoginSuccess]);
 
   // initializeGoogleSignIn (sin cambios)
   const initializeGoogleSignIn = useCallback(() => {

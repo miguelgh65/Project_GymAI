@@ -1,4 +1,4 @@
-# Archivo: back_end/gym/routes/auth.py
+# back_end/gym/routes/auth.py
 import os
 import json
 import logging
@@ -104,18 +104,32 @@ async def verify_link_code_route(request: Request):
 # Ruta: /api/auth/google/verify
 @router.post("/auth/google/verify", response_class=JSONResponse)
 async def verify_google_signin(request: Request, response: Response):
-    """Verifica token Google, crea/actualiza user, setea cookie, devuelve datos."""
+    """Verifica token Google, crea/actualiza user, genera token JWT."""
     logger.info("Recibida solicitud para verificar token de Google.")
     try:
+        # Log para ver el cuerpo completo de la solicitud
+        body = await request.body()
+        logger.info(f"Cuerpo de la solicitud (truncado): {body[:100]}...")
+        
         data = await request.json()
         token = data.get("id_token")
 
-        if not token: raise HTTPException(status_code=400, detail="Token no proporcionado")
-        if not GOOGLE_CLIENT_ID: raise HTTPException(status_code=500, detail="Error configuración servidor (Client ID Google no configurado).")
+        if not token:
+            logger.warning("ID token no proporcionado en la solicitud")
+            raise HTTPException(status_code=400, detail="Token no proporcionado")
 
-        # Asegúrate que verify_google_token está importado
+        # Verificar que GOOGLE_CLIENT_ID está configurado
+        if not GOOGLE_CLIENT_ID:
+            logger.error("GOOGLE_CLIENT_ID no está configurado en las variables de entorno")
+            raise HTTPException(status_code=500, detail="Error configuración servidor (Client ID Google no configurado).")
+
+        # Verificar token con Google
+        logger.info(f"Llamando a verify_google_token con token de longitud {len(token)}")
         user_info = verify_google_token(token)
-        if not user_info: raise HTTPException(status_code=400, detail="Token de Google inválido o expirado")
+        
+        if not user_info:
+            logger.warning("verify_google_token devolvió None")
+            raise HTTPException(status_code=400, detail="Token de Google inválido o expirado")
 
         google_id = user_info.get("sub")
         email = user_info.get("email")
@@ -127,7 +141,8 @@ async def verify_google_signin(request: Request, response: Response):
              raise HTTPException(status_code=400, detail="Token de Google inválido (falta ID).")
 
         logger.info(f"Obteniendo o creando usuario para Google ID: {google_id}, Email: {email}")
-        # Asegúrate que get_or_create_user y get_user_by_id están importados
+        
+        # Crear o actualizar usuario
         user_id_internal = get_or_create_user(
             google_id=google_id, email=email, display_name=display_name, profile_picture=profile_picture
         )
@@ -137,40 +152,44 @@ async def verify_google_signin(request: Request, response: Response):
              logger.error(f"get_or_create_user devolvió None o 0 para Google ID {google_id}")
              raise HTTPException(status_code=500, detail="Error al crear o actualizar el usuario en la base de datos")
 
+        # Obtener detalles completos del usuario
         temp_user_details = get_user_by_id(user_id_internal)
         has_telegram_linked = temp_user_details.get("telegram_id") is not None if temp_user_details else False
 
+        # Crear objeto de usuario para el frontend
         user_data_for_frontend = {
              "id": user_id_internal, "display_name": display_name, "email": email,
              "profile_picture": profile_picture, "has_telegram": has_telegram_linked, "has_google": True
         }
-        logger.info(f"Preparados datos para frontend: {user_data_for_frontend}")
-
-        # --- Lógica de Cookie (con logs) ---
-        cookie_max_age = 86400 * 30
-        cookie_key = "user_id"
-        cookie_value = str(user_id_internal)
-        is_secure_env = request.headers.get('x-forwarded-proto', request.url.scheme) == "https"
-        cookie_samesite = "lax"
-        cookie_secure = is_secure_env
-        cookie_path = "/"
-        cookie_httponly = True
-
-        logger.info("--- 🍪🔑⚙️ Preparando para establecer Cookie ⚙️🔑🍪 ---")
-        logger.info(f"  Key: '{cookie_key}', Value: '{cookie_value}', HttpOnly: {cookie_httponly}")
-        logger.info(f"  Secure: {cookie_secure} (Based on scheme/X-Forwarded-Proto: {request.headers.get('x-forwarded-proto', request.url.scheme)})")
-        logger.info(f"  SameSite: '{cookie_samesite}', Max-Age: {cookie_max_age}, Path: '{cookie_path}'")
-        logger.info("-----------------------------------------------------")
-
-        response.set_cookie(
-            key=cookie_key, value=cookie_value, httponly=cookie_httponly,
-            secure=cookie_secure, samesite=cookie_samesite, max_age=cookie_max_age, path=cookie_path
-        )
-        logger.info(f"✅ Cookie '{cookie_key}={cookie_value}' añadida a la respuesta.")
-
+        
+        # Importar el servicio JWT
+        from ..services.jwt_service import create_access_token
+        
+        # Crear token JWT
+        jwt_data = {
+            "sub": str(user_id_internal), # subject (user_id)
+            "email": email,
+            "name": display_name
+        }
+        
+        access_token = create_access_token(jwt_data)
+        if not access_token:
+            logger.error(f"Error al crear token JWT para usuario {user_id_internal}")
+            raise HTTPException(status_code=500, detail="Error al generar token de autenticación")
+        
+        logger.info(f"Token JWT generado para usuario {user_id_internal}")
+        
+        # Devolver el token JWT y los datos del usuario
+        logger.info("Preparando respuesta final con token JWT y datos de usuario")
         return JSONResponse(
-            content={ "success": True, "user": user_data_for_frontend,
-                      "message": "Autenticación exitosa", "redirect": "/" }
+            content={ 
+                "success": True, 
+                "user": user_data_for_frontend,
+                "access_token": access_token,
+                "token_type": "bearer",
+                "message": "Autenticación exitosa", 
+                "redirect": "/" 
+            }
         )
 
     except json.JSONDecodeError:
@@ -196,19 +215,25 @@ async def logout(request: Request, response: Response):
     # --- Log Detallado ANTES de Delete-Cookie ---
     cookie_key_to_delete = "user_id"
     delete_path = "/"
-    is_secure_env_del = request.headers.get('x-forwarded-proto', request.url.scheme) == "https"
-    delete_secure = is_secure_env_del
+    delete_secure = False # Para desarrollo
     delete_samesite = "lax"
     delete_httponly = True
+    cookie_domain = None # No especificar dominio en desarrollo
+    
     logger.info("--- 🍪🗑️ Preparando para eliminar Cookie 🗑️🍪 ---")
     logger.info(f"  Key: '{cookie_key_to_delete}', Path: '{delete_path}', HttpOnly: {delete_httponly}")
-    logger.info(f"  Secure: {delete_secure} (Based on scheme/X-Forwarded-Proto: {request.headers.get('x-forwarded-proto', request.url.scheme)})")
+    logger.info(f"  Secure: {delete_secure} (False para desarrollo)")
     logger.info(f"  SameSite: '{delete_samesite}'")
+    logger.info(f"  Domain: {cookie_domain}")
     logger.info("-----------------------------------------------")
 
     response.delete_cookie(
-        key=cookie_key_to_delete, path=delete_path, httponly=delete_httponly,
-        secure=delete_secure, samesite=delete_samesite
+        key=cookie_key_to_delete, 
+        path=delete_path, 
+        httponly=delete_httponly,
+        secure=delete_secure, 
+        samesite=delete_samesite,
+        # domain=cookie_domain  # No especificar dominio en desarrollo
     )
     logger.info(f"✅ Cookie '{cookie_key_to_delete}' marcada para eliminación en la respuesta.")
 
@@ -221,11 +246,11 @@ async def logout(request: Request, response: Response):
 # Ruta: /api/current-user
 @router.get("/current-user", response_class=JSONResponse)
 async def get_current_user_api(request: Request, user: dict = Depends(get_current_user)):
-    """Obtiene la información del usuario autenticado por cookie."""
+    """Obtiene la información del usuario autenticado por token JWT."""
     logger.debug(f"--- 👤 Solicitud a /api/current-user ---")
 
     if not user:
-        logger.warning("⚠️ Acceso a /api/current-user SIN usuario autenticado (middleware no redirigió?).")
+        logger.warning("⚠️ Acceso a /api/current-user SIN usuario autenticado.")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="No hay sesión activa o la sesión es inválida."

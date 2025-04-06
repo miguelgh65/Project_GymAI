@@ -14,28 +14,43 @@ function AppWrapper() {
   const [loading, setLoading] = useState(true);
 
   // Función para cargar datos de usuario
-  const loadUser = async () => {
-    setLoading(true);
-    try {
-      const userData = await AuthService.getCurrentUser();
-      setUser(userData);
-    } catch (error) {
-      console.error('Error cargando usuario:', error);
-      setUser(null);
-    } finally {
-      setLoading(false);
+  // En AppWrapper.js - modificar la carga del usuario
+
+// Función para cargar datos de usuario
+const loadUser = async () => {
+  setLoading(true);
+  try {
+    // Usar el servicio de autenticación para obtener el usuario desde localStorage
+    const userData = AuthService.getCurrentUser();
+    setUser(userData);
+    
+    // Si no hay usuario en localStorage pero hay token, intentar obtener el usuario
+    if (!userData && AuthService.getToken()) {
+      try {
+        // Opcional: Hacer una solicitud para validar el token y obtener datos actualizados
+        const response = await axios.get('/api/current-user');
+        if (response.data.success && response.data.user) {
+          setUser(response.data.user);
+          localStorage.setItem('user', JSON.stringify(response.data.user));
+        }
+      } catch (err) {
+        // Si hay un error, probablemente el token es inválido
+        AuthService.logout();
+      }
     }
-  };
-
-  // Cargar usuario al iniciar
-  useEffect(() => {
-    loadUser();
-  }, []);
-
-  // Manejador de logout para actualizar el estado
-  const handleLogout = () => {
+  } catch (error) {
+    console.error('Error cargando usuario:', error);
     setUser(null);
-  };
+  } finally {
+    setLoading(false);
+  }
+};
+
+// Manejador de logout para actualizar el estado
+const handleLogout = () => {
+  AuthService.logout();
+  setUser(null);
+};
 
   return (
     <Router>
