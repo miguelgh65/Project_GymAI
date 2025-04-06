@@ -2,25 +2,63 @@
 import re
 
 import requests
-from config import BASE_URL
+from config import BASE_URL, WHITELIST_PATH # Import WHITELIST_PATH if needed elsewhere, or remove if unused
 from telebot.types import Message
+from .base_handlers import (
+    check_whitelist,
+    log_to_console,
+    get_telegram_id # Correct import already present
+)
 
-from .base_handlers import check_whitelist, get_chat_id, log_to_console
 
 
 def register_auth_handlers(bot):
     """
     Registra los handlers relacionados con autenticación y vinculación de cuentas.
-    
+
     Args:
         bot: Instancia del bot de Telegram
     """
+    @bot.message_handler(commands=["debug"])
+    def debug_info(message: Message) -> None:
+        chat_id = message.chat.id
+        username = message.from_user.username if message.from_user else "N/A"
+
+        # You might need to import WHITELIST_PATH in this function's scope or pass it if needed
+        # For simplicity, assuming WHITELIST_PATH is accessible or defined globally in this file/module if used.
+        # Example: from config import WHITELIST_PATH if not imported at the top
+        try:
+            with open(WHITELIST_PATH, 'r') as f:
+                whitelist_content = f.read().strip()
+        except FileNotFoundError:
+            whitelist_content = "Whitelist file not found."
+        except Exception as e:
+            whitelist_content = f"Error reading whitelist: {e}"
+
+
+        debug_text = (
+            f"🤖 Debug Information:\n"
+            f"Chat ID: `{chat_id}`\n"
+            f"Username: @{username}\n"
+            f"First Name: {message.from_user.first_name if message.from_user else 'N/A'}\n"
+            f"Last Name: {message.from_user.last_name if message.from_user else 'N/A'}\n"
+            f"Whitelist contents: {whitelist_content}" # Display content read from file
+        )
+        bot.send_message(chat_id, debug_text, parse_mode="Markdown")
+
     # --- Comando /start: Mensaje de bienvenida al estilo Ronnie Coleman.
     @bot.message_handler(commands=["start"])
     def send_welcome(message: Message) -> None:
-        chat_id = get_chat_id(message)
+        print("🔔 COMANDO /start RECIBIDO") # Añade este print directo
+        # Uses the correctly imported get_telegram_id
+        chat_id = get_telegram_id(message)
+        print(f"Chat ID: {chat_id}") # Añade este print
+        log_to_console(f"Comando /start recibido de usuario {chat_id}", "INPUT")
+
         if not check_whitelist(message, bot):
+            print(f"❌ Usuario {chat_id} no está en whitelist") # Añade este print
             return
+
         welcome_text = (
             "¡Yeah buddy! Bienvenido a tu Bot de Gym, donde cada sesión es 'light weight, baby'!\n"
             "Usa /help para ver los comandos disponibles y saber cómo enviar tus ejercicios."
@@ -31,9 +69,12 @@ def register_auth_handlers(bot):
     # --- Comando /help: Muestra los comandos disponibles y cómo enviar ejercicios.
     @bot.message_handler(commands=["help"])
     def send_help(message: Message) -> None:
-        chat_id = get_chat_id(message)
+        # Use get_telegram_id instead of get_chat_id - Correct function is used here
+        chat_id = get_telegram_id(message)
+
         if not check_whitelist(message, bot):
             return
+
         help_text = (
             "¡Yeah buddy! Aquí van los comandos:\n"
             "/toca - Ver qué ejercicios tocan hoy según tu rutina\n"
@@ -54,12 +95,13 @@ def register_auth_handlers(bot):
 
     # --- Función para procesar el código de vinculación ---
     def process_link_code(message: Message) -> None:
-        chat_id = str(message.chat.id)  # Usar el ID de Telegram directamente para la vinculación
+        # Use get_telegram_id to get the chat_id for sending messages
+        chat_id = get_telegram_id(message)
         if not check_whitelist(message, bot):
             return
 
         code = message.text.strip().upper()
-        telegram_id = chat_id
+        telegram_id = str(chat_id) # Use the chat_id as the telegram_id for the API call
 
         # Validar formato del código (6 caracteres alfanuméricos)
         if not re.match(r"^[A-Z0-9]{6}$", code):
@@ -76,10 +118,16 @@ def register_auth_handlers(bot):
         # Llamar a la API para verificar el código
         url = f"{BASE_URL}/api/verify-link-code"
         try:
+            # Include the telegram_id in the payload
+            payload = {"code": code, "telegram_id": telegram_id}
+            # Get headers if needed, assuming ApiClient or similar defines them
+            # headers = ApiClient.get_headers() # Example if using an ApiClient class
+            headers = {"Content-Type": "application/json"} # Simple header
+
             response = requests.post(
                 url,
-                json={"code": code, "telegram_id": telegram_id},
-                headers={"Content-Type": "application/json"},
+                json=payload,
+                headers=headers, # Pass headers if required by your API
             )
 
             if response.status_code == 200:
@@ -92,31 +140,44 @@ def register_auth_handlers(bot):
                         "Tus entrenamientos se sincronizarán automáticamente entre ambas plataformas.",
                         parse_mode="Markdown",
                     )
+                    log_to_console(f"Cuentas vinculadas para Telegram ID {telegram_id}", "SUCCESS")
                 else:
                     bot.send_message(
                         chat_id,
                         f"❌ Error: {data.get('message', 'Código inválido o expirado')}.\n"
                         "Por favor, genera un nuevo código en la web e inténtalo de nuevo con /vincular",
                     )
+                    log_to_console(f"Fallo vinculación para Telegram ID {telegram_id}: {data.get('message', 'Código inválido')}", "WARNING")
             else:
+                 # Log the status code and response text for debugging
+                log_to_console(f"Error en API /verify-link-code: {response.status_code} - {response.text}", "ERROR")
                 bot.send_message(
                     chat_id,
-                    "❌ Error al verificar el código. Por favor, intenta nuevamente.",
+                    f"❌ Error al verificar el código ({response.status_code}). Por favor, intenta nuevamente.",
                 )
-        except Exception as e:
+        except requests.exceptions.RequestException as e: # Catch specific request errors
             bot.send_message(
                 chat_id,
-                "❌ Error al conectar con el servidor. Por favor, intenta más tarde.",
+                "❌ Error de conexión al verificar el código. Por favor, intenta más tarde.",
             )
-            log_to_console(f"Error en verificación de código: {str(e)}", "ERROR")
+            log_to_console(f"Error de conexión en verificación de código: {str(e)}", "ERROR")
+        except Exception as e: # Catch any other unexpected errors
+            bot.send_message(
+                chat_id,
+                "❌ Ocurrió un error inesperado. Por favor, intenta más tarde.",
+            )
+            log_to_console(f"Error inesperado en process_link_code: {str(e)}", "ERROR")
+
 
     # Comando /vincular
     @bot.message_handler(commands=["vincular"])
     def link_account_command(message: Message) -> None:
-        chat_id = str(message.chat.id)  # Usar el ID de Telegram directamente para la vinculación
+        # Use get_telegram_id to get chat_id
+        chat_id = get_telegram_id(message)
         if not check_whitelist(message, bot):
             return
 
+        log_to_console(f"Comando /vincular recibido de usuario {chat_id}", "INPUT")
         bot.send_message(
             chat_id,
             "🔗 *Vincular con cuenta web*\n\n"

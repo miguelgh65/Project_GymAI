@@ -59,7 +59,7 @@ def log_to_console(message, level="INFO"):
     
     print(formatted_message, flush=True)
 
-def send_message_split(bot, chat_id, text):
+def send_message_split(bot, chat_id, text, parse_mode=None):
     """Envía el mensaje en fragmentos si excede el límite permitido."""
     if not text:
         log_to_console(f"Intento de enviar mensaje vacío a {chat_id}", "WARNING")
@@ -72,7 +72,7 @@ def send_message_split(bot, chat_id, text):
     # Dividir y enviar el mensaje en fragmentos
     for i in range(0, len(text), MAX_MESSAGE_LENGTH):
         fragment = text[i : i + MAX_MESSAGE_LENGTH]
-        bot.send_message(chat_id, fragment)
+        bot.send_message(chat_id, fragment, parse_mode=parse_mode)
         log_to_console(f"Fragmento {i//MAX_MESSAGE_LENGTH + 1} enviado a {chat_id}", "INFO")
 
 def format_logs(logs):

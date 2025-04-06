@@ -9,6 +9,7 @@ import Chatbot from './components/Chatbot';
 import TodayRoutine from './components/TodayRoutine';
 import WeeklyRoutine from './components/WeeklyRoutine';
 import AuthService from './services/AuthService';
+import Dashboard from './components/Dashboard/Dashboard';
 import { Box, CircularProgress, Typography } from '@mui/material';
 
 function AppWrapper() {
@@ -119,8 +120,7 @@ function AppWrapper() {
             <Route path="/chatbot" element={<Chatbot user={user} />} />
             <Route path="/rutina_hoy" element={<TodayRoutine user={user} />} />
             <Route path="/rutina" element={<WeeklyRoutine user={user} />} />
-            
-            {/* Ruta de fallback */}
+            <Route path="/dashboard" element={<Dashboard user={user} />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Box>

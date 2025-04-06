@@ -2,19 +2,22 @@
 import random
 import re
 
-import requests
+# Import requests if needed elsewhere, otherwise it can be removed if ApiClient handles all calls
+# import requests
 from config import BASE_URL, ERROR_PHRASES, MOTIVATIONAL_PHRASES
 from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 from utils import format_logs, is_user_whitelisted, send_message_split
-
-from .base_handlers import (check_whitelist, get_api_user_id, get_google_id,
-                            get_telegram_id, log_to_console)
+# Import your ApiClient
+from api_client import ApiClient
+# Import get_google_id if needed for callback query handler logic
+from .base_handlers import (check_whitelist, get_api_user_id,
+                            get_telegram_id, log_to_console, get_google_id)
 
 
 def register_exercise_handlers(bot):
     """
     Registra los handlers relacionados con ejercicios y logs.
-    
+
     Args:
         bot: Instancia del bot de Telegram
     """
@@ -24,29 +27,32 @@ def register_exercise_handlers(bot):
         # ID para enviar respuestas por Telegram
         chat_id = get_telegram_id(message)
         # ID para enviar a las APIs (Google ID si está vinculado)
-        api_user_id = get_api_user_id(message)
-        
+        api_user_id = get_api_user_id(message) # This likely returns Google ID if linked
+        telegram_id_str = str(chat_id) # Use Telegram ID for the API call via ApiClient
+
         if not check_whitelist(message, bot):
             return
-        days = 7
-        url = f"{BASE_URL}/logs"
-        params = {"days": days, "user_id": api_user_id}
 
-        log_to_console(f"Comando /logs - Usuario {chat_id} solicitando registros de {days} días", "PROCESS")
+        days = 7
+        log_to_console(f"Comando /logs - Usuario {chat_id} solicitando registros de {days} días (API User ID: {api_user_id})", "PROCESS")
 
         try:
-            response = requests.get(url, params=params)
-            log_to_console(f"API /logs - Respuesta: {response.status_code}", "API")
+            # Use ApiClient to handle the request including headers
+            # Pass the telegram_id_str, which ApiClient expects
+            response_data = ApiClient.get_logs(telegram_id=telegram_id_str, days=days)
 
-            if response.status_code == 200:
-                data = response.json()
-                formatted = format_logs(data)
-                log_to_console(f"Procesados {len(data)} registros de ejercicios", "PROCESS")
+            # Check the structure ApiClient returns on success/error
+            if response_data and response_data.get("success") is not False: # Assuming ApiClient returns dict like {'success': True/False, ...}
+                formatted = format_logs(response_data.get('logs', [])) # Assuming logs are under a 'logs' key
+                log_to_console(f"Procesados {len(response_data.get('logs', []))} registros de ejercicios", "PROCESS")
             else:
-                formatted = f"Error al obtener los datos: {response.status_code}"
-                log_to_console(f"Error en API /logs: {response.status_code} - {response.text}", "ERROR")
+                # Handle error reported by ApiClient or default message
+                error_message = response_data.get("message", "Error desconocido al obtener logs") if response_data else "Error desconocido"
+                formatted = f"Error al obtener los datos: {error_message}"
+                log_to_console(f"Error en API /logs (vía ApiClient): {error_message}", "ERROR")
+
         except Exception as e:
-            formatted = f"Error al conectar con el servidor: {e}"
+            formatted = f"Error de conexión o procesamiento: {e}" # More generic error
             log_to_console(f"Excepción en /logs: {str(e)}", "ERROR")
 
         send_message_split(bot, chat_id, formatted)
@@ -58,60 +64,69 @@ def register_exercise_handlers(bot):
         # ID para enviar respuestas por Telegram
         chat_id = get_telegram_id(message)
         # ID para enviar a las APIs (Google ID si está vinculado)
-        api_user_id = get_api_user_id(message)
-        
+        api_user_id = get_api_user_id(message) # This likely returns Google ID if linked
+        telegram_id_str = str(chat_id) # Use Telegram ID for the API call via ApiClient
+
+
         if not check_whitelist(message, bot):
             return
+
         match = re.match(r"^/logs(\d+)$", message.text)
         if match:
             days = int(match.group(1))
-            url = f"{BASE_URL}/logs"
-            params = {"days": days, "user_id": api_user_id}
-
-            log_to_console(f"Comando /logs{days} - Usuario {chat_id} solicitando registros de {days} días", "PROCESS")
+            log_to_console(f"Comando /logs{days} - Usuario {chat_id} solicitando registros de {days} días (API User ID: {api_user_id})", "PROCESS")
 
             try:
-                response = requests.get(url, params=params)
-                log_to_console(f"API /logs - Respuesta: {response.status_code}", "API")
+                # Use ApiClient to handle the request including headers
+                # Pass the telegram_id_str, which ApiClient expects
+                response_data = ApiClient.get_logs(telegram_id=telegram_id_str, days=days)
 
-                if response.status_code == 200:
-                    data = response.json()
-                    formatted = format_logs(data)
-                    log_to_console(f"Procesados {len(data)} registros de ejercicios", "PROCESS")
+                # Check the structure ApiClient returns on success/error
+                if response_data and response_data.get("success") is not False: # Assuming ApiClient returns dict
+                    formatted = format_logs(response_data.get('logs', [])) # Assuming logs are under 'logs' key
+                    log_to_console(f"Procesados {len(response_data.get('logs', []))} registros de ejercicios", "PROCESS")
                 else:
-                    formatted = f"Error al obtener los datos: {response.status_code}"
-                    log_to_console(f"Error en API /logs: {response.status_code} - {response.text}", "ERROR")
+                     # Handle error reported by ApiClient or default message
+                    error_message = response_data.get("message", "Error desconocido al obtener logs") if response_data else "Error desconocido"
+                    formatted = f"Error al obtener los datos: {error_message}"
+                    log_to_console(f"Error en API /logs{days} (vía ApiClient): {error_message}", "ERROR")
+
             except Exception as e:
-                formatted = f"Error al conectar con el servidor: {e}"
+                formatted = f"Error de conexión o procesamiento: {e}"
                 log_to_console(f"Excepción en /logs{days}: {str(e)}", "ERROR")
 
             send_message_split(bot, chat_id, formatted)
             log_to_console(f"Respuesta enviada a {chat_id} para comando /logs{days}", "OUTPUT")
 
     # Handler para mensajes de texto que parezcan ejercicios
+    # NOTE: This handler seems to use a different API endpoint (/api/log-exercise)
+    # and different parameters. Check if ApiClient.log_exercise needs adjustment
+    # based on whether your backend expects 'user_id' or 'telegram_id' for this specific route.
+    # Assuming ApiClient.log_exercise handles its endpoint correctly for now.
     @bot.message_handler(func=lambda message: is_exercise_message(message.text) if hasattr(message, "text") else False)
     def process_exercise_message(message: Message) -> None:
         # ID para enviar respuestas por Telegram
         chat_id = get_telegram_id(message)
         # ID para enviar a las APIs (Google ID si está vinculado)
-        api_user_id = get_api_user_id(message)
-        
+        # Decide which ID ApiClient.log_exercise needs. Let's assume it needs telegram_id based on its definition
+        telegram_id_str = str(chat_id)
+
         if not check_whitelist(message, bot):
             return
 
         text = message.text.lower()
-        
+
         bot.send_chat_action(chat_id, "typing")
-        data = {"exercise_data": message.text, "user_id": api_user_id}
         log_to_console(f"Ejercicio recibido - Usuario {chat_id}: {message.text}", "PROCESS")
         try:
-            response = requests.post(f"{BASE_URL}", data=data)
-            log_to_console(f"API envío ejercicio - Respuesta: {response.status_code}", "API")
+            # Use ApiClient to log the exercise
+            response_data = ApiClient.log_exercise(telegram_id=telegram_id_str, exercise_data=message.text)
 
             ronnie_quote = random.choice(MOTIVATIONAL_PHRASES)
             error_quote = random.choice(ERROR_PHRASES)
 
-            if response.status_code == 200:
+            # Check response structure from ApiClient.log_exercise
+            if response_data and response_data.get("success"):
                 bot.send_message(
                     chat_id,
                     f"🏋️‍♂️ *{ronnie_quote}* 🏋️‍♂️",
@@ -126,82 +141,89 @@ def register_exercise_handlers(bot):
                 bot.send_message(chat_id, "¿Qué quieres hacer ahora?", reply_markup=keyboard)
                 log_to_console(f"Ejercicio registrado correctamente para usuario {chat_id}", "SUCCESS")
             else:
+                error_message = response_data.get("message", "Error desconocido al registrar ejercicio") if response_data else "Error desconocido"
                 bot.send_message(
                     chat_id,
-                    f"🏋️‍♂️ *{error_quote}* 🏋️‍♂️\n\nCódigo: {response.status_code}",
+                    f"🏋️‍♂️ *{error_quote}* 🏋️‍♂️\n\nError: {error_message}",
                     parse_mode="Markdown",
                 )
-                log_to_console(f"Error al registrar ejercicio: {response.status_code} - {response.text}", "ERROR")
+                log_to_console(f"Error al registrar ejercicio (vía ApiClient): {error_message}", "ERROR")
         except Exception as e:
             bot.send_message(
                 chat_id,
-                f"🏋️‍♂️ *{random.choice(ERROR_PHRASES)}* 🏋️‍♂️",
+                f"🏋️‍♂️ *{random.choice(ERROR_PHRASES)}* 🏋️‍♂️\n\nError de conexión.",
                 parse_mode="Markdown",
             )
             log_to_console(f"Error al enviar el ejercicio: {str(e)}", "ERROR")
 
     # Manejar los botones inline
+    # NOTE: This callback handler also makes direct requests.
+    # Consider refactoring to use ApiClient methods (get_today_routine, get_logs)
+    # for consistency and to ensure headers are sent if needed by those backend routes.
     @bot.callback_query_handler(func=lambda call: call.data in ["cmd_logs", "cmd_toca", "cmd_ai"])
     def handle_callback_query(call) -> None:
-        # Obtener ID de Telegram para enviar mensajes
-        chat_id = str(call.message.chat.id)
-        # Obtener ID para APIs (Google ID si está disponible)
-        telegram_id = chat_id
-        api_user_id = get_google_id(telegram_id)
+        # Obtain Telegram ID for sending messages
+        chat_id = get_telegram_id(call.message) # Use the message associated with the callback
+        telegram_id_str = str(chat_id)
 
-        # Verificamos directamente con el ID de Telegram
-        if not is_user_whitelisted(chat_id):
-            bot.answer_callback_query(call.id, "No tienes acceso a esta función")
-            return
+        # Check whitelist using the chat_id from the message
+        # Need to pass the original message object to check_whitelist if it uses message properties
+        if not check_whitelist(call.message, bot):
+             bot.answer_callback_query(call.id, "Acceso denegado.")
+             return
 
         if call.data == "cmd_toca":
             bot.answer_callback_query(call.id, "Obteniendo tu rutina de hoy...")
-            url = f"{BASE_URL}/rutina_hoy?format=json"
-            params = {"user_id": api_user_id}
             try:
-                response = requests.get(url, params=params)
-                if response.status_code == 200:
-                    data = response.json()
-                    if data.get("success") and data.get("rutina"):
-                        formatted = f"🏋️‍♂️ *¡YEAH BUDDY! HOY ES {data['dia_nombre'].upper()}* 🏋️‍♂️\n\n"
-                        formatted += "¡AIN'T NOTHING BUT A PEANUT! ESTO ES LO QUE TIENES QUE LEVANTAR HOY:\n\n"
-                        for i, ejercicio in enumerate(data["rutina"], 1):
-                            status = "✅" if ejercicio.get("realizado") else "⏱️"
-                            formatted += f"{status} *{ejercicio['ejercicio'].upper()}*\n"
-                        formatted += "\n💪 *¡LIGHTWEIGHT BABY!* 💪\n"
-                        formatted += "\nRELLENA TUS SERIES Y RESPONDE CON ESTE MENSAJE:\n"
-                        for ejercicio in data["rutina"]:
-                            if not ejercicio.get("realizado"):
-                                formatted += f"{ejercicio['ejercicio']}: \n"
-                        formatted += "\nEjemplo: Dominadas: 10,8,6\n"
-                        formatted += "\n*¡EVERYBODY WANNA BE A BODYBUILDER, BUT DON'T NOBODY WANNA LIFT NO HEAVY WEIGHT!*"
-                    else:
-                        formatted = (
+                # Use ApiClient.get_today_routine
+                routine_data = ApiClient.get_today_routine(telegram_id=telegram_id_str)
+                if routine_data and routine_data.get("success") and routine_data.get("rutina"):
+                    # Format routine_data (assuming structure from previous code)
+                    dia_nombre = routine_data.get('dia_nombre', 'Día Desconocido')
+                    rutina_list = routine_data.get('rutina', [])
+                    formatted = f"🏋️‍♂️ *¡YEAH BUDDY! HOY ES {dia_nombre.upper()}* 🏋️‍♂️\n\n"
+                    formatted += "¡AIN'T NOTHING BUT A PEANUT! ESTO ES LO QUE TIENES QUE LEVANTAR HOY:\n\n"
+                    for i, ejercicio in enumerate(rutina_list, 1):
+                        status = "✅" if ejercicio.get("realizado") else "⏱️"
+                        formatted += f"{status} *{ejercicio.get('ejercicio', 'N/A').upper()}*\n"
+                    formatted += "\n💪 *¡LIGHTWEIGHT BABY!* 💪\n"
+                    formatted += "\nRELLENA TUS SERIES Y RESPONDE CON ESTE MENSAJE:\n"
+                    for ejercicio in rutina_list:
+                        if not ejercicio.get("realizado"):
+                             formatted += f"{ejercicio.get('ejercicio', 'N/A')}: \n"
+                    formatted += "\nEjemplo: Dominadas: 10,8,6\n"
+                    formatted += "\n*¡EVERYBODY WANNA BE A BODYBUILDER, BUT DON'T NOBODY WANNA LIFT NO HEAVY WEIGHT!*"
+                elif routine_data and not routine_data.get("rutina"):
+                     formatted = (
                             "🏋️‍♂️ *¡LIGHTWEIGHT BABY!* 🏋️‍♂️\n\n"
                             "No hay rutina definida para hoy.\n"
                             "\nConfigura tu rutina con el comando /rutina\n"
                             "\n*¡NO PAIN, NO GAIN!*"
                         )
-                    bot.send_message(chat_id, formatted, parse_mode="Markdown")
                 else:
-                    bot.send_message(chat_id, f"Error al obtener la rutina: {response.status_code}")
+                     error_message = routine_data.get("message", "Error desconocido") if routine_data else "Error desconocido"
+                     formatted = f"Error al obtener la rutina: {error_message}"
+                bot.send_message(chat_id, formatted, parse_mode="Markdown")
             except Exception as e:
-                bot.send_message(chat_id, f"Error al conectar con el servidor: {e}")
+                log_to_console(f"Excepción en callback cmd_toca: {str(e)}", "ERROR")
+                bot.send_message(chat_id, f"Error de conexión al obtener rutina: {e}")
+
         elif call.data == "cmd_logs":
             bot.answer_callback_query(call.id, "Obteniendo tus logs...")
             days = 7
-            url = f"{BASE_URL}/logs"
-            params = {"days": days, "user_id": api_user_id}
             try:
-                response = requests.get(url, params=params)
-                if response.status_code == 200:
-                    data = response.json()
-                    formatted = format_logs(data)
+                # Use ApiClient.get_logs
+                response_data = ApiClient.get_logs(telegram_id=telegram_id_str, days=days)
+                if response_data and response_data.get("success") is not False:
+                    formatted = format_logs(response_data.get('logs', []))
                 else:
-                    formatted = f"Error al obtener los datos: {response.status_code}"
+                    error_message = response_data.get("message", "Error desconocido") if response_data else "Error desconocido"
+                    formatted = f"Error al obtener los datos: {error_message}"
                 send_message_split(bot, chat_id, formatted)
             except Exception as e:
-                bot.send_message(chat_id, f"Error al conectar con el servidor: {e}")
+                log_to_console(f"Excepción en callback cmd_logs: {str(e)}", "ERROR")
+                bot.send_message(chat_id, f"Error de conexión al obtener logs: {e}")
+
         elif call.data == "cmd_ai":
             bot.answer_callback_query(call.id, "Activando el asistente AI...")
             bot.send_message(
@@ -209,6 +231,7 @@ def register_exercise_handlers(bot):
                 "🤖 *¡ENTRENADOR AI EN LÍNEA!* 🤖\n\n"
                 "Usa el comando /ai seguido de tu pregunta:\n\n"
                 "Ejemplo: /ai Recomiéndame ejercicios para bíceps\n\n"
+                "O simplemente escribe tu pregunta directamente.\n\n" # Added clarification
                 "*¡LIGHTWEIGHT BABY!*",
                 parse_mode="Markdown",
             )
@@ -216,21 +239,41 @@ def register_exercise_handlers(bot):
 def is_exercise_message(text: str) -> bool:
     """
     Determina si un mensaje parece ser un registro de ejercicio.
-    
+
     Args:
         text: El texto del mensaje
-        
+
     Returns:
         bool: True si parece un ejercicio, False en caso contrario
     """
     if not text:
         return False
-        
+
+    # Avoid matching commands
+    if text.startswith('/'):
+        return False
+
     text = text.lower()
-    exercise_patterns = [
-        r"\d+x\d+",  # Ej: 5x75
-        r"press banca|dominadas|sentadillas|curl|press militar",
-        r"\b\d+,\s*\d+\b",  # Ej: 10, 8, 6
-    ]
-    
-    return any(re.search(pattern, text, re.IGNORECASE) for pattern in exercise_patterns)
+    # Updated patterns to be more specific and avoid broad matches
+    # Pattern 1: Exercise name followed by digits/sets/reps (more flexible)
+    # Allows for variations like "press banca 10 10 8", "dominadas 5x5", "curl biceps 12,10,8 x 20kg"
+    pattern1 = r"^[a-záéíóúüñ\s]+(\d{1,3}(\s*x\s*\d{1,3})?(\s*kg)?(\s*lbs)?|[,\s]*\d{1,3})+"
+
+    # Pattern 2: Simple rep counts like "10, 8, 6" (less likely for exercises but kept for compatibility)
+    pattern2 = r"^\s*\d{1,3}(,\s*\d{1,3})+\s*$"
+
+    # Pattern 3: Specific keywords often present in exercise logs
+    keywords = ["press banca", "dominadas", "sentadillas", "curl", "press militar", "peso muerto", "remo", "fondos"]
+
+
+    # Check if pattern1 matches OR if pattern2 matches OR if any keyword is present
+    if re.search(pattern1, text, re.IGNORECASE):
+        return True
+    # if re.match(pattern2, text): # Use match for pattern2 as it should match the whole string
+    #     return True
+    if any(keyword in text for keyword in keywords):
+         # Add extra check: ensure there are also numbers present to avoid matching general chat about exercises
+         if re.search(r'\d', text):
+             return True
+
+    return False

@@ -6,7 +6,7 @@ from typing import Optional, List, Callable, Dict, Any, Union
 import json
 
 from fastapi import Request, Response, status
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 # NO importar verify_token aquí para evitar el error circular
@@ -26,7 +26,26 @@ PUBLIC_PATHS = [
     "/api/verify-link-code", # Verificación de código para vincular Telegram
     "/fitbit-callback", # Callback de Fitbit OAuth
     "/google-callback", # Callback de Google OAuth
+    # Rutas para el bot de Telegram
+    "/api/logs",
+    "/api/rutina",
+    "/api/rutina_hoy",
+    "/api/log-exercise",
 ]
+def validate_telegram_token(request: Request):
+    telegram_token = request.headers.get("X-Telegram-Bot-Token")
+    expected_token = os.getenv("TELEGRAM_BOT_API_TOKEN")
+    
+    if telegram_token and telegram_token == expected_token:
+        # Si el token coincide, considéralo como una solicitud válida del bot
+        return {
+            "id": -1,  # ID especial para bot
+            "is_telegram_bot": True  # Añadí is_telegram_bot en lugar de telegram_bot para consistencia
+        }
+    return None
+
+# Token secreto para autenticar solicitudes desde el bot de Telegram
+TELEGRAM_BOT_API_TOKEN = os.getenv("TELEGRAM_BOT_API_TOKEN")
 
 class AuthenticationMiddleware(BaseHTTPMiddleware):
     """Middleware para verificar autenticación del usuario en cada solicitud."""
@@ -77,14 +96,28 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         return response
 
 async def get_current_user(request: Request) -> Optional[Dict[str, Any]]:
-    """
-    Dependencia para obtener el usuario actual desde el token JWT.
-    Retorna None si no hay usuario autenticado.
-    """
+    # Verificar si es una solicitud del bot de Telegram
+    telegram_token = request.headers.get("X-Telegram-Bot-Token")
+    expected_telegram_token = os.getenv("TELEGRAM_BOT_API_TOKEN")
     
+    logger.info(f"Token recibido: {telegram_token}")
+    logger.info(f"Token esperado: {expected_telegram_token}")
+    
+    if telegram_token and telegram_token == expected_telegram_token:
+        logger.info("✅ Autenticación con token de Telegram exitosa")
+        return {
+            "id": -1,  # ID especial para bot
+            "google_id": None,
+            "display_name": "Telegram Bot",
+            "is_telegram_bot": True,
+            "email": "telegram_bot@system.local"
+        }
+    
+    # Resto de la lógica de autenticación...
+
     # Primero intentar obtener user_id del estado (establecido por el middleware)
     user_id = getattr(request.state, "user_id", None)
-    
+
     # Si no está en el estado, intentar extraerlo del token
     if not user_id:
         auth_header = request.headers.get("Authorization")
@@ -98,11 +131,11 @@ async def get_current_user(request: Request) -> Optional[Dict[str, Any]]:
                     user_id = payload.get("sub")
             except ImportError as e:
                 logger.error(f"Error importando verify_token: {e}")
-    
+
     if not user_id:
         logger.debug(f"❌ No se encontró token JWT válido o user_id en el estado de la petición.")
         return None
-    
+
     try:
         # Importar get_user_by_id localmente para evitar importaciones circulares
         from .services.auth_service import get_user_by_id

@@ -29,7 +29,7 @@ const theme = createTheme({
       main: '#4caf50',
     },
     background: {
-      default: '#f5f5f5',
+      default: 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)',
       paper: '#fff',
     },
   },

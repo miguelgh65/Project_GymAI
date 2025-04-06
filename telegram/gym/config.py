@@ -15,7 +15,29 @@ DB_CONFIG = {
     'port': os.getenv('DB_PORT', '5432'),
     'options': f'-c search_path=gym,public'  # Añadir búsqueda en esquema 'gym'
 }
+# Configuración de colores para la consola
+COLORS = {
+    "RESET": "\033[0m",
+    "RED": "\033[91m",
+    "GREEN": "\033[92m",
+    "YELLOW": "\033[93m",
+    "BLUE": "\033[94m",
+    "PURPLE": "\033[95m",
+    "CYAN": "\033[96m",
+    "WHITE": "\033[97m"
+}
 
+LOG_COLORS = {
+    "ERROR": COLORS["RED"],
+    "WARNING": COLORS["YELLOW"],
+    "INFO": COLORS["GREEN"],
+    "INPUT": COLORS["CYAN"],
+    "OUTPUT": COLORS["PURPLE"],
+    "API": COLORS["BLUE"],
+    "PROCESS": COLORS["WHITE"],
+    "SUCCESS": COLORS["GREEN"],
+    "ACCESS_DENIED": COLORS["RED"]
+}
 # URL base para la API
 BASE_URL = os.getenv('API_BASE_URL', "http://localhost:5050")
 

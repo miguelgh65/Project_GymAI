@@ -1,138 +1,218 @@
 # telegram/gym/handlers/base_handlers.py
 import os
-import sys
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
+import logging
 import psycopg2
-from config import DB_CONFIG, DEFAULT_USER_ID, WHITELIST_PATH
-from telebot.types import Message
-from utils import (is_user_whitelisted, log_denied_access, log_to_console,
-                   send_message_split)
+import requests
+from config import LOG_COLORS, WHITELIST_PATH, PETICIONES_PATH, DB_CONFIG
+from datetime import datetime
+from dotenv import load_dotenv
+from config import COLORS
 
+# Cargar variables de entorno
+load_dotenv()
 
-def get_google_id(telegram_id: str) -> str:
+# Obtener el token de autenticación para el bot
+TELEGRAM_BOT_API_TOKEN = os.getenv('TELEGRAM_BOT_API_TOKEN')
+if not TELEGRAM_BOT_API_TOKEN:
+    logging.warning("⚠️ TELEGRAM_BOT_API_TOKEN no está configurado en el archivo .env")
+
+def get_google_id(telegram_id):
     """
-    Busca el ID de Google asociado con el ID de Telegram.
-    Este ID se usa para peticiones a la API y operaciones de base de datos.
+    Retrieves the Google ID for a given Telegram ID by querying the users table.
     
     Args:
-        telegram_id: ID de Telegram del usuario
-        
+        telegram_id (str): Telegram user ID
+    
     Returns:
-        str: ID de Google si existe, o ID de Telegram como fallback
+        str: Google ID or Telegram ID if no match found
     """
     try:
-        # Intentar obtener el Google ID asociado a este Telegram ID
+        # Establish a connection to the database
         conn = psycopg2.connect(**DB_CONFIG)
-        cur = conn.cursor()
+        cursor = conn.cursor()
+
+        # Query to find the Google ID for the given Telegram ID
+        query = """
+        SELECT google_id 
+        FROM gym.users 
+        WHERE telegram_id = %s
+        """
         
-        # Buscar el usuario por su Telegram ID
-        cur.execute("SELECT google_id FROM users WHERE telegram_id = %s", (telegram_id,))
-        result = cur.fetchone()
+        cursor.execute(query, (str(telegram_id),))
         
-        cur.close()
+        # Fetch the result
+        result = cursor.fetchone()
+        
+        # Close database connections
+        cursor.close()
         conn.close()
-        
-        if result and result[0]:
-            # Si encontramos un Google ID, lo usamos
-            google_id = result[0]
-            log_to_console(f"Encontrado Google ID ({google_id}) para Telegram ID {telegram_id}", "INFO")
-            return google_id
-        else:
-            # Si no encontramos un Google ID, usamos el Telegram ID
-            log_to_console(f"No se encontró Google ID para Telegram ID {telegram_id}", "WARNING")
-            return telegram_id
-                
-    except Exception as e:
-        log_to_console(f"Error al buscar Google ID para Telegram ID {telegram_id}: {e}", "ERROR")
-        return telegram_id
 
-def get_telegram_id(message: Message) -> str:
-    """
-    Obtiene el ID de Telegram del mensaje.
-    Este ID se usa para enviar mensajes a través de Telegram.
-    
-    Args:
-        message: Mensaje de Telegram
-        
-    Returns:
-        str: ID de Telegram
-    """
-    try:
-        return str(message.chat.id)
-    except AttributeError:
-        log_to_console("No se pudo obtener el Telegram ID del mensaje", "ERROR")
-        if hasattr(message, 'from_user') and message.from_user and message.from_user.id:
-            return str(message.from_user.id)
-        else:
-            return "unknown_user"
+        # Return Google ID if found, otherwise return Telegram ID
+        return result[0] if result else str(telegram_id)
 
-def get_chat_id(message: Message) -> str:
-    """
-    IMPORTANTE: Esta función debe usarse SOLO para enviar mensajes a Telegram.
-    Para operaciones con la API o base de datos, se debe obtener el Google ID.
-    
-    Args:
-        message: Mensaje de Telegram
-        
-    Returns:
-        str: ID de Telegram para enviar mensajes
-    """
-    return get_telegram_id(message)
-
-def get_api_user_id(message: Message) -> str:
-    """
-    Obtiene el ID de usuario para usar con las APIs y base de datos.
-    Primero intenta obtener el Google ID asociado, o usa el Telegram ID como fallback.
-    
-    Args:
-        message: Mensaje de Telegram
-        
-    Returns:
-        str: ID a usar con APIs (Google ID o Telegram ID como fallback)
-    """
-    telegram_id = get_telegram_id(message)
-    return get_google_id(telegram_id)
-
-def check_whitelist(message: Message, bot) -> bool:
-    """
-    Verifica si el usuario está en la lista blanca.
-    
-    Args:
-        message: Mensaje de Telegram
-        bot: Instancia del bot
-        
-    Returns:
-        bool: True si el usuario está en la lista blanca, False en caso contrario
-    """
-    # Obtener el Telegram ID para verificar la whitelist y enviar mensajes
-    chat_id = get_telegram_id(message)  
-    
-    if not is_user_whitelisted(chat_id):
-        denied_text = (
-            "¡Oh no, brother! No tienes acceso para levantar en este bot.\n"
-            "Ponte en contacto con el admin del bot para que te dé la autorización.\n"
-            "¡Let's get those gains, baby!"
-        )
-        bot.send_message(chat_id, denied_text)
-        log_denied_access(chat_id, message.text if hasattr(message, "text") else "Sin texto")
-        log_to_console(f"Acceso denegado para {chat_id}", "ACCESS_DENIED")
-        return False
-    return True
+    except (psycopg2.Error, Exception) as e:
+        # Log the error and return Telegram ID as fallback
+        log_to_console(f"Error retrieving Google ID: {str(e)}", "ERROR")
+        return str(telegram_id)
 
 def register_middleware(bot):
     """
-    Registra middleware global para el bot.
-    
-    Args:
-        bot: Instancia del bot de Telegram
+    Registra middleware para logging y autenticación
     """
-    @bot.middleware_handler(update_types=["message"])
-    def log_all_messages(bot_instance, message: Message):
-        """Middleware para registrar todos los mensajes entrantes"""
-        telegram_id = get_telegram_id(message)
-        google_id = get_google_id(telegram_id) if telegram_id != "unknown_user" else "unknown_user"
+    # Middleware de depuración y verificación de whitelist
+    @bot.middleware_handler(update_types=['message'])
+    def debug_whitelist_middleware(bot_instance, message):
+        try:
+            # Registro de depuración
+            print(f"🔍 Mensaje recibido: {message.text}")
+            print(f"👤 Usuario: {message.from_user.id}")
+            log_to_console(f"Mensaje recibido: {message.text} de usuario {message.from_user.id}")
+
+            # Verificación de whitelist
+            user_id = str(message.from_user.id)
+            
+            # Verificar contenido de whitelist
+            try:
+                with open(WHITELIST_PATH, "r") as f:
+                    whitelist_contents = f.read().strip().split('\n')
+                    whitelist_contents = [w.strip() for w in whitelist_contents]
+                
+                if user_id not in whitelist_contents:
+                    print(f"❌ Usuario {user_id} NO está en whitelist")
+                    log_denied_access(user_id, message.text)
+                    bot_instance.send_message(
+                        message.chat.id,
+                        f"🔒 Acceso denegado. Tu ID de Telegram es: {user_id}\n"
+                        "Contacta al administrador para obtener acceso."
+                    )
+                    return False
+                else:
+                    print(f"✅ Usuario {user_id} está en whitelist")
+                    return True
+            
+            except Exception as e:
+                log_to_console(f"Error al verificar whitelist: {e}", "ERROR")
+                return False
+
+        except Exception as e:
+            log_to_console(f"Error en middleware: {e}", "ERROR")
+            return False
+
+def get_telegram_id(message):
+    """Obtiene el ID de chat de Telegram del mensaje"""
+    return message.chat.id
+
+def get_api_user_id(message):
+    """
+    Obtiene el ID para usar en la API (Google ID si está vinculado,
+    de lo contrario, el ID de Telegram).
+    """
+    # Primero intentamos obtener el Google ID
+    google_id = get_google_id(message.chat.id)
+    
+    # Si no se encuentra el Google ID, usamos el ID de Telegram
+    return str(google_id)
+
+def get_telegram_headers():
+    """Devuelve las cabeceras necesarias para autenticarse como bot de Telegram."""
+    return {
+        'Content-Type': 'application/json',
+        'X-Telegram-Bot-Token': TELEGRAM_BOT_API_TOKEN
+    }
+
+def log_to_console(message, level="INFO"):
+    """
+    Registra un mensaje en la consola con formato y colores.
+    Args:
+        message: El mensaje a mostrar
+        level: Nivel del mensaje (ERROR, WARNING, INFO, etc.)
+    """
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Usar colores si están disponibles
+    if color_enabled():
+        color = LOG_COLORS.get(level, COLORS["RESET"])
+        formatted_message = f"{COLORS['YELLOW']}[{now}]{COLORS['RESET']} {color}[{level}]{COLORS['RESET']} {message}"
+    else:
+        formatted_message = f"[{now}] [{level}] {message}"
+    
+    print(formatted_message, flush=True)
+    # Añadir logging a archivo si es necesario
+    logging.info(message)
+
+def color_enabled():
+    """Comprueba si los colores en la consola están disponibles."""
+    return True  # Para desarrollo, siempre habilitar colores
+
+def is_user_whitelisted(user_id):
+    """
+    Verifica si el id del usuario (user_id) está en la whitelist.
+    Se asume que 'whitelist.txt' contiene un id por línea.
+    """
+    log_to_console(f"Verificando acceso para usuario {user_id}", "PROCESS")
+    
+    try:
+        if not os.path.exists(WHITELIST_PATH):
+            log_to_console(f"¡Archivo {WHITELIST_PATH} no encontrado!", "ERROR")
+            return False
+            
+        with open(WHITELIST_PATH, "r") as f:
+            whitelist = {line.strip() for line in f if line.strip()}
         
-        if hasattr(message, "text") and message.text:
-            log_to_console(f"MENSAJE RECIBIDO - Usuario {telegram_id} (Google ID: {google_id}): {message.text}", "INPUT")
+        is_allowed = str(user_id) in whitelist
+        log_to_console(f"Usuario {user_id} {'está' if is_allowed else 'NO está'} en la lista blanca", "INFO")
+        return is_allowed
+        
+    except Exception as e:
+        # Si ocurre algún error, se niega el acceso por seguridad.
+        log_to_console(f"Error al leer {WHITELIST_PATH}: {e}", "ERROR")
+        return False
+
+def log_denied_access(user_id, message_text):
+    """
+    Registra en 'peticiones.txt' el intento de acceso denegado con la fecha, id y texto del mensaje.
+    """
+    try:
+        with open(PETICIONES_PATH, "a") as f:
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            log_entry = f"{now} - Acceso denegado para usuario {user_id}: {message_text}\n"
+            f.write(log_entry)
+            log_to_console(f"Registro guardado en peticiones.txt", "INFO")
+    except Exception as e:
+        log_to_console(f"Error al registrar en peticiones.txt: {e}", "ERROR")
+
+def check_whitelist(message, bot):
+    """
+    Verifica si un usuario está en la whitelist y maneja el acceso
+    """
+    try:
+        # Imprimir información detallada del mensaje
+        print(f"🔍 Mensaje completo: {message}")
+        print(f"🆔 Chat ID: {message.chat.id}")
+        print(f"👤 Usuario: {message.from_user}")
+        
+        user_id = message.chat.id
+        print(f"🔍 Verificando whitelist para usuario {user_id}")
+        
+        # Verificar contenido de whitelist
+        with open(WHITELIST_PATH, "r") as f:
+            whitelist_contents = f.read().strip()
+            print(f"📋 Contenido de whitelist: '{whitelist_contents}'")
+        
+        # Convertir a cadena y comparar
+        is_allowed = str(user_id) in whitelist_contents.split('\n')
+        
+        if is_allowed:
+            print(f"✅ Usuario {user_id} está en whitelist")
+            return True
+        else:
+            print(f"❌ Usuario {user_id} NO está en whitelist")
+            bot.send_message(
+                user_id,
+                f"🔒 Acceso denegado. Tu ID de Telegram es: {user_id}\n"
+                "Contacta al administrador para obtener acceso."
+            )
+            return False
+    except Exception as e:
+        print(f"❌ Error en check_whitelist: {e}")
+        return False

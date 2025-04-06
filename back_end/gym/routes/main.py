@@ -68,14 +68,42 @@ async def log_exercise_endpoint(
         logger.warning("Intento de registro sin autenticación en /api/log-exercise")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no autenticado.")
 
-    # Determinar qué ID usar para la lógica de negocio (Google ID parece ser el principal)
-    user_id_for_logic = user.get('google_id')
+    # Verificar si es el bot de Telegram
+    is_telegram_bot = user.get('is_telegram_bot', False)
+    
+    # Determinar qué ID usar para la lógica de negocio
+    # Si es el bot de Telegram, buscar telegram_id en los parámetros de la solicitud
+    user_id_for_logic = None
+    
+    if is_telegram_bot:
+        # Obtener telegram_id desde la solicitud para el bot
+        try:
+            if "application/json" in request.headers.get("content-type", ""):
+                data = await request.json()
+                telegram_id = data.get('telegram_id')
+                if telegram_id:
+                    # Usar el ID de Telegram directamente o convertirlo al ID interno según tu lógica
+                    user_id_for_logic = str(telegram_id)
+                    logger.info(f"Procesando para telegram_id: {telegram_id}")
+            elif "application/x-www-form-urlencoded" in request.headers.get("content-type", "") or "multipart/form-data" in request.headers.get("content-type", ""):
+                form_data = await request.form()
+                telegram_id = form_data.get('telegram_id')
+                if telegram_id:
+                    user_id_for_logic = str(telegram_id)
+                    logger.info(f"Procesando para telegram_id (form): {telegram_id}")
+        except Exception as e:
+            logger.error(f"Error al obtener telegram_id: {e}")
+    else:
+        # Usuario normal (Google)
+        user_id_for_logic = user.get('google_id')
+    
+    # Fallback al ID interno si no se pudo determinar de otra manera
     if not user_id_for_logic:
-         # Fallback al ID interno si no hay Google ID (revisar si esto es correcto para tu lógica)
-         user_id_for_logic = str(user.get('id'))
-         if not user_id_for_logic:
-             logger.error(f"No se pudo determinar un ID válido para el usuario: {user}")
-             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="ID de usuario inválido.")
+        user_id_for_logic = str(user.get('id'))
+        
+    if not user_id_for_logic:
+        logger.error(f"No se pudo determinar un ID válido para el usuario: {user}")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="ID de usuario inválido.")
 
     logger.info(f"Procesando para user_id_for_logic: {user_id_for_logic}")
 
@@ -172,16 +200,34 @@ async def log_exercise_endpoint(
 async def get_logs_endpoint(
     request: Request,
     days: int = Query(7, ge=1, description="Número de días hacia atrás para obtener logs."),
+    telegram_id: str = Query(None, description="ID de Telegram para solicitudes del bot"),
     user = Depends(get_current_user)
 ):
     if not user:
         logger.warning("Intento de obtener logs sin autenticación")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no autenticado.")
 
-    user_id_for_logic = user.get('google_id')
+    # Verificar si es el bot de Telegram
+    is_telegram_bot = user.get('is_telegram_bot', False)
+    
+    # Determinar el ID del usuario según el contexto
+    user_id_for_logic = None
+    
+    if is_telegram_bot:
+        # Si es el bot de Telegram, usar el telegram_id proporcionado
+        if telegram_id:
+            user_id_for_logic = telegram_id
+            logger.info(f"Bot obteniendo logs para telegram_id: {telegram_id}")
+        else:
+            logger.error("Bot solicitó logs pero no proporcionó telegram_id")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Se requiere telegram_id para solicitudes del bot.")
+    else:
+        # Usuario normal (Google)
+        user_id_for_logic = user.get('google_id')
+
     if not user_id_for_logic:
-         logger.error(f"Usuario autenticado pero sin Google ID: {user}")
-         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="ID de usuario inválido para obtener logs.")
+        logger.error(f"Usuario autenticado pero sin ID válido: {user}")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="ID de usuario inválido para obtener logs.")
 
     logger.info(f"Obteniendo logs para {user_id_for_logic}, {days} días.")
 
