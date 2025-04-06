@@ -9,10 +9,12 @@ WORKDIR /app
 
 # Copiar primero el archivo de dependencias para aprovechar la cache de Docker
 COPY requirements.txt /app/
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
 # Instalar las dependencias
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
+# Añadir esta línea en tu Dockerfile
 
 # Copiar el resto del código de la aplicación
 # Copia las carpetas que realmente necesita el backend

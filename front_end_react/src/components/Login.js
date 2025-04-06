@@ -1,7 +1,4 @@
-// Archivo: src/components/Login.js (con setTimeout)
-
 import React, { useState, useEffect, useCallback } from 'react';
-// Importar useNavigate
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardActions, Button, Typography, Box } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -9,15 +6,15 @@ import { faSpinner, faLink, faCopy } from '@fortawesome/free-solid-svg-icons';
 import { faTelegram } from '@fortawesome/free-brands-svg-icons';
 import axios from 'axios';
 
-// Recibir onLoginSuccess como prop
+// Recibir onLoginSuccess como prop para actualizar estado en App.js
 function Login({ onLoginSuccess }) {
   const [isGeneratingCode, setIsGeneratingCode] = useState(false);
   const [linkCode, setLinkCode] = useState(null);
   const [showInstructions, setShowInstructions] = useState(false);
-  const [googleClientId, setGoogleClientId] = useState('809764193714-h551ast9v2n4c7snp5e8sidja1bm995g.apps.googleusercontent.com'); // Reemplaza si es diferente
+  // Asegúrate que este Client ID sea correcto o cárgalo desde variables de entorno
+  const [googleClientId, setGoogleClientId] = useState('809764193714-h551ast9v2n4c7snp5e8sidja1bm995g.apps.googleusercontent.com');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Obtener la función navigate
   const navigate = useNavigate();
 
   const handleGoogleCredentialResponse = useCallback(async (response) => {
@@ -26,7 +23,6 @@ function Login({ onLoginSuccess }) {
     try {
       const verifyResponse = await axios.post('/api/auth/google/verify', { // Ruta corregida
         id_token: response.credential,
-        // telegram_id: linkCode // Pasa si es necesario
       });
 
       console.log('Verify response:', verifyResponse.data);
@@ -35,17 +31,17 @@ function Login({ onLoginSuccess }) {
         console.log("Login verificado con éxito en backend.");
 
         // <<< INICIO: AÑADIR RETRASO >>>
-        console.log("Esperando 150ms antes de proceder...");
+        console.log("Esperando 200ms antes de proceder...");
         setTimeout(() => {
             console.log("Procediendo después de la espera...");
-            // LLAMAR A LA FUNCIÓN DEL PADRE
+            // Avisa a App.js (o componente padre) que el login fue exitoso
             if (onLoginSuccess) {
-                onLoginSuccess(); // Avisa a App.js para que recargue el usuario
+                onLoginSuccess(); // Esto debería disparar la actualización del estado del usuario en App.js
             }
-            // NAVEGAR SIN RECARGAR PÁGINA
-            navigate('/'); // Redirige a la página principal usando React Router
-            // Ya no necesitamos setIsLoading(false) aquí
-        }, 150); // Esperar 150 milisegundos
+            // Navega a la página principal usando React Router
+            navigate('/');
+            // Ya no necesitamos setIsLoading(false) aquí porque navegamos fuera
+        }, 200); // Esperar 200 milisegundos
         // <<< FIN: AÑADIR RETRASO >>>
 
       } else {
@@ -57,10 +53,10 @@ function Login({ onLoginSuccess }) {
       alert('Error al conectar con el servidor: ' + (error.response?.data?.detail || error.response?.data?.message || error.message));
       setIsLoading(false); // Detener carga si hay error de red/servidor
     }
-    // No poner setIsLoading(false) aquí fuera del catch/else si el setTimeout se inicia
-  }, [linkCode, navigate, onLoginSuccess]); // Dependencias correctas
+    // No poner setIsLoading(false) aquí si el setTimeout se inicia
+  }, [navigate, onLoginSuccess]); // Actualizar dependencias
 
-  // initializeGoogleSignIn (sin cambios respecto a la versión anterior)
+  // initializeGoogleSignIn (sin cambios)
   const initializeGoogleSignIn = useCallback(() => {
     if (window.google && googleClientId) {
       try {
@@ -100,6 +96,10 @@ function Login({ onLoginSuccess }) {
   const generateLinkCode = useCallback(async () => {
     setIsGeneratingCode(true);
     try {
+      // Importante: Esta llamada requiere que el usuario YA esté logueado
+      // Debería hacerse desde una página de perfil, no desde Login.
+      // Si la lógica es vincular ANTES de loguear, el flujo debe cambiar.
+      // Asumiendo que es para usuarios ya logueados:
       const response = await axios.post('/api/generate-link-code');
       if (response.data.success) {
         setLinkCode(response.data.code);
@@ -109,12 +109,16 @@ function Login({ onLoginSuccess }) {
       }
     } catch (error) {
       console.error('Error generando código:', error);
-      if (error.response?.status === 401) { alert('Debes iniciar sesión primero para generar un código de vinculación.'); }
-      else { alert('Error al generar código de vinculación'); }
+      if (error.response?.status === 401) {
+         alert('Debes iniciar sesión primero para generar un código de vinculación.');
+       } else {
+         alert('Error al generar código de vinculación: ' + (error.response?.data?.detail || error.message));
+       }
     } finally {
       setIsGeneratingCode(false);
     }
   }, []);
+
 
   // copyCodeToClipboard (sin cambios)
   const copyCodeToClipboard = useCallback(() => {
@@ -125,7 +129,7 @@ function Login({ onLoginSuccess }) {
   }, [linkCode]);
 
 
-  // Renderizado JSX (sin cambios)
+  // Renderizado JSX (sin cambios visibles, pero nota sobre generateLinkCode)
   return (
      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'linear-gradient(135deg, #f6d365 0%, #fda085 100%)' }}>
        <Card sx={{ maxWidth: 450, p: 3, borderRadius: 2, boxShadow: 3 }}>
@@ -133,12 +137,44 @@ function Login({ onLoginSuccess }) {
            <Typography variant="h5" align="center" gutterBottom> Accede a tu cuenta </Typography>
            <Typography variant="body2" align="center" gutterBottom> Inicia sesión para acceder a todas las funciones </Typography>
            {isLoading ? ( <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}> <FontAwesomeIcon icon={faSpinner} spin size="2x" /> </Box> ) : ( <Box id="google-login-btn" sx={{ my: 2 }}></Box> )}
-           <Box sx={{ mt: 3 }}>
-             <Typography variant="h6" gutterBottom> Vincular cuenta de Telegram </Typography>
-             {!showInstructions ? ( <Button variant="contained" color="primary" onClick={generateLinkCode} disabled={isGeneratingCode} fullWidth startIcon={isGeneratingCode ? <FontAwesomeIcon icon={faSpinner} spin /> : <FontAwesomeIcon icon={faLink} />}> {isGeneratingCode ? 'Generando código...' : 'Generar código de vinculación'} </Button> ) : ( <Box sx={{ mt: 2 }}> <Typography variant="body2"> Sigue estos pasos: </Typography> <ol style={{ textAlign: 'left', paddingLeft: '1rem' }}> <li>Abre nuestro <a href="https://t.me/RoonieColemAi_dev_bot" target="_blank" rel="noopener noreferrer">bot de Telegram</a></li> <li>Envía el comando <code>/vincular</code> al bot</li> <li>Cuando el bot lo solicite, envía este código:</li> </ol> <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', my: 1 }}> <Typography variant="h6" sx={{ fontWeight: 'bold' }}>{linkCode}</Typography> <Button onClick={copyCodeToClipboard} sx={{ ml: 1 }} variant="outlined"> <FontAwesomeIcon icon={faCopy} /> </Button> </Box> <Typography variant="caption" color="textSecondary"> El código expira en 10 minutos </Typography> </Box> )}
+
+           {/* --- Sección Vincular Telegram ---
+               NOTA: La lógica de `generateLinkCode` usualmente requiere estar logueado.
+               Mostrar esto en la página de Login puede ser confuso.
+               Considera mover la funcionalidad de vincular Telegram a una página de perfil
+               una vez que el usuario haya iniciado sesión.
+           */}
+           <Box sx={{ mt: 3, borderTop: '1px solid #eee', pt: 2 }}>
+             <Typography variant="subtitle1" gutterBottom> Vincular cuenta de Telegram </Typography>
+             <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
+               (Opcional: Puedes generar un código de vinculación desde tu perfil una vez hayas iniciado sesión)
+             </Typography>
+             {/* Comentado botón aquí porque requiere login previo */}
+             {/*
+             {!showInstructions ? (
+               <Button
+                 variant="contained"
+                 color="primary"
+                 onClick={generateLinkCode}
+                 disabled={isGeneratingCode}
+                 fullWidth
+                 startIcon={isGeneratingCode ? <FontAwesomeIcon icon={faSpinner} spin /> : <FontAwesomeIcon icon={faLink} />}
+               >
+                 {isGeneratingCode ? 'Generando código...' : 'Generar código de vinculación'}
+               </Button>
+             ) : (
+               <Box sx={{ mt: 2 }}>
+                 // ... (instrucciones y código si se generó) ...
+               </Box>
+             )}
+             */}
            </Box>
          </CardContent>
-         <CardActions> <Typography variant="body2" align="center" sx={{ width: '100%' }}> <FontAwesomeIcon icon={faTelegram} /> También puedes interactuar con GymAI a través de nuestro <a href="https://t.me/RoonieColemAi_dev_bot" target="_blank" rel="noopener noreferrer">bot de Telegram</a> </Typography> </CardActions>
+         <CardActions>
+           <Typography variant="body2" align="center" sx={{ width: '100%' }}>
+             <FontAwesomeIcon icon={faTelegram} /> También puedes interactuar con GymAI a través de nuestro <a href="https://t.me/RoonieColemAi_dev_bot" target="_blank" rel="noopener noreferrer">bot de Telegram</a>
+           </Typography>
+         </CardActions>
        </Card>
      </Box>
    );

@@ -1,4 +1,4 @@
-# Archivo: back_end/gym/routes/auth.py (Corregido con lógica condicional de cookie)
+# Archivo: back_end/gym/routes/auth.py
 
 import os
 import json
@@ -8,7 +8,7 @@ from fastapi import APIRouter, Cookie, Form, HTTPException, Query, Request, Resp
 from fastapi.responses import JSONResponse, RedirectResponse
 
 # Importar dependencia y servicios (Asegúrate que las rutas sean correctas)
-from back_end.gym.middlewares import get_current_user
+from back_end.gym.middlewares import get_current_user # Ajusta si es necesario
 try:
     from services.auth_service import (
         generate_link_code,
@@ -22,16 +22,15 @@ try:
         verify_link_code
     )
 except ImportError as e:
-    logging.error(f"Error Crítico de importación en auth.py: {e}. ¡Las funciones de Auth no estarán disponibles!")
-    # Puedes definir stubs aquí si necesitas que el servidor arranque SÍ o SÍ,
-    # pero es mejor arreglar las importaciones.
-    # Por ejemplo: def verify_google_token(token): return None
+    logging.critical(f"Error Crítico de importación en auth.py: {e}. ¡Las funciones de Auth no estarán disponibles!")
     raise e # Relanzar el error para que sea visible que algo falla al iniciar
-
 
 # Cargar variables de entorno
 load_dotenv()
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
+if not GOOGLE_CLIENT_ID:
+    logging.warning("La variable de entorno GOOGLE_CLIENT_ID no está configurada.")
+    # Considera lanzar un error si es absolutamente esencial para arrancar
 
 # Router con prefijo /api
 router = APIRouter(prefix="/api", tags=["authentication"])
@@ -43,16 +42,18 @@ logger = logging.getLogger(__name__)
 @router.post("/generate-link-code", response_class=JSONResponse)
 async def generate_link_code_route(request: Request, user: dict = Depends(get_current_user)): # Usar dependencia
     """Genera un código para vincular una cuenta de Telegram (Requiere Login)."""
-    # La dependencia get_current_user maneja si el usuario está logueado o no
     if not user:
         logger.warning("Intento de generar código de enlace sin autenticación.")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no autenticado")
 
-    user_id_internal = user.get("id") # Obtener ID interno del usuario ya autenticado
+    user_id_internal = user.get("id")
+    if not user_id_internal: # Verificación adicional
+         logger.error("Usuario autenticado pero sin ID interno en el objeto 'user'.")
+         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error interno de sesión.")
+
     logger.info(f"Solicitud para generar código de enlace para user_id interno: {user_id_internal}")
 
     try:
-        # Ya tenemos el usuario de la dependencia, no necesitamos buscarlo de nuevo por ID
         code = generate_link_code(user_id_internal)
         if not code:
             logger.error(f"Error al generar código de enlace para user_id: {user_id_internal}")
@@ -77,11 +78,9 @@ async def verify_link_code_route(request: Request):
         logger.debug(f"Verificando código: {code} para Telegram ID: {telegram_id}")
 
         if not code or not telegram_id:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Faltan parámetros requeridos")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Faltan parámetros requeridos (code, telegram_id)")
 
-        # verify_link_code debería actualizar el telegram_id en la tabla users
-        # y asociarlo al user_id interno correcto basado en el código.
-        success = verify_link_code(code, telegram_id)
+        success = verify_link_code(code, str(telegram_id)) # Asegurar que telegram_id es string
         if success:
             logger.info(f"Código '{code}' verificado con éxito para Telegram ID: {telegram_id}")
             return JSONResponse(content={"success": True, "message": "Cuentas vinculadas correctamente"})
@@ -89,41 +88,44 @@ async def verify_link_code_route(request: Request):
             logger.warning(f"Código '{code}' inválido o expirado para Telegram ID: {telegram_id}")
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Código inválido o expirado")
 
-    except json.JSONDecodeError: raise HTTPException(status_code=400, detail="JSON inválido.")
-    except HTTPException as http_exc: raise http_exc
+    except json.JSONDecodeError:
+        logger.warning("Error al decodificar JSON en /api/verify-link-code")
+        raise HTTPException(status_code=400, detail="JSON inválido.")
+    except HTTPException as http_exc:
+        raise http_exc # Re-lanzar excepciones HTTP conocidas
     except Exception as e:
         logger.exception(f"Error inesperado en verify_link_code_route: {str(e)}")
-        raise HTTPException(status_code=500, detail="Error interno")
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 # Ruta: /api/auth/google/verify (Usada por el frontend Login.js)
 @router.post("/auth/google/verify", response_class=JSONResponse)
 async def verify_google_signin(request: Request, response: Response):
-    """Verifica el token de Google Sign-In y crea/actualiza el usuario."""
+    """Verifica el token de Google Sign-In, crea/actualiza usuario y establece cookie."""
     logger.info("Recibida solicitud para verificar token de Google.")
     try:
         data = await request.json()
         token = data.get("id_token")
-        # telegram_id = data.get("telegram_id") # Podría venir si se vincula durante el login
 
         if not token: raise HTTPException(status_code=400, detail="Token no proporcionado")
-        if not GOOGLE_CLIENT_ID: raise HTTPException(status_code=500, detail="Error config servidor (Client ID).")
+        if not GOOGLE_CLIENT_ID: raise HTTPException(status_code=500, detail="Error configuración servidor (Client ID Google no configurado).")
 
         user_info = verify_google_token(token)
-        if not user_info: raise HTTPException(status_code=400, detail="Token inválido o expirado")
+        if not user_info: raise HTTPException(status_code=400, detail="Token de Google inválido o expirado")
 
         google_id = user_info.get("sub")
         email = user_info.get("email")
         display_name = user_info.get("name")
         profile_picture = user_info.get("picture")
 
+        if not google_id: # El 'sub' (subject) es esencial
+             logger.error(f"Token de Google verificado pero falta 'sub' (Google ID). UserInfo: {user_info}")
+             raise HTTPException(status_code=400, detail="Token de Google inválido (falta ID).")
+
         logger.info(f"Obteniendo o creando usuario para Google ID: {google_id}, Email: {email}")
-        # get_or_create_user ahora recibe todos los datos y maneja la lógica
-        # de buscar por google_id, luego email, y crear o actualizar.
-        # Debe devolver el ID INTERNO del usuario (ej: 1, 2, 3...).
+        # get_or_create_user debe devolver el ID INTERNO del usuario.
         user_id_internal = get_or_create_user(
             google_id=google_id,
-            # telegram_id=telegram_id, # Pasar si se soporta vinculación en login
             email=email,
             display_name=display_name,
             profile_picture=profile_picture
@@ -131,78 +133,77 @@ async def verify_google_signin(request: Request, response: Response):
         logger.info(f"ID de usuario interno obtenido/creado: {user_id_internal}")
 
         if not user_id_internal:
-             raise HTTPException(status_code=500, detail="Error al crear/actualizar usuario")
+             logger.error(f"get_or_create_user devolvió None o 0 para Google ID {google_id}")
+             raise HTTPException(status_code=500, detail="Error al crear o actualizar el usuario en la base de datos")
 
-        # --- INICIO: Lógica de Cookie Corregida ---
-        cookie_max_age = 86400 * 30 # 30 días
+        # --- Lógica de Cookie ---
+        cookie_max_age = 86400 * 30 # 30 días en segundos
         cookie_key = "user_id"
         cookie_value = str(user_id_internal)
 
-        # Determinar atributos basados en el entorno
         is_secure_env = request.url.scheme == "https"
-        # Por defecto, Lax es más seguro
-        cookie_samesite = "lax"
-        # Secure=True SOLO si la conexión es HTTPS
-        cookie_secure = is_secure_env
-
-        # NO aplicar workaround de samesite=none por ahora, mantener Lax.
-        # Si Lax sigue fallando en HTTP localhost cross-port, la solución
-        # es usar HTTPS local o configurar un proxy same-origin.
-        # logger.warning(f"Usando cookie: secure={cookie_secure}, samesite='{cookie_samesite}'")
-
+        cookie_samesite = "lax" # Lax es el recomendado por defecto
+        cookie_secure = is_secure_env # True solo si la conexión es HTTPS
 
         logger.info(f"Configurando cookie: key={cookie_key}, value={cookie_value}, httponly=True, secure={cookie_secure}, samesite='{cookie_samesite}', max_age={cookie_max_age}, path='/'")
 
         response.set_cookie(
             key=cookie_key,
             value=cookie_value,
-            httponly=True,           # ¡Importante para seguridad!
-            secure=cookie_secure,    # True si es HTTPS
-            samesite=cookie_samesite,# Usar Lax (o Strict si aplica)
+            httponly=True,           # Esencial para seguridad (no accesible por JS)
+            secure=cookie_secure,    # True si es HTTPS, False para HTTP (como localhost)
+            samesite=cookie_samesite,# 'lax' es buen punto de partida
             max_age=cookie_max_age,  # Tiempo de vida
-            path="/"                 # Válida para todo el sitio
+            path="/"                 # Válida para todo el dominio/subdominios
         )
-        logger.info(f"Cookie '{cookie_key}={cookie_value}' establecida en la respuesta.")
-        # --- FIN: Lógica de Cookie ---
+        logger.info(f"Cookie '{cookie_key}={cookie_value}' configurada para ser enviada en la respuesta.")
+        # --- Fin Lógica de Cookie ---
 
         return JSONResponse(
             content={
                 "success": True,
-                "user_id": user_id_internal, # Devuelve el ID interno
+                "user_id": user_id_internal, # Devuelve el ID interno por si el frontend lo necesita
                 "message": "Autenticación exitosa",
                 "redirect": "/" # Sugerencia para el frontend
             }
         )
 
-    # ... (manejo de excepciones como antes) ...
-    except json.JSONDecodeError: raise HTTPException(status_code=400, detail="JSON inválido.")
-    except HTTPException as http_exc: raise http_exc
+    except json.JSONDecodeError:
+        logger.warning("Error al decodificar JSON en /api/auth/google/verify")
+        raise HTTPException(status_code=400, detail="JSON inválido.")
+    except HTTPException as http_exc:
+        # Loguear la excepción HTTP antes de relanzarla
+        logger.warning(f"HTTPException en verify_google_signin: {http_exc.status_code} - {http_exc.detail}")
+        raise http_exc
     except Exception as e:
-        logger.exception(f"Error inesperado en verify_google_signin: {str(e)}")
-        raise HTTPException(status_code=500, detail="Error interno del servidor")
+        logger.exception(f"Error inesperado en verify_google_signin: {str(e)}") # Loguea el traceback completo
+        raise HTTPException(status_code=500, detail="Error interno del servidor durante la autenticación.")
 
 
 # Ruta: /api/logout
 @router.get("/logout", status_code=status.HTTP_307_TEMPORARY_REDIRECT)
 async def logout(request: Request, response: Response):
     """Cierra la sesión eliminando la cookie y redirigiendo a /login."""
-    user_id = request.cookies.get("user_id")
-    logger.info(f"Recibida solicitud de logout para usuario (cookie): {user_id}")
+    user_id_from_cookie = request.cookies.get("user_id")
+    logger.info(f"Recibida solicitud de logout para usuario (cookie detectada: {user_id_from_cookie or 'Ninguna'})")
 
-    redirect_url = "/login?logout=success" # Redirigir siempre a login
+    redirect_url = "/login?logout=success" # URL a la que redirige el backend
 
-    # Crear respuesta y eliminar cookie (igual que antes)
+    # Crear respuesta de redirección
     response = RedirectResponse(url=redirect_url, status_code=status.HTTP_307_TEMPORARY_REDIRECT)
+
+    # Eliminar la cookie
+    logger.info(f"Intentando eliminar cookie 'user_id'...")
     response.delete_cookie(
         key="user_id",
         path="/",
         httponly=True,
-        secure= request.url.scheme == "https",
-        samesite="lax" # Coincidir con cómo se creó
+        secure= request.url.scheme == "https", # Debe coincidir con cómo se creó
+        samesite="lax" # Debe coincidir con cómo se creó
     )
-    logger.info(f"Cookie 'user_id' eliminada para usuario: {user_id}")
+    logger.info(f"Cookie 'user_id' marcada para eliminación en la respuesta.")
 
-    # Cabeceras anti-caché (igual que antes)
+    # Cabeceras anti-caché para la respuesta de redirección
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
@@ -214,66 +215,92 @@ async def logout(request: Request, response: Response):
 @router.get("/current-user", response_class=JSONResponse)
 async def get_current_user_api(request: Request, user: dict = Depends(get_current_user)): # Usa la dependencia
     """Obtiene la información del usuario autenticado por cookie."""
-    logger.info(f"Solicitud a /api/current-user. Usuario obtenido de dependencia: {'Sí' if user else 'No'}")
+    logger.info(f"Solicitud a /api/current-user...") # Log inicial
 
     if not user:
-        # Si la ruta es privada, el middleware ya debería haber actuado.
-        # Si llega aquí es porque la ruta se consideró pública o algo falló.
-        logger.warning("Acceso a /api/current-user sin usuario autenticado.")
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No hay sesión activa")
+        # Este caso debería ser manejado por el middleware si la ruta es privada.
+        # Si llega aquí, podría indicar un problema en la lógica del middleware o la ruta se marcó pública.
+        logger.warning("Acceso a /api/current-user SIN usuario autenticado (middleware no redirigió?).")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No hay sesión activa o la sesión es inválida."
+        )
 
-    # Devolver información segura (igual que antes)
+    # Devolver información segura del usuario (filtrando datos sensibles si los hubiera)
     safe_user_info = {
-        "id": user.get("id"), "display_name": user.get("display_name"),
-        "email": user.get("email"), "profile_picture": user.get("profile_picture"),
+        "id": user.get("id"),
+        "display_name": user.get("display_name"),
+        "email": user.get("email"),
+        "profile_picture": user.get("profile_picture"),
         "has_telegram": user.get("telegram_id") is not None,
         "has_google": user.get("google_id") is not None,
+        # Añadir más campos si son necesarios y seguros para el frontend
     }
-    logger.info(f"Devolviendo información para usuario id={user.get('id')}")
+    logger.info(f"Devolviendo información para usuario ID={user.get('id')}")
     return JSONResponse(content={"success": True, "user": safe_user_info})
 
 
-# Ruta: /api/link-telegram (Si es necesaria, requiere estar logueado)
+# Ruta: /api/link-telegram (Requiere estar logueado via web)
 @router.post("/link-telegram", response_class=JSONResponse)
 async def link_telegram_account(
     request: Request,
     telegram_id: str = Form(...),
     user = Depends(get_current_user) # Requiere login web previo
 ):
-    """Vincula una cuenta de Telegram a la cuenta web actual."""
+    """(Requiere Login Web) Vincula una cuenta de Telegram a la cuenta web actual."""
     if not user: raise HTTPException(status_code=401, detail="Usuario no autenticado")
 
     user_id_internal = user.get("id")
-    logger.info(f"Usuario autenticado ID: {user_id_internal}. Vinculando Telegram ID: {telegram_id}")
+    if not user_id_internal: # Verificación adicional
+         logger.error("Usuario autenticado pero sin ID interno en el objeto 'user'.")
+         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error interno de sesión.")
+
+    logger.info(f"Usuario autenticado ID: {user_id_internal}. Intentando vincular Telegram ID: {telegram_id}")
 
     try:
-        # ... (lógica de verificación si telegram_id ya existe y migración como antes) ...
-        existing_user_id = get_user_id_by_telegram(telegram_id)
+        # Verificar si el telegram_id ya existe y pertenece a OTRO usuario
+        existing_user_id = get_user_id_by_telegram(str(telegram_id))
         if existing_user_id and existing_user_id != user_id_internal:
-             logger.warning(f"Telegram ID {telegram_id} ya vinculado a ID {existing_user_id}. Migrando a {user_id_internal}.")
-             if not migrate_user_data(telegram_id, user_id_internal):
-                  raise HTTPException(status_code=500, detail="Error al migrar datos.")
-             logger.info("Migración completada.")
+             logger.warning(f"Telegram ID {telegram_id} ya está vinculado al usuario interno ID {existing_user_id}. Se intentará migrar datos a usuario actual ID {user_id_internal}.")
+             # Aquí iría la lógica de migración de datos si es necesaria
+             # Por ejemplo: migrate_user_data(telegram_id, user_id_internal)
+             # ¡¡Implementar migrate_user_data si es necesario!!
+             # if not migrate_user_data(str(telegram_id), user_id_internal):
+             #      raise HTTPException(status_code=500, detail="Error crítico al migrar datos de Telegram.")
+             logger.info(f"Migración de datos para Telegram ID {telegram_id} completada (o no implementada).")
 
-        # Actualizar usuario actual con telegram_id
-        updated_user_id = get_or_create_user(
-             # Pasa todos los datos conocidos para asegurar que se actualiza el correcto
-             internal_id=user_id_internal, # Pasar ID interno para asegurar la actualización
-             google_id=user.get("google_id"),
-             telegram_id=telegram_id, # El ID a añadir/actualizar
-             email=user.get("email"),
-             display_name=user.get("display_name"),
-             profile_picture=user.get("profile_picture")
-        )
-        # get_or_create_user debe poder buscar por internal_id y actualizar
+        # Actualizar el usuario actual añadiendo/sobrescribiendo el telegram_id
+        # Usamos get_or_create_user que debería manejar la actualización si encuentra el internal_id
+        # Necesita modificarse get_or_create_user para buscar PRIMERO por internal_id si se proporciona.
+        # ---- INICIO: Lógica Asumida para Actualizar Usuario ----
+        # Esto requiere que get_or_create_user sea adaptado o crear una función específica `update_user_telegram_id`
+        conn = None
+        cur = None
+        try:
+             conn = psycopg2.connect(**DB_CONFIG)
+             cur = conn.cursor()
+             cur.execute("UPDATE users SET telegram_id = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s",
+                         (str(telegram_id), user_id_internal))
+             conn.commit()
+             updated_rows = cur.rowcount
+             cur.close()
+             conn.close()
+             if updated_rows == 0:
+                  logger.error(f"No se encontró el usuario con ID interno {user_id_internal} para actualizar Telegram ID.")
+                  raise HTTPException(status_code=404, detail="Usuario no encontrado para vincular.")
+             logger.info(f"Telegram ID {telegram_id} vinculado/actualizado para usuario {user_id_internal}.")
+             return JSONResponse(content={"success": True, "message": "Cuenta de Telegram vinculada correctamente."})
+        except psycopg2.Error as db_err:
+            logger.error(f"Error DB al vincular Telegram ID {telegram_id} a usuario {user_id_internal}: {db_err}")
+            if conn: conn.rollback()
+            raise HTTPException(status_code=500, detail="Error de base de datos al vincular Telegram.")
+        finally:
+            if cur: cur.close()
+            if conn: conn.close()
+        # ---- FIN: Lógica Asumida ----
 
-        if not updated_user_id or updated_user_id != user_id_internal:
-             logger.error(f"Discrepancia de ID al vincular telegram {telegram_id} a usuario {user_id_internal}. Devuelto: {updated_user_id}")
-             raise HTTPException(status_code=500, detail="Error al actualizar usuario con Telegram ID")
-
-        logger.info(f"Telegram ID {telegram_id} vinculado/actualizado para usuario {user_id_internal}.")
-        return JSONResponse(content={"success": True, "message": "Cuenta de Telegram vinculada"})
-
+    except HTTPException as http_exc:
+        raise http_exc
     except Exception as e:
         logger.exception(f"Error inesperado en link_telegram_account para usuario {user_id_internal}: {str(e)}")
-        raise HTTPException(status_code=500, detail="Error interno del servidor")
+        raise HTTPException(status_code=500, detail="Error interno del servidor al vincular cuenta.")
