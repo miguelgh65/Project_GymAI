@@ -1,33 +1,34 @@
-FROM python:3.11
+# Usar una versión específica es mejor
+FROM python:3.11-slim
 
 # Establecer el directorio de trabajo en la imagen
 WORKDIR /app
+
+# Instalar dependencias del sistema si fueran necesarias
+# RUN apt-get update && apt-get install -y --no-install-recommends some-package && rm -rf /var/lib/apt/lists/*
 
 # Copiar primero el archivo de dependencias para aprovechar la cache de Docker
 COPY requirements.txt /app/
 
 # Instalar las dependencias
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Copiar archivos de la aplicación Flask
-COPY workflows/gym/ /app/workflows/gym/
-
-# Copiar archivos del bot de Telegram
+# Copiar el resto del código de la aplicación
+# Copia las carpetas que realmente necesita el backend
+COPY back_end/gym/ /app/back_end/gym/
 COPY telegram/ /app/telegram/
-
-# Copiar archivos del módulo fitness_agent
 COPY fitness_agent/ /app/fitness_agent/
-
-# Copiar .env al directorio raíz
-COPY .env /app/
-
-# Copiar el script de inicio
 COPY start.sh /app/
-COPY front_end/ /app/front_end/
+# COPY .env /app/ # No es ideal copiar .env a la imagen, se carga con env_file en docker-compose
+
+# Asegurar que el script sea ejecutable
 RUN chmod +x /app/start.sh
 
-# Exponer el puerto que usará la aplicación Flask
-EXPOSE 5050
+# Exponer el puerto INTERNO que usará la aplicación (¡Ahora 5051!)
+EXPOSE 5051
 
-# Usar el script para iniciar ambos servicios
+# Usar el script para iniciar la aplicación
+# Asegúrate que start.sh inicie Uvicorn en el puerto 5051
+# Ejemplo: uvicorn workflows.gym.main:app --host 0.0.0.0 --port 5051 --reload (el --reload es para desarrollo)
 CMD ["/app/start.sh"]
