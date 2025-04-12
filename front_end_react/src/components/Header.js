@@ -17,6 +17,7 @@ import {
   faCalendarDay,
   faCalendarAlt,
   faChartLine,
+  faAppleAlt,
   faUser,
   faBars,
   faTimes
@@ -118,6 +119,7 @@ function Header({ user, onLogout }) {
               {renderNavLink("/rutina_hoy", faCalendarDay, "Hoy")}
               {renderNavLink("/rutina", faCalendarAlt, "Mi Rutina")}
               {renderNavLink("/dashboard", faChartLine, "Dashboard")}
+              {renderNavLink("/nutrition", faAppleAlt, "Nutrición")}
               {renderNavLink("/profile", faUser, "Perfil")}
             </Box>
           </>
@@ -186,6 +188,7 @@ function Header({ user, onLogout }) {
                 { text: 'Hoy', icon: faCalendarDay, path: '/rutina_hoy' },
                 { text: 'Mi Rutina', icon: faCalendarAlt, path: '/rutina' },
                 { text: 'Dashboard', icon: faChartLine, path: '/dashboard' },
+                { text: 'Nutrición', icon: faAppleAlt, path: '/nutrition' },
                 { text: 'Perfil', icon: faUser, path: '/profile' }
               ].map((item) => (
                 <ListItem 
