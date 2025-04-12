@@ -7,10 +7,16 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
     volumes:
+      # Volumen persistente para los datos de la BD
       - postgres_data:/var/lib/postgresql/data
-      - ./back_end/gym/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+      # Monta el script SQL principal para crear tablas
+      - ./init-scripts/create-tables.sql:/docker-entrypoint-initdb.d/create-tables.sql
+      # Monta los archivos CSV para que el script los cargue
+      - ./init-scripts/ingredients_macros.csv:/docker-entrypoint-initdb.d/ingredients_macros.csv
+      - ./init-scripts/list_meals.csv:/docker-entrypoint-initdb.d/list_meals.csv
     ports:
-      - "${DB_PORT}:5432"
+      # Expone el puerto 5438 en tu máquina, mapeado al 5432 del contenedor
+      - "5438:5432"
     restart: unless-stopped
     networks:
       - gymnet
@@ -29,10 +35,12 @@ services:
     env_file:
       - .env
     environment:
+      # ¡IMPORTANTE! Asegúrate que en tu .env DB_HOST=gym-postgres y DB_PORT=5432
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}
       - PYTHONPATH=/app
-      - TZ=Europe/Madrid  # <--- VARIABLE DE ZONA HORARIA AÑADIDA AQUÍ
+      - TZ=Europe/Madrid
     volumes:
+      # Monta el código para desarrollo (hot-reload si usas uvicorn --reload)
       - .:/app
     ports:
       - "5050:5050"
@@ -41,7 +49,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     working_dir: /app
-    # Usar esta nueva línea para arrancar sin SSL
+    # Comando para iniciar (modificado para quitar SSL en un paso anterior)
     command: >
       sh -c "chmod +x /app/start.sh &&
              sed -i 's/--ssl-keyfile/# --ssl-keyfile/g' /app/start.sh &&
@@ -49,9 +57,8 @@ services:
              /app/start.sh"
     networks:
       - gymnet
-    # Simplificar el healthcheck
     healthcheck:
-      test: ["CMD-SHELL", "curl -s http://localhost:5050/docs > /dev/null || exit 0"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:5050/docs > /dev/null || exit 1"] # Usar -f para fallar en error http, exit 1
       interval: 30s
       timeout: 10s
       retries: 3
@@ -60,18 +67,20 @@ services:
   gym-react-frontend:
     container_name: gym-react-frontend
     build:
-      context: ./front_end_react
+      context: ./front_end_react # Asegúrate que esta ruta sea correcta
       dockerfile: Dockerfile
     ports:
-      - "80:80"
+      - "80:80" # Asumiendo que el frontend corre en el puerto 80 (o 3000 si es dev server)
     volumes:
+      # Monta el código del frontend y Nginx config
       - ./front_end_react:/app
-      - /app/node_modules
+      - /app/node_modules # Evita sobreescribir node_modules del host
       - ./front_end_react/nginx.conf:/etc/nginx/conf.d/default.conf
     environment:
-      - REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL}
-      - REACT_APP_PROJECT_NAME=${REACT_APP_PROJECT_NAME}
-      - REACT_APP_GOOGLE_CLIENT_ID=${REACT_APP_GOOGLE_CLIENT_ID}
+      # Pasa variables de entorno necesarias para React
+      - REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL} # Asegúrate que esté definida en .env
+      - REACT_APP_PROJECT_NAME=${REACT_APP_PROJECT_NAME} # Asegúrate que esté definida en .env
+      - REACT_APP_GOOGLE_CLIENT_ID=${REACT_APP_GOOGLE_CLIENT_ID} # Asegúrate que esté definida en .env
     depends_on:
       - gym-fastapi-backend
     restart: unless-stopped
@@ -83,4 +92,5 @@ networks:
     driver: bridge
 
 volumes:
+  # Define el volumen nombrado para persistencia de la BD
   postgres_data:
