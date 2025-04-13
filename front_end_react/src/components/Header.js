@@ -1,4 +1,4 @@
-// src/components/Header.js
+// src/components/Header.js - Versión corregida
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -32,22 +32,20 @@ function Header({ user, onLogout }) {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const handleLogout = async (e) => {
-    // Prevenir comportamiento predeterminado
-    e.preventDefault();
-    
-    console.log("Iniciando proceso de logout...");
-    
+  const handleLogout = async () => {
     try {
-      // Usa el servicio de autenticación
+      // Cierra el menú de usuario si está abierto
+      setAnchorEl(null);
+      
+      // Usa el servicio de autenticación para limpiar el localStorage
       AuthService.logout();
       
-      // Notifica al componente padre (si proporcionó un callback)
+      // Notifica al componente padre (App.js) del cambio de estado de autenticación
       if (typeof onLogout === 'function') {
         onLogout();
       }
       
-      // Navegar a la página de login usando navigate en lugar de manipular window.location
+      // Navega a login después de limpiar el estado local
       navigate('/login');
     } catch (error) {
       console.error('Error en proceso de logout:', error);

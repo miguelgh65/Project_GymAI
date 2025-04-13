@@ -202,6 +202,33 @@ async def verify_google_signin(request: Request, response: Response):
         logger.exception(f"Error inesperado en verify_google_signin: {str(e)}")
         raise HTTPException(status_code=500, detail="Error interno del servidor durante la autenticación.")
 
+# Ruta: /api/auth/signout (nueva ruta específica para el frontend)
+@router.get("/auth/signout", response_class=JSONResponse)
+async def signout_api(request: Request, response: Response):
+    """Endpoint para cerrar sesión desde el frontend sin redirecciones."""
+    logger.info(f"API Frontend signout recibido")
+
+    # Crear una respuesta JSON simple
+    json_response = JSONResponse(
+        content={"success": True, "message": "Sesión cerrada correctamente"}
+    )
+    
+    # Limpiar cualquier cookie que pueda existir
+    # Nota: Esto es redundante con lo que hace el frontend, pero es buena práctica
+    json_response.delete_cookie(
+        key="user_id", 
+        path="/", 
+        httponly=True,
+        samesite="lax"
+    )
+    
+    # Añadir headers para evitar caché
+    json_response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    json_response.headers["Pragma"] = "no-cache"
+    json_response.headers["Expires"] = "0"
+    
+    return json_response
+
 # Ruta: /api/logout
 @router.get("/logout", status_code=status.HTTP_307_TEMPORARY_REDIRECT)
 async def logout(request: Request, response: Response):
