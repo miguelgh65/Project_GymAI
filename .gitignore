@@ -1,26 +1,8 @@
-# Ignorar archivos sensibles
+# Ignorar la carpeta certs
+certs/
+
+# Ignorar la carpeta node_modules
+node_modules/
+
+# Ignorar el archivo .env
 .env
-
-# Archivos de dependencias
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# Carpetas de entornos virtuales
-venv/
-.venv/
-
-# Archivos de logs
-logs/
-*.log
-
-# Archivos de caché
-*.sqlite3
-*.db
-.DS_Store
-
-# Dependencias instaladas
-pip-log.txt
-pip-delete-this-directory.txt
-node_modules

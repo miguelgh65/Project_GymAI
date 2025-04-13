@@ -5,7 +5,7 @@ import logging
 import psycopg2 # Necesario si usas psycopg2 aquí directamente
 from dotenv import load_dotenv
 from fastapi import APIRouter, Cookie, Form, HTTPException, Query, Request, Response, status, Depends
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse # Make sure RedirectResponse is imported
 
 # --- Importaciones Corregidas ---
 # Usar importación relativa (..) para subir un nivel desde routes a gym
