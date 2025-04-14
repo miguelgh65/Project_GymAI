@@ -1,3 +1,4 @@
+// src/App.js - Fixed login handling
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
@@ -26,9 +27,15 @@ function App() {
     // Check if user is logged in
     const checkAuth = async () => {
       try {
-        const userData = await AuthService.getCurrentUser();
-        if (userData) {
+        console.log("App: Checking authentication status...");
+        const userData = AuthService.getCurrentUser();
+        const token = AuthService.getToken();
+        
+        if (userData && token) {
+          console.log("App: User is logged in", userData.display_name || userData.email);
           setUser(userData);
+        } else {
+          console.log("App: No user is logged in");
         }
       } catch (error) {
         console.error('Authentication check failed:', error);
@@ -41,12 +48,14 @@ function App() {
   }, []);
 
   // Auth-related functions
-  const login = (userData) => {
+  const handleLogin = (userData) => {
+    console.log("App: Login successful, updating user state", userData);
     setUser(userData);
   };
 
-  const logout = async () => {
+  const handleLogout = async () => {
     try {
+      console.log("App: Logging out user");
       await AuthService.logout();
       setUser(null);
     } catch (error) {
@@ -63,25 +72,24 @@ function App() {
       <CssBaseline />
       <Router>
         <div className="app">
-          {user && <Header user={user} onLogout={logout} />}
+          {user && <Header user={user} onLogout={handleLogout} />}
           <main className="main-content">
             <Routes>
-              <Route path="/login" element={!user ? <Login onLogin={login} /> : <Navigate to="/" />} />
+              <Route path="/login" element={!user ? <Login onLoginSuccess={handleLogin} /> : <Navigate to="/" />} />
               
-              <Route path="/" element={user ? <ExerciseForm /> : <Navigate to="/login" />} />
+              <Route path="/" element={user ? <ExerciseForm user={user} /> : <Navigate to="/login" />} />
               
-              <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/login" />} />
+              <Route path="/dashboard" element={user ? <Dashboard user={user} /> : <Navigate to="/login" />} />
               
               <Route path="/profile" element={user ? <Profile user={user} /> : <Navigate to="/login" />} />
               
-              <Route path="/rutina" element={user ? <WeeklyRoutine /> : <Navigate to="/login" />} />
+              <Route path="/rutina" element={user ? <WeeklyRoutine user={user} /> : <Navigate to="/login" />} />
               
-              <Route path="/rutina_hoy" element={user ? <TodayRoutine /> : <Navigate to="/login" />} />
+              <Route path="/rutina_hoy" element={user ? <TodayRoutine user={user} /> : <Navigate to="/login" />} />
               
-              <Route path="/chatbot" element={user ? <Chatbot /> : <Navigate to="/login" />} />
+              <Route path="/chatbot" element={user ? <Chatbot user={user} /> : <Navigate to="/login" />} />
               
-              {/* Add the Nutrition route */}
-              <Route path="/nutrition" element={user ? <NutritionPage /> : <Navigate to="/login" />} />
+              <Route path="/nutrition" element={user ? <NutritionPage user={user} /> : <Navigate to="/login" />} />
               
               {/* Redirect to home if no route matches */}
               <Route path="*" element={<Navigate to={user ? "/" : "/login"} />} />

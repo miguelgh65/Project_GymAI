@@ -1,270 +1,177 @@
-// src/services/AuthService.js - mejorado con mejor manejo de errores
+// src/services/AuthService.js - Fixed version
 import axios from 'axios';
 
 class AuthService {
-  constructor() {
-    // Configurar interceptores al inicializar
-    this.setupAxiosInterceptors();
-
-    // Flag para evitar intentos repetidos de interceptores
-    this.interceptorsSetup = false;
-  }
-
-  // Configurar interceptores para añadir el token a todas las solicitudes
-  setupAxiosInterceptors() {
-    if (this.interceptorsSetup) {
-      console.log("Interceptores ya configurados, evitando duplicación");
-      return;
-    }
-
-    console.log("Configurando interceptores de Axios");
-
-    axios.interceptors.request.use(
-      (config) => {
-        const token = this.getToken();
-        if (token) {
-          config.headers["Authorization"] = `Bearer ${token}`;
-          console.log(`Request a ${config.url}: Token añadido al header Authorization`);
-        } else {
-          console.log(`Request a ${config.url}: Sin token disponible`);
-        }
-        return config;
-      },
-      (error) => {
-        console.error("Error en interceptor de petición:", error);
-        return Promise.reject(error);
-      }
-    );
-
-    // Interceptor para respuestas
-    axios.interceptors.response.use(
-      (response) => {
-        return response;
-      },
-      (error) => {
-        // Log detallado de errores de respuesta
-        if (error.response) {
-          // La petición fue hecha y el servidor respondió con un código de estado
-          // fuera del rango 2xx
-          console.error(`Error de respuesta (${error.response.status}):`, error.response.data);
-          console.log(`Headers:`, error.response.headers);
-        } else if (error.request) {
-          // La petición fue hecha pero no se recibió respuesta
-          console.error(`Sin respuesta del servidor:`, error.request);
-        } else {
-          // Algo ocurrió en el setup de la petición que lanzó un error
-          console.error(`Error de configuración:`, error.message);
-        }
-        return Promise.reject(error);
-      }
-    );
-
-    this.interceptorsSetup = true;
-    console.log("Interceptores de Axios configurados correctamente");
-  }
-
-  // Iniciar sesión con Google
+  // Login with Google
   async loginWithGoogle(googleToken) {
     try {
-      console.log("Enviando token a backend para verificación:", googleToken.substring(0, 20) + "...");
+      console.log("AuthService: Sending Google token to backend for verification");
       
-      // Verificar la URL base
-      console.log(`URL base para login: ${window.location.origin}`);
-      
-      // Guardar un timestamp para comparar con cookies posteriores
-      const timestamp = new Date().toISOString();
-      try {
-        localStorage.setItem('auth_request_time', timestamp);
-      } catch (e) {
-        console.error("Error al guardar timestamp en localStorage:", e);
-      }
-
       const response = await axios.post('/api/auth/google/verify', {
         id_token: googleToken
       });
       
-      console.log("Respuesta de verificación:", response.data);
+      console.log("AuthService: Backend response received", response.status);
       
       if (response.data.success && response.data.access_token) {
-        // Intentar guardar token en localStorage con manejo mejorado de errores
-        try {
-          localStorage.setItem('access_token', response.data.access_token);
-          localStorage.setItem('user', JSON.stringify(response.data.user));
-          console.log("Token y datos de usuario guardados en localStorage");
-        } catch (storageError) {
-          console.error("Error al guardar en localStorage:", storageError);
-          // Intento de fallback a cookies
-          try {
-            document.cookie = `access_token=${response.data.access_token}; path=/;`;
-            document.cookie = `user=${JSON.stringify(response.data.user)}; path=/;`;
-            console.log("Token y datos de usuario guardados en cookies como fallback");
-          } catch (cookieError) {
-            console.error("Error al guardar en cookies:", cookieError);
-            // Si también falla cookies, aún devolvemos success pero avisamos
-            console.warn("No se pudo almacenar la sesión localmente. La sesión podría perderse al recargar.");
-          }
+        console.log("AuthService: Login successful, storing token and user data");
+        
+        // Store the token in localStorage
+        this.storeToken(response.data.access_token);
+        
+        // Store user data
+        if (response.data.user) {
+          this.storeUser(response.data.user);
         }
+        
         return response.data;
       } else {
-        const errorMsg = response.data.message || 'Token no recibido del servidor';
-        console.error(`Error en respuesta del servidor: ${errorMsg}`);
+        const errorMsg = response.data.message || 'Authentication failed';
+        console.error("AuthService: Login failed:", errorMsg);
         throw new Error(errorMsg);
       }
     } catch (error) {
-      console.error('Error en loginWithGoogle:', error);
-      
-      // Diagnostico extenso
-      console.log("--- Diagnóstico de Error en Login ---");
-      if (error.response) {
-        console.log(`Status: ${error.response.status}`);
-        console.log(`Data:`, error.response.data);
-        console.log(`Headers:`, error.response.headers);
-      } else {
-        console.log(`Sin respuesta HTTP. Error: ${error.message}`);
-      }
-      console.log("--- Fin Diagnóstico ---");
-      
+      console.error("AuthService: Login error:", error);
       throw error;
     }
   }
 
-  // Obtener el token con verificación extensiva
-  getToken() {
-    let token = null;
+  // Store token with fallbacks
+  storeToken(token) {
+    if (!token) return false;
     
-    // Intento principal desde localStorage
     try {
-      token = localStorage.getItem('access_token');
+      localStorage.setItem('access_token', token);
+      console.log("Token stored in localStorage");
+      return true;
+    } catch (e) {
+      console.error("Failed to store token in localStorage:", e);
+      
+      // Fallback to cookies
+      try {
+        document.cookie = `access_token=${token}; path=/; max-age=86400`;
+        console.log("Token stored in cookies as fallback");
+        return true;
+      } catch (e2) {
+        console.error("Failed to store token in cookies:", e2);
+        return false;
+      }
+    }
+  }
+
+  // Store user data with fallbacks
+  storeUser(user) {
+    if (!user) return false;
+    
+    try {
+      localStorage.setItem('user', JSON.stringify(user));
+      console.log("User data stored in localStorage");
+      return true;
+    } catch (e) {
+      console.error("Failed to store user in localStorage:", e);
+      
+      // Fallback to cookies
+      try {
+        document.cookie = `user=${JSON.stringify(user)}; path=/; max-age=86400`;
+        console.log("User data stored in cookies as fallback");
+        return true;
+      } catch (e2) {
+        console.error("Failed to store user in cookies:", e2);
+        return false;
+      }
+    }
+  }
+
+  // Get token with fallbacks
+  getToken() {
+    try {
+      const token = localStorage.getItem('access_token');
       if (token) {
-        console.log("Token encontrado en localStorage");
         return token;
       }
     } catch (e) {
-      console.warn("Error al acceder a localStorage:", e.message);
+      console.warn("Error accessing localStorage:", e);
     }
     
-    // Intento de fallback desde cookies
+    // Try from cookies
     try {
       const cookies = document.cookie.split(';');
       for (let i = 0; i < cookies.length; i++) {
         const cookie = cookies[i].trim();
         if (cookie.startsWith('access_token=')) {
-          token = cookie.substring('access_token='.length);
-          console.log("Token encontrado en cookies");
-          
-          // Intentar migrar de cookie a localStorage si es posible
-          try {
-            localStorage.setItem('access_token', token);
-            console.log("Token migrado de cookie a localStorage");
-          } catch (storageError) {
-            console.warn("No se pudo migrar el token a localStorage:", storageError.message);
-          }
-          
-          return token;
+          return cookie.substring('access_token='.length);
         }
       }
     } catch (e) {
-      console.warn("Error al acceder a cookies:", e.message);
+      console.warn("Error accessing cookies:", e);
     }
     
-    console.warn("No se encontró token de autenticación");
     return null;
   }
 
-  // Obtener usuario actual desde localStorage con fallback a cookies
+  // Get current user
   getCurrentUser() {
-    let userJson = null;
-    
-    // Intento principal desde localStorage
     try {
-      userJson = localStorage.getItem('user');
-      if (userJson) {
-        console.log("Datos de usuario encontrados en localStorage");
-        try {
-          return JSON.parse(userJson);
-        } catch (e) {
-          console.error('Error parseando usuario desde localStorage:', e);
-          // No return aquí para intentar el fallback
-        }
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        return JSON.parse(userStr);
       }
     } catch (e) {
-      console.warn("Error al acceder a localStorage para usuario:", e.message);
+      console.warn("Error accessing localStorage for user:", e);
     }
     
-    // Intento de fallback desde cookies
+    // Try from cookies
     try {
       const cookies = document.cookie.split(';');
       for (let i = 0; i < cookies.length; i++) {
         const cookie = cookies[i].trim();
         if (cookie.startsWith('user=')) {
-          userJson = cookie.substring('user='.length);
-          console.log("Datos de usuario encontrados en cookies");
-          try {
-            const userData = JSON.parse(userJson);
-            
-            // Intentar migrar de cookie a localStorage si es posible
-            try {
-              localStorage.setItem('user', userJson);
-              console.log("Datos de usuario migrados de cookie a localStorage");
-            } catch (storageError) {
-              console.warn("No se pudo migrar datos de usuario a localStorage:", storageError.message);
-            }
-            
-            return userData;
-          } catch (e) {
-            console.error('Error parseando usuario desde cookie:', e);
-          }
+          const userStr = cookie.substring('user='.length);
+          return JSON.parse(userStr);
         }
       }
     } catch (e) {
-      console.warn("Error al acceder a cookies para usuario:", e.message);
+      console.warn("Error accessing cookies for user:", e);
     }
     
-    console.warn("No se encontraron datos de usuario");
     return null;
   }
 
-  // Verificar si el usuario está autenticado
+  // Check if user is authenticated
   isAuthenticated() {
     return !!this.getToken();
   }
 
-  // Cerrar sesión con limpieza extensiva
-  logout() {
-    let success = true;
+  // Logout
+  async logout() {
+    console.log("AuthService: Logging out");
     
-    // Limpiar localStorage
+    // Try to call backend logout (but don't wait for it)
+    try {
+      axios.get('/api/logout').catch(e => console.warn("Backend logout failed:", e));
+    } catch (e) {
+      console.warn("Error calling logout endpoint:", e);
+    }
+    
+    // Clear localStorage
     try {
       localStorage.removeItem('access_token');
       localStorage.removeItem('user');
-      console.log("Token y datos de usuario eliminados de localStorage");
     } catch (e) {
-      console.error('Error al limpiar localStorage:', e);
-      success = false;
+      console.warn("Error clearing localStorage:", e);
     }
     
-    // Limpiar cookies
+    // Clear cookies
     try {
       document.cookie = "access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
       document.cookie = "user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-      console.log("Token y datos de usuario eliminados de cookies");
     } catch (e) {
-      console.error('Error al limpiar cookies:', e);
-      success = false;
+      console.warn("Error clearing cookies:", e);
     }
     
-    // Opcional: llamar al endpoint de logout en el backend
-    try {
-      axios.get('/api/logout')
-        .then(() => console.log('Notificado logout al servidor'))
-        .catch(err => console.log('Error al notificar logout al servidor:', err));
-    } catch (e) {
-      console.log('Error al llamar a endpoint de logout:', e);
-      // No afecta al éxito del logout del cliente
-    }
-    
-    return success;
+    return true;
   }
 }
 
+// Export as singleton instance
 export default new AuthService();
