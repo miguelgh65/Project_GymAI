@@ -6,7 +6,7 @@ from typing import Optional, List, Callable, Dict, Any, Union
 import json
 
 from fastapi import Request, Response, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse  # ¡AQUÍ ESTÁ LA CORRECCIÓN!
 from starlette.middleware.base import BaseHTTPMiddleware
 
 # NO importar verify_token aquí para evitar el error circular
