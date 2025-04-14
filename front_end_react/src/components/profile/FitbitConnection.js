@@ -39,59 +39,114 @@ function FitbitConnection({ user, onUpdate }) {
   }, [user]); // Dependency array remains
 
   const checkAndLoadFitbitData = async () => {
-    if (!user) return;
-
-    console.log("Verificando estado de Fitbit...");
+    console.group('💡 Fitbit Connection Diagnostic');
+    console.log("User details:", user);
+    
     setIsFitbitLoading(true);
     setFitbitError(null);
+    
     try {
+      console.log("🔍 Attempting to fetch Fitbit profile data...");
       const profileResponse = await ApiService.getFitbitData('profile');
-      console.log("Respuesta de getFitbitData:", profileResponse);
-
+      
+      console.log("🌐 Raw Fitbit Response:", profileResponse);
+      
       if (profileResponse.success) {
-         if (profileResponse.is_connected && profileResponse.data?.user) {
-            setIsFitbitConnected(true);
-            setFitbitProfile(profileResponse.data);
-            console.log("Fitbit conectado y perfil cargado.");
-         } else {
-            setIsFitbitConnected(profileResponse.is_connected || false);
-            setFitbitProfile(null);
-            if (!profileResponse.is_connected) {
-                console.log("Fitbit no está conectado según el backend.");
-            } else {
-                console.warn("Fitbit conectado pero no se pudo cargar el perfil:", profileResponse.message);
-            }
-         }
+        console.log("✅ Successfully retrieved Fitbit data");
+        
+        if (profileResponse.is_connected && profileResponse.data?.user) {
+          console.log("🔗 Fitbit Connected. User Details:", profileResponse.data.user);
+          setIsFitbitConnected(true);
+          setFitbitProfile(profileResponse.data);
+        } else {
+          console.warn("⚠️ Fitbit Connection Status:", {
+            is_connected: profileResponse.is_connected,
+            message: profileResponse.message
+          });
+          setIsFitbitConnected(false);
+          setFitbitProfile(null);
+        }
       } else {
-         console.error("Error en la respuesta del backend al verificar Fitbit:", profileResponse.message);
-         setIsFitbitConnected(false);
-         setFitbitProfile(null);
-         if (profileResponse.message !== 'Usuario no conectado a Fitbit.') {
-            setFitbitError(profileResponse.message || 'Error al verificar estado de Fitbit.');
-         }
+        console.error("❌ Fitbit Data Retrieval Failed:", profileResponse.message);
+        setIsFitbitConnected(false);
+        setFitbitProfile(null);
+        setFitbitError(profileResponse.message || 'Unable to fetch Fitbit data');
       }
     } catch (error) {
-      console.error('Error en llamada a getFitbitData:', error);
+      console.error('❌ Comprehensive Fitbit Error:', {
+        name: error.name,
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        headers: error.response?.headers
+      });
+      
       setIsFitbitConnected(false);
       setFitbitProfile(null);
-
-      if (error.response && (error.response.status === 403 || error.response.status === 401)) {
-        console.log("Fitbit no conectado o requiere reconexión (API devolvió 401/403)");
+      
+      // Manejo detallado de diferentes tipos de errores
+      if (error.response) {
+        switch (error.response.status) {
+          case 401:
+          case 403:
+            setFitbitError('No autorizado o conexión de Fitbit expirada. Por favor, reconecte.');
+            break;
+          case 404:
+            setFitbitError('Datos de Fitbit no encontrados.');
+            break;
+          case 500:
+            setFitbitError('Error interno del servidor al recuperar datos de Fitbit.');
+            break;
+          default:
+            setFitbitError(
+              error.response.data?.message || 
+              'Error desconocido al conectar con Fitbit'
+            );
+        }
       } else {
-        setFitbitError(error.response?.data?.detail || 'No se pudo verificar el estado de Fitbit.');
+        setFitbitError(
+          error.message || 
+          'Error de red o conexión al recuperar datos de Fitbit'
+        );
       }
     } finally {
       setIsFitbitLoading(false);
+      console.groupEnd();
     }
   };
 
-  const handleConnectFitbit = () => {
-    console.log("Navegando al endpoint de conexión del backend...");
+  const handleConnectFitbit = async () => {
+    console.log("🔒 Iniciando conexión con Fitbit...");
     setIsFitbitLoading(true);
     setFitbitError(null);
-    const backendBaseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5050';
-    const connectUrl = `${backendBaseUrl}/api/fitbit/connect`;
-    window.location.href = connectUrl;
+  
+    try {
+      // Ensure user is logged in
+      const token = AuthService.getToken();
+      if (!token) {
+        console.error("No authentication token available");
+        setFitbitError("Por favor, inicia sesión primero");
+        return;
+      }
+  
+      const connectUrlResponse = await ApiService.getFitbitConnectUrl();
+      
+      if (connectUrlResponse && connectUrlResponse.redirect_url) {
+        console.log("🚀 Redirigiendo a URL de autorización de Fitbit");
+        window.location.href = connectUrlResponse.redirect_url;
+      } else {
+        console.error("No se pudo obtener URL de conexión Fitbit");
+        setFitbitError("Error al iniciar conexión con Fitbit");
+      }
+    } catch (error) {
+      console.error("❌ Error en conexión Fitbit:", error);
+      setFitbitError(
+        error.response?.data?.message || 
+        "Error al conectar con Fitbit. Inténtalo de nuevo."
+      );
+    } finally {
+      setIsFitbitLoading(false);
+    }
   };
 
   const disconnectFitbit = async () => {

@@ -269,48 +269,89 @@ async def connect_fitbit_start(
     user = Depends(get_current_user)
 ):
     """
-    Inicia el flujo OAuth de Fitbit.
-    Acepta autenticación tanto por header como por parámetro de query 'token'.
+    Inicia el flujo OAuth de Fitbit con logging detallado.
     """
-    # Si no hay usuario autenticado por el middleware, intentar autenticar con el token en URL
-    if not user and token:
-        try:
-            # Verificar el token de la URL
-            payload = verify_token(token)
-            if payload and payload.get("sub"):
-                # Buscar usuario por ID
-                user_id = int(payload.get("sub"))
-                user = get_user_by_id(user_id)
-                logger.info(f"Usuario ID={user_id} autenticado vía token en URL")
-        except Exception as e:
-            logger.error(f"Error verificando token JWT en URL: {e}")
-    
-    # Verificar que tengamos un usuario válido
-    if not user or not user.get('id'):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no autenticado")
+    logger.info("🔒 Iniciando conexión Fitbit")
+    logger.info(f"Usuario autenticado: {user is not None}")
+    logger.info(f"Token JWT proporcionado: {token is not None}")
+
+    # Verificación exhaustiva de autenticación
+    if not user:
+        # Intentar autenticar con token en URL
+        if token:
+            try:
+                payload = verify_token(token)
+                if payload and payload.get("sub"):
+                    user_id = int(payload.get("sub"))
+                    user = get_user_by_id(user_id)
+                    logger.info(f"Usuario autenticado via token: ID {user_id}")
+                else:
+                    logger.warning("Token JWT inválido o sin 'sub'")
+            except Exception as e:
+                logger.error(f"Error verificando token JWT: {e}")
+        
+        if not user:
+            logger.error("🚫 No se pudo autenticar al usuario")
+            return RedirectResponse(url="/login?error=authentication_required")
 
     user_id = str(user['id'])
-    state = secrets.token_urlsafe(16)
+    logger.info(f"Preparando OAuth para usuario ID: {user_id}")
 
+    # Generar state de manera más segura
+    state = secrets.token_urlsafe(32)  # Más largo y seguro
+
+    # Construir parámetros de autorización con scopes más completos
     auth_params = {
         "response_type": "code",
         "client_id": FITBIT_CLIENT_ID,
         "redirect_uri": FITBIT_REDIRECT_URI,
-        "scope": "activity heartrate location nutrition profile settings sleep weight",
+        "scope": " ".join([
+            "profile",
+            "activity", 
+            "heartrate", 
+            "location", 
+            "nutrition", 
+            "settings", 
+            "sleep", 
+            "weight"
+        ]),
         "state": state,
+        "prompt": "login consent"  # Forzar consentimiento
     }
-    fitbit_auth_full_url = f"{FITBIT_AUTH_URL}?{urlencode(auth_params)}"
 
-    response = RedirectResponse(url=fitbit_auth_full_url, status_code=status.HTTP_307_TEMPORARY_REDIRECT)
+    fitbit_auth_url = f"{FITBIT_AUTH_URL}?{urlencode(auth_params)}"
+    logger.info(f"URL de autorización Fitbit generada: {fitbit_auth_url[:100]}...")
 
-    # Establecer cookies para state y user_id pendiente
-    secure_cookie = request.url.scheme == "https"
-    max_age_seconds = 600  # 10 min
+    # Respuesta de redireccionamiento con cookies
+    response = RedirectResponse(
+        url=fitbit_auth_url, 
+        status_code=status.HTTP_307_TEMPORARY_REDIRECT
+    )
 
-    response.set_cookie(key="fitbit_oauth_state", value=state, httponly=True, samesite="lax", secure=secure_cookie, max_age=max_age_seconds, path="/")
-    response.set_cookie(key="fitbit_user_id_pending", value=user_id, httponly=True, samesite="lax", secure=secure_cookie, max_age=max_age_seconds, path="/")
+    # Establecer cookies de manera más segura
+    secure = request.url.scheme == "https"
+    max_age = 600  # 10 minutos
 
-    logger.info(f"Redirigiendo usuario {user_id} a Fitbit. State: {state[:5]}...")
+    response.set_cookie(
+        key="fitbit_oauth_state", 
+        value=state, 
+        httponly=True, 
+        secure=secure,
+        samesite="lax", 
+        max_age=max_age, 
+        path="/"
+    )
+    response.set_cookie(
+        key="fitbit_user_id_pending", 
+        value=user_id, 
+        httponly=True, 
+        secure=secure,
+        samesite="lax", 
+        max_age=max_age, 
+        path="/"
+    )
+
+    logger.info(f"✅ Redirigiendo a Fitbit OAuth. State: {state[:10]}...")
     return response
 
 @router.get('/connect-url', name="fitbit_connect_url")
@@ -337,14 +378,34 @@ async def get_fitbit_connect_url(request: Request, user = Depends(get_current_us
     return JSONResponse(content={"success": True, "redirect_url": fitbit_auth_full_url})
 
 @router.get('/callback', name="fitbit_callback")
-async def fitbit_callback_handler(request: Request, code: str = Query(None), state: str = Query(None), error: str = Query(None)):
+async def fitbit_callback_handler(
+    request: Request, 
+    code: str = Query(None), 
+    state: str = Query(None), 
+    error: str = Query(None)
+):
     """Callback de Fitbit. Valida estado, intercambia código, guarda tokens y redirige al frontend."""
-    logger.info(f"Callback Fitbit. Code: {'Sí' if code else 'No'}, State: {state[:5] if state else 'N/A'}..., Error: {error}")
+    # Logging de todos los parámetros de entrada
+    logger.info("🔒 Inicio de callback de Fitbit")
+    logger.info(f"Parámetros recibidos:")
+    logger.info(f"  - Código: {'Presente' if code else 'Ausente'}")
+    logger.info(f"  - Estado: {state or 'N/A'}")
+    logger.info(f"  - Error: {error or 'Ninguno'}")
 
+    # Logging detallado de cookies
+    logger.info("🍪 Información de Cookies:")
+    for cookie_name, cookie_value in request.cookies.items():
+        logger.info(f"  - {cookie_name}: {cookie_value}")
+
+    # Extraer estado y usuario de las cookies
     expected_state = request.cookies.get('fitbit_oauth_state')
     user_id_pending = request.cookies.get('fitbit_user_id_pending')
 
-    # Construir URLs de redirección al frontend
+    # Logging de estado de cookies
+    logger.info(f"Estado esperado (cookie): {expected_state or 'No encontrado'}")
+    logger.info(f"ID de usuario pendiente: {user_id_pending or 'No encontrado'}")
+
+    # Construir URLs de redirección
     base_url = FRONTEND_APP_URL.rstrip('/')
     success_path = FRONTEND_FITBIT_SUCCESS_PATH.lstrip('/')
     error_path = FRONTEND_FITBIT_ERROR_PATH.lstrip('/')
@@ -357,57 +418,134 @@ async def fitbit_callback_handler(request: Request, code: str = Query(None), sta
         if message:
             separator = '&' if '?' in final_url else '?'
             final_url += f"{separator}{urlencode({'message': message})}"
+        
         response = RedirectResponse(final_url, status_code=status.HTTP_303_SEE_OTHER)
-        response.delete_cookie("fitbit_oauth_state", path="/", httponly=True, samesite="lax")
-        response.delete_cookie("fitbit_user_id_pending", path="/", httponly=True, samesite="lax")
-        logger.info(f"Redirigiendo a Frontend: {final_url}. Error: {is_error}")
+        
+        # Eliminar cookies de manera más segura
+        response.delete_cookie(
+            key="fitbit_oauth_state", 
+            path="/", 
+            httponly=True, 
+            samesite="lax",
+            secure=request.url.scheme == "https"
+        )
+        response.delete_cookie(
+            key="fitbit_user_id_pending", 
+            path="/", 
+            httponly=True, 
+            samesite="lax",
+            secure=request.url.scheme == "https"
+        )
+        
+        logger.info(f"Redirigiendo a Frontend: {final_url}. Es error: {is_error}")
         return response
 
-    # Validaciones
+    # Validaciones exhaustivas
     if error:
-        logger.error(f"Error explícito de Fitbit: {error}")
-        return create_frontend_redirect(error_redirect_url_base, f"Fitbit denegó acceso: {error}")
-    if not state or state != expected_state:
-        logger.error(f"Error de State CSRF. Esperado: {expected_state[:5] if expected_state else 'N/A'}..., Recibido: {state[:5] if state else 'N/A'}...")
-        return create_frontend_redirect(error_redirect_url_base, "Error de seguridad. Intenta conectar de nuevo.")
-    if not code:
-        logger.error("No se recibió código de autorización de Fitbit.")
-        return create_frontend_redirect(error_redirect_url_base, "No se recibió código de autorización.")
-    if not user_id_pending:
-        logger.error("Error crítico: Falta cookie 'fitbit_user_id_pending'.")
-        return create_frontend_redirect(error_redirect_url_base, "Error interno: No se pudo identificar al usuario.")
+        logger.warning(f"Fitbit devolvió un error explícito: {error}")
+        return create_frontend_redirect(
+            error_redirect_url_base, 
+            f"Fitbit denegó acceso: {error}"
+        )
 
-    # Intercambiar código por tokens
+    if not code:
+        logger.error("No se recibió código de autorización de Fitbit")
+        return create_frontend_redirect(
+            error_redirect_url_base, 
+            "No se recibió código de autorización. Por favor, inténtalo de nuevo."
+        )
+
+    if not expected_state:
+        logger.critical("Falta el estado CSRF en las cookies")
+        return create_frontend_redirect(
+            error_redirect_url_base, 
+            "Error de seguridad: estado de sesión inválido"
+        )
+
+    if not state or state != expected_state:
+        logger.error(
+            f"Error de validación CSRF. "
+            f"Esperado: {expected_state[:10]}..., "
+            f"Recibido: {state[:10]}..."
+        )
+        return create_frontend_redirect(
+            error_redirect_url_base, 
+            "Error de seguridad. Por favor, inténtalo de nuevo."
+        )
+
+    if not user_id_pending:
+        logger.critical("No se encontró ID de usuario pendiente")
+        return create_frontend_redirect(
+            error_redirect_url_base, 
+            "Error interno: no se pudo identificar al usuario"
+        )
+
+    # Preparar solicitud de intercambio de tokens
     auth_string = f"{FITBIT_CLIENT_ID}:{FITBIT_CLIENT_SECRET}"
     auth_b64 = base64.b64encode(auth_string.encode('utf-8')).decode('utf-8')
-    headers = {"Authorization": f"Basic {auth_b64}", "Content-Type": "application/x-www-form-urlencoded"}
-    data = {"client_id": FITBIT_CLIENT_ID, "grant_type": "authorization_code", "code": code, "redirect_uri": FITBIT_REDIRECT_URI}
+    headers = {
+        "Authorization": f"Basic {auth_b64}", 
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
+    data = {
+        "client_id": FITBIT_CLIENT_ID, 
+        "grant_type": "authorization_code", 
+        "code": code, 
+        "redirect_uri": FITBIT_REDIRECT_URI
+    }
 
     try:
-        logger.info(f"Intercambiando código Fitbit por tokens para usuario pendiente: {user_id_pending}")
-        token_response = requests.post(FITBIT_TOKEN_URL, headers=headers, data=data, timeout=20)
+        logger.info(f"Intercambiando código Fitbit para usuario {user_id_pending}")
+        token_response = requests.post(
+            FITBIT_TOKEN_URL, 
+            headers=headers, 
+            data=data, 
+            timeout=20
+        )
+
+        logger.info(f"Respuesta de Fitbit - Código de estado: {token_response.status_code}")
 
         if token_response.status_code != 200:
-            logger.error(f"Error al intercambiar código Fitbit ({token_response.status_code}): {token_response.text[:200]}")
-            return create_frontend_redirect(error_redirect_url_base, f"Error ({token_response.status_code}) al finalizar conexión.")
+            logger.error(
+                f"Error al intercambiar código Fitbit "
+                f"(Código: {token_response.status_code}): "
+                f"{token_response.text[:200]}"
+            )
+            return create_frontend_redirect(
+                error_redirect_url_base, 
+                f"Error al conectar con Fitbit (Código: {token_response.status_code})"
+            )
 
         tokens = token_response.json()
-        logger.info(f"Tokens Fitbit recibidos para usuario pendiente: {user_id_pending}")
+        logger.info("Tokens de Fitbit recibidos correctamente")
 
-        # Guardar Tokens
+        # Guardar tokens
         if save_fitbit_tokens_to_db(user_id_pending, FITBIT_CLIENT_ID, tokens):
-            logger.info(f"Tokens Fitbit guardados para usuario: {user_id_pending}")
-            return create_frontend_redirect(success_redirect_url, message="¡Fitbit conectado!", is_error=False)
+            logger.info(f"Tokens Fitbit guardados para usuario {user_id_pending}")
+            return create_frontend_redirect(
+                success_redirect_url, 
+                message="¡Fitbit conectado exitosamente!", 
+                is_error=False
+            )
         else:
-            logger.error(f"FALLO Crítico al guardar tokens Fitbit para usuario {user_id_pending}.")
-            return create_frontend_redirect(error_redirect_url_base, "Error interno al guardar conexión Fitbit.")
+            logger.error(f"Fallo al guardar tokens Fitbit para usuario {user_id_pending}")
+            return create_frontend_redirect(
+                error_redirect_url_base, 
+                "Error interno al guardar conexión Fitbit"
+            )
 
     except requests.exceptions.RequestException as e:
-        logger.error(f"Error de red/timeout en callback Fitbit para usuario {user_id_pending}: {e}")
-        return create_frontend_redirect(error_redirect_url_base, "Error de red/timeout al conectar con Fitbit.")
+        logger.error(f"Error de red/timeout con Fitbit para usuario {user_id_pending}: {e}")
+        return create_frontend_redirect(
+            error_redirect_url_base, 
+            "Error de conexión. Por favor, inténtalo de nuevo."
+        )
     except Exception as e:
-        logger.exception(f"Error inesperado en callback Fitbit para usuario {user_id_pending}: {e}")
-        return create_frontend_redirect(error_redirect_url_base, "Error inesperado durante conexión Fitbit.")
+        logger.exception(f"Error inesperado en callback Fitbit para usuario {user_id_pending}")
+        return create_frontend_redirect(
+            error_redirect_url_base, 
+            "Error inesperado. Por favor, contacta con soporte."
+        )
 
 @router.get("/data", name="fitbit_data", response_class=JSONResponse)
 async def get_fitbit_data_api(
