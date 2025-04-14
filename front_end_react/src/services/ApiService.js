@@ -188,7 +188,7 @@ class ApiService {
     }
   }
 
-  // Get Fitbit Data - IMPROVED ERROR HANDLING
+  // Get Fitbit Data - MEJORADO CON SOPORTE PARA MÁS TIPOS DE DATOS
   static async getFitbitData(dataType, date = null, detailLevel = null) {
     try {
       let url = `${API_URL}/api/fitbit/data?data_type=${dataType}`;
@@ -196,7 +196,10 @@ class ApiService {
       if (date) url += `&date=${date}`;
       if (detailLevel) url += `&detail_level=${detailLevel}`;
       
+      console.log(`Fetching Fitbit ${dataType} data...`);
       const response = await axios.get(url);
+      console.log(`Fitbit ${dataType} data retrieved:`, response.data);
+      
       return response.data;
     } catch (error) {
       console.error(`Error fetching Fitbit ${dataType} data:`, error);
@@ -222,6 +225,54 @@ class ApiService {
       
       throw error;
     }
+  }
+  
+  // NUEVOS MÉTODOS PARA DATOS ESPECÍFICOS DE FITBIT
+  
+  // Obtener datos de actividad
+  static async getFitbitActivityData(date = new Date().toISOString().split('T')[0]) {
+    return this.getFitbitData('activity_summary', date);
+  }
+  
+  // Obtener datos de frecuencia cardíaca intradía
+  static async getFitbitHeartRateData(date = new Date().toISOString().split('T')[0], detailLevel = '1min') {
+    return this.getFitbitData('heart_rate_intraday', date, detailLevel);
+  }
+  
+  // Obtener datos de sueño
+  static async getFitbitSleepData(date = new Date().toISOString().split('T')[0]) {
+    return this.getFitbitData('sleep_log', date);
+  }
+  
+  // Obtener VO2 Max (Cardio Fitness Score)
+  static async getFitbitCardioScore(date = new Date().toISOString().split('T')[0]) {
+    return this.getFitbitData('cardio_score', date);
+  }
+  
+  // Obtener datos de respiración
+  static async getFitbitBreathingRate(date = new Date().toISOString().split('T')[0]) {
+    return this.getFitbitData('breathing_rate', date);
+  }
+  
+  // Obtener datos de SpO2 (saturación de oxígeno)
+  static async getFitbitSpO2Data(date = new Date().toISOString().split('T')[0]) {
+    return this.getFitbitData('spo2', date);
+  }
+  
+  // Obtener datos de temperatura corporal
+  static async getFitbitTemperatureData(date = new Date().toISOString().split('T')[0]) {
+    return this.getFitbitData('temp/skin', date);
+  }
+  
+  // Obtener todas las actividades para un período
+  static async getFitbitActivities(startDate, endDate) {
+    let url = `${API_URL}/api/fitbit/data?data_type=activity_list`;
+    
+    if (startDate) url += `&start_date=${startDate}`;
+    if (endDate) url += `&end_date=${endDate}`;
+    
+    const response = await axios.get(url);
+    return response.data;
   }
   
   // OAuth Helper Method - NEW METHOD

@@ -1,5 +1,6 @@
 {
   "dependencies": {
-    "@mui/icons-material": "^5.17.1"
+    "@mui/icons-material": "^5.17.1",
+    "recharts": "^2.15.2"
   }
 }

@@ -2,15 +2,17 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Button, Card, CardContent,
-  CircularProgress, Alert, Grid, Chip
+  CircularProgress, Alert, Collapse, IconButton
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faLink, faUnlink, faCheckCircle } from '@fortawesome/free-solid-svg-icons';
-// Asegúrate de importar tu componente de detalles si lo vas a usar
-// import FitbitProfileDetails from './FitbitProfileDetails';
+import { 
+  faLink, faUnlink, faCheckCircle, 
+  faChevronDown, faChevronUp 
+} from '@fortawesome/free-solid-svg-icons';
 import ApiService from '../../services/ApiService';
-// Añadir importación de AuthService
 import AuthService from '../../services/AuthService';
+// Importamos nuestro nuevo componente
+import FitbitDashboard from './FitbitDashboard';
 
 function FitbitConnection({ user, onUpdate }) {
   const [isFitbitConnected, setIsFitbitConnected] = useState(false);
@@ -18,6 +20,7 @@ function FitbitConnection({ user, onUpdate }) {
   const [isFitbitLoading, setIsFitbitLoading] = useState(false);
   const [fitbitError, setFitbitError] = useState(null);
   const [uiMessage, setUiMessage] = useState(null);
+  const [showDashboard, setShowDashboard] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -27,18 +30,22 @@ function FitbitConnection({ user, onUpdate }) {
     const params = new URLSearchParams(window.location.search);
     const fitbitStatus = params.get('fitbit_status');
     const fitbitMessage = params.get('message');
+    
     if (fitbitStatus === 'success' && fitbitMessage) {
         setUiMessage({ type: 'success', text: fitbitMessage });
-        // Optionally clear URL params
+        setShowDashboard(true); // Automáticamente mostrar el dashboard al conectar exitosamente
         window.history.replaceState({}, document.title, "/profile");
     } else if (fitbitStatus === 'error' && fitbitMessage) {
         setUiMessage({ type: 'error', text: fitbitMessage });
-         // Optionally clear URL params
         window.history.replaceState({}, document.title, "/profile");
     }
-    setTimeout(() => setUiMessage(null), 7000); // Auto-hide message
-
-  }, [user]); // Dependency array remains
+    
+    // Configurar un temporizador para ocultar el mensaje después de 7 segundos
+    const messageTimer = setTimeout(() => setUiMessage(null), 7000);
+    
+    // Limpiar el temporizador al desmontar el componente
+    return () => clearTimeout(messageTimer);
+  }, [user]);
 
   const checkAndLoadFitbitData = async () => {
     console.group('💡 Fitbit Connection Diagnostic');
@@ -161,6 +168,7 @@ function FitbitConnection({ user, onUpdate }) {
         setIsFitbitConnected(false);
         setFitbitProfile(null);
         setFitbitError(null);
+        setShowDashboard(false);
         setUiMessage({
           type: 'success',
           text: response.message || 'Cuenta de Fitbit desconectada'
@@ -180,98 +188,137 @@ function FitbitConnection({ user, onUpdate }) {
     }
   };
 
-  // --- Inicio del bloque Return JSX ---
+  const toggleDashboard = () => {
+    setShowDashboard(!showDashboard);
+  };
+
   return (
-    <Card elevation={3} sx={{ mb: 3 }}>
+    <Card elevation={3} sx={{ mb: 3, overflow: 'visible' }}>
       <CardContent>
-        <Typography variant="h6" gutterBottom>Conexión Fitbit</Typography>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          flexWrap: 'wrap'
+        }}>
+          <Typography variant="h6">Conexión Fitbit</Typography>
+          
+          {isFitbitConnected && (
+            <Button
+              variant="text"
+              size="small"
+              onClick={toggleDashboard}
+              startIcon={<FontAwesomeIcon icon={showDashboard ? faChevronUp : faChevronDown} />}
+              color="primary"
+            >
+              {showDashboard ? 'Ocultar Dashboard' : 'Ver Dashboard'}
+            </Button>
+          )}
+        </Box>
+        
         {/* Display fitbitError */}
         {fitbitError && !uiMessage && (
-          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setFitbitError(null)}>
+          <Alert severity="error" sx={{ mt: 2, mb: 2 }} onClose={() => setFitbitError(null)}>
             {fitbitError}
           </Alert>
         )}
+        
         {/* Display uiMessage (for connect/disconnect success/error) */}
         {uiMessage && (
-          <Alert severity={uiMessage.type} sx={{ mb: 2 }} onClose={() => setUiMessage(null)}>
+          <Alert severity={uiMessage.type} sx={{ mt: 2, mb: 2 }} onClose={() => setUiMessage(null)}>
             {uiMessage.text}
           </Alert>
         )}
 
-        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-          <Chip
-            icon={<FontAwesomeIcon icon={faLink} />}
-            label="Fitbit"
-            variant="outlined"
-            size="small"
-            sx={{ minWidth: '100px' }}
-          />
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          flexWrap: 'wrap', 
+          gap: 2,
+          mt: 2,
+          p: 2,
+          bgcolor: 'background.paper',
+          borderRadius: 1,
+          border: '1px solid',
+          borderColor: 'divider'
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <FontAwesomeIcon 
+              icon={faLink} 
+              style={{ marginRight: '8px', color: '#00B0B9' }} 
+            />
+            <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+              Fitbit
+            </Typography>
+          </Box>
+          
           {isFitbitConnected ? (
             <>
-              <Typography component="span" sx={{ color: 'success.main', fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
-                <FontAwesomeIcon icon={faCheckCircle} style={{ marginRight: 4 }}/> Conectado
+              <Typography 
+                component="span" 
+                sx={{ 
+                  color: 'success.main', 
+                  fontWeight: 'bold', 
+                  display: 'flex', 
+                  alignItems: 'center',
+                  ml: 2
+                }}
+              >
+                <FontAwesomeIcon icon={faCheckCircle} style={{ marginRight: 4 }}/> 
+                Conectado
               </Typography>
               <Button
                 variant="outlined"
                 color="error"
                 size="small"
                 onClick={disconnectFitbit}
-                disabled={isFitbitLoading && isFitbitConnected} // Disable only when disconnecting
+                disabled={isFitbitLoading}
                 startIcon={<FontAwesomeIcon icon={faUnlink} />}
                 sx={{ ml: 'auto' }} // Push to the right
               >
-                {isFitbitLoading && isFitbitConnected ? <CircularProgress size={16} sx={{ mr: 1 }}/> : null} {/* Show loading only when disconnecting */}
+                {isFitbitLoading ? <CircularProgress size={16} sx={{ mr: 1 }}/> : null}
                 Desconectar
               </Button>
             </>
           ) : (
             <>
-              <Typography component="span" sx={{ color: 'text.secondary', mr: 2 }}>
+              <Typography 
+                component="span" 
+                sx={{ 
+                  color: 'text.secondary', 
+                  ml: 2 
+                }}
+              >
                 No conectado
               </Typography>
-              {/* Button uses the corrected handleConnectFitbit */}
               <Button
                 variant="contained"
-                onClick={handleConnectFitbit} // Use the corrected function
-                disabled={isFitbitLoading && !isFitbitConnected} // Disable only when connecting
+                onClick={handleConnectFitbit}
+                disabled={isFitbitLoading}
                 startIcon={<FontAwesomeIcon icon={faLink} />}
                 size="small"
-                sx={{ backgroundColor: '#00B0B9', '&:hover': { backgroundColor: '#008a91'} }}
+                sx={{ 
+                  ml: 'auto',
+                  backgroundColor: '#00B0B9', 
+                  '&:hover': { backgroundColor: '#008a91'} 
+                }}
               >
-                {isFitbitLoading && !isFitbitConnected ? <CircularProgress size={16} sx={{ mr: 1 }} color="inherit"/> : null} {/* Show loading only when connecting */}
+                {isFitbitLoading ? <CircularProgress size={16} sx={{ mr: 1 }} color="inherit"/> : null}
                 Conectar con Fitbit
               </Button>
             </>
           )}
-          {/* General loading indicator can be placed here if needed */}
-          {/* {isFitbitLoading && <CircularProgress size={20} sx={{ ml: 2 }} />} */}
         </Box>
 
-        {/* Display Fitbit Profile Details */}
-        {/* *** CORRECCIÓN AQUÍ *** */}
-        {isFitbitConnected && fitbitProfile?.user && (
-          <> {/* <-- Envolver en Fragmento React */}
-            {/* Puedes descomentar FitbitProfileDetails si ya lo tienes */}
-            {/* <FitbitProfileDetails fitbitProfile={fitbitProfile} /> */}
-
-            {/* O mostrar el Box directamente */}
-            <Box sx={{ mt: 3, p: 2, backgroundColor: '#f9f9f9', borderRadius: 1 }}>
-              <Typography variant="subtitle1">
-                  Perfil Fitbit Cargado ({fitbitProfile.user.displayName || 'Usuario'})
-              </Typography>
-              {/* Aquí puedes añadir más detalles del perfil si quieres */}
-              <Typography variant="body2" color="textSecondary">Edad: {fitbitProfile.user.age}</Typography>
-              <Typography variant="body2" color="textSecondary">Altura: {fitbitProfile.user.height} cm</Typography>
-              <Typography variant="body2" color="textSecondary">Peso: {fitbitProfile.user.weight} kg</Typography>
-            </Box>
-          </> // <-- Cerrar Fragmento React
-        )}
-        {/* *** FIN CORRECCIÓN *** */}
-
+        {/* Fitbit Dashboard */}
+        <Collapse in={isFitbitConnected && showDashboard}>
+          <Box sx={{ mt: 3 }}>
+            <FitbitDashboard user={user} />
+          </Box>
+        </Collapse>
       </CardContent>
     </Card>
   );
-  // --- Fin del bloque Return JSX ---
 }
 
 export default FitbitConnection;
