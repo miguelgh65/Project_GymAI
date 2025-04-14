@@ -117,6 +117,7 @@ except NameError:
 
 # Importar routers (usando importaciones relativas)
 # --- Importaciones Corregidas ---
+# En la sección de importación de routers
 try:
     # Usar importación relativa (. significa desde el mismo directorio gym)
     from .routes import auth as auth_routes
@@ -124,15 +125,17 @@ try:
     from .routes import dashboard as dashboard_routes
     from .routes import main as main_routes
     from .routes import profile as profile_routes
+    from .routes.fitbit import router as fitbit_router  # NUEVO: Importar router combinado de fitbit
     from .routes import routine as routine_routes
-    from .routes import login_handler as login_routes  # NUEVO: Importar login_handler.py
+    from .routes import login_handler as login_routes
 
     logger.info("Incluyendo routers...")
-    app.include_router(login_routes.router)  # NUEVO: Incluir login_handler primero
+    app.include_router(login_routes.router)
     app.include_router(main_routes.router)
     app.include_router(routine_routes.router)
     app.include_router(dashboard_routes.router)
     app.include_router(profile_routes.router)
+    app.include_router(fitbit_router)  # NUEVO: Incluir router de Fitbit
     app.include_router(chatbot_routes.router)
     app.include_router(auth_routes.router)
     logger.info("✅ Routers incluidos.")
@@ -141,7 +144,6 @@ except ImportError as e:
     # Loguea el error específico de importación del router
     logger.critical(f"💥 Error Crítico importando routers (relativa): {e}", exc_info=True)
     sys.exit(f"Error importando routers: {e}")
-
 # Direct route for Fitbit callback to match the FITBIT_REDIRECT_URI in .env
 @app.get("/fitbit-callback")
 async def fitbit_callback_direct(request: Request):

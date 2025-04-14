@@ -9,6 +9,8 @@ import { faLink, faUnlink, faCheckCircle } from '@fortawesome/free-solid-svg-ico
 // Asegúrate de importar tu componente de detalles si lo vas a usar
 // import FitbitProfileDetails from './FitbitProfileDetails';
 import ApiService from '../../services/ApiService';
+// Añadir importación de AuthService
+import AuthService from '../../services/AuthService';
 
 function FitbitConnection({ user, onUpdate }) {
   const [isFitbitConnected, setIsFitbitConnected] = useState(false);
