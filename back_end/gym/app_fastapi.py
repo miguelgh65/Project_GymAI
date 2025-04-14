@@ -91,12 +91,13 @@ logger.info("---------------------------------")
 # En app_fastapi.py - Reemplaza la configuración CORS actual
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost", "http://localhost:3000"], # Solo orígenes específicos para credentials
+    allow_origins=["*"],  # En desarrollo puedes usar * 
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=86400,  # Tiempo que el navegador puede cachear la respuesta preflight
 )
-
 # Middleware de sesiones
 secret_key = os.getenv('SECRET_KEY')
 if not secret_key:

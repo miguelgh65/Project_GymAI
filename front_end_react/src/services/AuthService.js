@@ -5,6 +5,11 @@ import axios from 'axios';
 const API_URL = process.env.REACT_APP_API_BASE_URL || '';
 
 class AuthService {
+  // Login with Google - wrapper for verifyGoogleToken
+  static async loginWithGoogle(credential) {
+    return this.verifyGoogleToken(credential);
+  }
+
   // Google authentication
   static async verifyGoogleToken(token) {
     try {
