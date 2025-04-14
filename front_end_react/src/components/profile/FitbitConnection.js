@@ -1,13 +1,13 @@
 // src/components/profile/FitbitConnection.js
-import React, { useState, useEffect, useRef } from 'react';
-import { 
+import React, { useState, useEffect } from 'react';
+import {
   Box, Typography, Button, Card, CardContent,
-  Divider, CircularProgress, Alert, Grid, Chip, Link
+  CircularProgress, Alert, Grid, Chip
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faLink, faUnlink, faCheckCircle } from '@fortawesome/free-solid-svg-icons';
-import axios from 'axios';
-import AuthService from '../../services/AuthService';
+// Asegúrate de importar tu componente de detalles si lo vas a usar
+// import FitbitProfileDetails from './FitbitProfileDetails';
 import ApiService from '../../services/ApiService';
 
 function FitbitConnection({ user, onUpdate }) {
@@ -16,18 +16,27 @@ function FitbitConnection({ user, onUpdate }) {
   const [isFitbitLoading, setIsFitbitLoading] = useState(false);
   const [fitbitError, setFitbitError] = useState(null);
   const [uiMessage, setUiMessage] = useState(null);
-  
-  // Ref para el formulario
-  const formRef = useRef(null);
-  
-  // Obtener la URL base de la API
-  const API_URL = process.env.REACT_APP_API_BASE_URL || '';
 
   useEffect(() => {
     if (user) {
       checkAndLoadFitbitData();
     }
-  }, [user]);
+    // Check URL params for status messages from the backend callback redirect
+    const params = new URLSearchParams(window.location.search);
+    const fitbitStatus = params.get('fitbit_status');
+    const fitbitMessage = params.get('message');
+    if (fitbitStatus === 'success' && fitbitMessage) {
+        setUiMessage({ type: 'success', text: fitbitMessage });
+        // Optionally clear URL params
+        window.history.replaceState({}, document.title, "/profile");
+    } else if (fitbitStatus === 'error' && fitbitMessage) {
+        setUiMessage({ type: 'error', text: fitbitMessage });
+         // Optionally clear URL params
+        window.history.replaceState({}, document.title, "/profile");
+    }
+    setTimeout(() => setUiMessage(null), 7000); // Auto-hide message
+
+  }, [user]); // Dependency array remains
 
   const checkAndLoadFitbitData = async () => {
     if (!user) return;
@@ -40,34 +49,34 @@ function FitbitConnection({ user, onUpdate }) {
       console.log("Respuesta de getFitbitData:", profileResponse);
 
       if (profileResponse.success) {
-         if (profileResponse.is_connected && profileResponse.data) {
-             setIsFitbitConnected(true);
-             setFitbitProfile(profileResponse.data);
-             console.log("Fitbit conectado y perfil cargado.");
+         if (profileResponse.is_connected && profileResponse.data?.user) {
+            setIsFitbitConnected(true);
+            setFitbitProfile(profileResponse.data);
+            console.log("Fitbit conectado y perfil cargado.");
          } else {
-             setIsFitbitConnected(profileResponse.is_connected || false);
-             setFitbitProfile(null);
-             if (!profileResponse.is_connected) {
-                 console.log("Fitbit no está conectado según el backend.");
-             } else {
-                 console.warn("Fitbit conectado pero no se pudo cargar el perfil:", profileResponse.message);
-                 setFitbitError('Fitbit conectado, pero no se pudo cargar el perfil.');
-             }
+            setIsFitbitConnected(profileResponse.is_connected || false);
+            setFitbitProfile(null);
+            if (!profileResponse.is_connected) {
+                console.log("Fitbit no está conectado según el backend.");
+            } else {
+                console.warn("Fitbit conectado pero no se pudo cargar el perfil:", profileResponse.message);
+            }
          }
       } else {
          console.error("Error en la respuesta del backend al verificar Fitbit:", profileResponse.message);
          setIsFitbitConnected(false);
          setFitbitProfile(null);
-         setFitbitError(profileResponse.message || 'Error al verificar estado de Fitbit.');
+         if (profileResponse.message !== 'Usuario no conectado a Fitbit.') {
+            setFitbitError(profileResponse.message || 'Error al verificar estado de Fitbit.');
+         }
       }
     } catch (error) {
       console.error('Error en llamada a getFitbitData:', error);
       setIsFitbitConnected(false);
       setFitbitProfile(null);
-      
-      if (error.response && error.response.status === 403) {
-        console.log("Fitbit no conectado (403 Forbidden)");
-        // No mostrar error en este caso, simplemente no está conectado
+
+      if (error.response && (error.response.status === 403 || error.response.status === 401)) {
+        console.log("Fitbit no conectado o requiere reconexión (API devolvió 401/403)");
       } else {
         setFitbitError(error.response?.data?.detail || 'No se pudo verificar el estado de Fitbit.');
       }
@@ -76,73 +85,13 @@ function FitbitConnection({ user, onUpdate }) {
     }
   };
 
-  // Método para iniciar conexión a Fitbit con Axios
-  const connectFitbit = async () => {
-    console.log("Iniciando conexión Fitbit via Axios con token JWT...");
+  const handleConnectFitbit = () => {
+    console.log("Navegando al endpoint de conexión del backend...");
     setIsFitbitLoading(true);
     setFitbitError(null);
-    
-    try {
-      // Obtener el token
-      const token = AuthService.getToken();
-      if (!token) {
-        setFitbitError("No hay token de autenticación disponible.");
-        setIsFitbitLoading(false);
-        return;
-      }
-      
-      // Configurar la solicitud con el token en los headers
-      const config = {
-        headers: { 
-          'Authorization': `Bearer ${token}`
-        },
-        // Importante: permitir redirecciones y seguirlas automáticamente
-        maxRedirects: 5,
-        // Permitir que el navegador maneje las redirecciones
-        validateStatus: function(status) {
-          return status < 400; // Aceptar respuestas 3xx como válidas
-        }
-      };
-      
-      // Hacer la llamada GET a Fitbit connect
-      console.log("Solicitando conexión a Fitbit con config:", config);
-      
-      // En lugar de hacer una solicitud normal, creamos un iframe temporal
-      // para cargar la URL con el token en un header, y luego dejar que el
-      // navegador maneje la redirección
-      
-      // Primero obtenemos la URL de redirección
-      const response = await axios.get(`${API_URL}/api/fitbit/connect-url`, config);
-      
-      if (response.data && response.data.redirect_url) {
-        // Redirigir a la URL obtenida
-        window.location.href = response.data.redirect_url;
-      } else {
-        throw new Error("No se obtuvo una URL de redirección válida");
-      }
-    } catch (error) {
-      console.error("Error conectando a Fitbit:", error);
-      setFitbitError("Error al iniciar la conexión con Fitbit. Inténtalo de nuevo más tarde.");
-      setIsFitbitLoading(false);
-    }
-    // No detenemos el loading si la redirección es exitosa
-  };
-
-  // Función alternativa: enviar formulario que abre en nueva ventana
-  const handleConnectFitbitClick = () => {
-    setIsFitbitLoading(true);
-    
-    // Verificar si hay token
-    const token = AuthService.getToken();
-    if (!token) {
-      setFitbitError("No hay token de autenticación disponible.");
-      setIsFitbitLoading(false);
-      return;
-    }
-    
-    // Utilizar una solución simple y directa que funciona en todos los navegadores
-    // Creamos una solicitud GET directa con el token en la URL
-    window.location.href = `${API_URL}/api/fitbit/connect?token=${token}`;
+    const backendBaseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5050';
+    const connectUrl = `${backendBaseUrl}/api/fitbit/connect`;
+    window.location.href = connectUrl;
   };
 
   const disconnectFitbit = async () => {
@@ -174,11 +123,18 @@ function FitbitConnection({ user, onUpdate }) {
     }
   };
 
+  // --- Inicio del bloque Return JSX ---
   return (
     <Card elevation={3} sx={{ mb: 3 }}>
       <CardContent>
         <Typography variant="h6" gutterBottom>Conexión Fitbit</Typography>
-        {fitbitError && <Alert severity="error" sx={{ mb: 2 }}>{fitbitError}</Alert>}
+        {/* Display fitbitError */}
+        {fitbitError && !uiMessage && (
+          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setFitbitError(null)}>
+            {fitbitError}
+          </Alert>
+        )}
+        {/* Display uiMessage (for connect/disconnect success/error) */}
         {uiMessage && (
           <Alert severity={uiMessage.type} sx={{ mb: 2 }} onClose={() => setUiMessage(null)}>
             {uiMessage.text}
@@ -196,18 +152,18 @@ function FitbitConnection({ user, onUpdate }) {
           {isFitbitConnected ? (
             <>
               <Typography component="span" sx={{ color: 'success.main', fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
-                <FontAwesomeIcon icon={faCheckCircle} style={{marginRight: 4}}/> Conectado
+                <FontAwesomeIcon icon={faCheckCircle} style={{ marginRight: 4 }}/> Conectado
               </Typography>
               <Button
                 variant="outlined"
                 color="error"
                 size="small"
                 onClick={disconnectFitbit}
-                disabled={isFitbitLoading}
+                disabled={isFitbitLoading && isFitbitConnected} // Disable only when disconnecting
                 startIcon={<FontAwesomeIcon icon={faUnlink} />}
-                sx={{ ml: 'auto' }}
+                sx={{ ml: 'auto' }} // Push to the right
               >
-                {isFitbitLoading ? <CircularProgress size={16} sx={{ mr: 1 }}/> : null}
+                {isFitbitLoading && isFitbitConnected ? <CircularProgress size={16} sx={{ mr: 1 }}/> : null} {/* Show loading only when disconnecting */}
                 Desconectar
               </Button>
             </>
@@ -216,68 +172,49 @@ function FitbitConnection({ user, onUpdate }) {
               <Typography component="span" sx={{ color: 'text.secondary', mr: 2 }}>
                 No conectado
               </Typography>
-              
-              {/* NUEVA SOLUCIÓN: Botón normal que redirige al endpoint con token en URL */}
+              {/* Button uses the corrected handleConnectFitbit */}
               <Button
                 variant="contained"
-                onClick={handleConnectFitbitClick}
-                disabled={isFitbitLoading}
+                onClick={handleConnectFitbit} // Use the corrected function
+                disabled={isFitbitLoading && !isFitbitConnected} // Disable only when connecting
                 startIcon={<FontAwesomeIcon icon={faLink} />}
                 size="small"
                 sx={{ backgroundColor: '#00B0B9', '&:hover': { backgroundColor: '#008a91'} }}
               >
-                {isFitbitLoading ? <CircularProgress size={16} sx={{ mr: 1 }} color="inherit"/> : null}
+                {isFitbitLoading && !isFitbitConnected ? <CircularProgress size={16} sx={{ mr: 1 }} color="inherit"/> : null} {/* Show loading only when connecting */}
                 Conectar con Fitbit
               </Button>
             </>
           )}
-          {isFitbitLoading && <CircularProgress size={20} sx={{ ml: 2 }} />}
+          {/* General loading indicator can be placed here if needed */}
+          {/* {isFitbitLoading && <CircularProgress size={20} sx={{ ml: 2 }} />} */}
         </Box>
 
+        {/* Display Fitbit Profile Details */}
+        {/* *** CORRECCIÓN AQUÍ *** */}
         {isFitbitConnected && fitbitProfile?.user && (
-          <Box sx={{ mt: 3, p: 2, backgroundColor: '#f9f9f9', borderRadius: 1 }}>
-            <Typography variant="subtitle1" gutterBottom>
-              Perfil Fitbit ({fitbitProfile.user.displayName || 'Usuario'})
-            </Typography>
-            <Grid container spacing={2}>
-              {fitbitProfile.user.age && (
-                <Grid item xs={6} sm={4} md={3}>
-                  <Card variant="outlined" sx={{ p: 1, textAlign: 'center', height: '100%' }}>
-                    <Typography variant="h5" color="primary">{fitbitProfile.user.age}</Typography>
-                    <Typography variant="caption" color="textSecondary">Edad</Typography>
-                  </Card>
-                </Grid>
-              )}
-              {fitbitProfile.user.height && (
-                <Grid item xs={6} sm={4} md={3}>
-                  <Card variant="outlined" sx={{ p: 1, textAlign: 'center', height: '100%' }}>
-                    <Typography variant="h5" color="primary">{fitbitProfile.user.height}</Typography>
-                    <Typography variant="caption" color="textSecondary">Altura (cm)</Typography>
-                  </Card>
-                </Grid>
-              )}
-              {fitbitProfile.user.weight && (
-                <Grid item xs={6} sm={4} md={3}>
-                  <Card variant="outlined" sx={{ p: 1, textAlign: 'center', height: '100%' }}>
-                    <Typography variant="h5" color="primary">{fitbitProfile.user.weight}</Typography>
-                    <Typography variant="caption" color="textSecondary">Peso (kg)</Typography>
-                  </Card>
-                </Grid>
-              )}
-              {fitbitProfile.user.averageDailySteps && (
-                <Grid item xs={6} sm={4} md={3}>
-                  <Card variant="outlined" sx={{ p: 1, textAlign: 'center', height: '100%' }}>
-                    <Typography variant="h5" color="primary">{fitbitProfile.user.averageDailySteps}</Typography>
-                    <Typography variant="caption" color="textSecondary">Pasos diarios (prom)</Typography>
-                  </Card>
-                </Grid>
-              )}
-            </Grid>
-          </Box>
+          <> {/* <-- Envolver en Fragmento React */}
+            {/* Puedes descomentar FitbitProfileDetails si ya lo tienes */}
+            {/* <FitbitProfileDetails fitbitProfile={fitbitProfile} /> */}
+
+            {/* O mostrar el Box directamente */}
+            <Box sx={{ mt: 3, p: 2, backgroundColor: '#f9f9f9', borderRadius: 1 }}>
+              <Typography variant="subtitle1">
+                  Perfil Fitbit Cargado ({fitbitProfile.user.displayName || 'Usuario'})
+              </Typography>
+              {/* Aquí puedes añadir más detalles del perfil si quieres */}
+              <Typography variant="body2" color="textSecondary">Edad: {fitbitProfile.user.age}</Typography>
+              <Typography variant="body2" color="textSecondary">Altura: {fitbitProfile.user.height} cm</Typography>
+              <Typography variant="body2" color="textSecondary">Peso: {fitbitProfile.user.weight} kg</Typography>
+            </Box>
+          </> // <-- Cerrar Fragmento React
         )}
+        {/* *** FIN CORRECCIÓN *** */}
+
       </CardContent>
     </Card>
   );
+  // --- Fin del bloque Return JSX ---
 }
 
 export default FitbitConnection;

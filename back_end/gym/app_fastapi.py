@@ -4,9 +4,9 @@ import sys
 import logging
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Query
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -141,6 +141,15 @@ except ImportError as e:
     # Loguea el error específico de importación del router
     logger.critical(f"💥 Error Crítico importando routers (relativa): {e}", exc_info=True)
     sys.exit(f"Error importando routers: {e}")
+
+# Direct route for Fitbit callback to match the FITBIT_REDIRECT_URI in .env
+@app.get("/fitbit-callback")
+async def fitbit_callback_direct(request: Request):
+    """Endpoint para manejar callback de OAuth de Fitbit y redirigir al handler correcto"""
+    logger.info(f"Recibido callback directo de Fitbit. Redireccionando a /api/fitbit/callback")
+    # Forwarding to the proper callback handler with all query parameters
+    redirect_url = f"/api/fitbit/callback?{request.query_params}"
+    return RedirectResponse(url=redirect_url, status_code=307)
 
 # Servir archivos estáticos del frontend
 frontend_build_dir = os.getenv('FRONTEND_BUILD_DIR', '../front_end/build')

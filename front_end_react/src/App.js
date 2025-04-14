@@ -1,4 +1,4 @@
-// src/App.js - Fixed login handling
+// src/App.js - Add Fitbit callback route
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
@@ -15,6 +15,7 @@ import TodayRoutine from './components/TodayRoutine';
 import Chatbot from './components/Chatbot';
 import ExerciseForm from './components/ExerciseForm';
 import NutritionPage from './components/nutrition/NutritionPage';
+import FitbitCallback from './components/profile/FitbitCallback'; // Import the new component
 
 // Services
 import AuthService from './services/AuthService';
@@ -90,6 +91,9 @@ function App() {
               <Route path="/chatbot" element={user ? <Chatbot user={user} /> : <Navigate to="/login" />} />
               
               <Route path="/nutrition" element={user ? <NutritionPage user={user} /> : <Navigate to="/login" />} />
+              
+              {/* Add the Fitbit callback route - this needs to be public */}
+              <Route path="/fitbit-callback" element={<FitbitCallback />} />
               
               {/* Redirect to home if no route matches */}
               <Route path="*" element={<Navigate to={user ? "/" : "/login"} />} />
