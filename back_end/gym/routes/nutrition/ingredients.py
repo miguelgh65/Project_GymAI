@@ -1,15 +1,18 @@
-# back_end/gym/routes/ingredients.py
+# back_end/gym/routes/nutrition/ingredients.py
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from typing import Optional
+import decimal
+import datetime
 
-from ..middlewares import get_current_user
-from ..models.nutrition_schemas import (
+# Cambiar esta importación: en lugar de usar relativo usar absoluto
+from back_end.gym.middlewares import get_current_user
+from back_end.gym.models.nutrition_schemas import (
     IngredientCreate, 
     IngredientUpdate, 
     IngredientResponse
 )
-from ..services.ingredient_service import (
+from back_end.gym.services.nutrition.ingredient_service import (
     get_ingredient,
     create_ingredient,
     list_ingredients,
@@ -62,7 +65,21 @@ async def list_ingredients_endpoint(
     
     try:
         ingredients_list = list_ingredients(search)
-        return JSONResponse(content={"success": True, "ingredients": ingredients_list})
+        
+        # Convertir tipos de datos para serialización JSON
+        serializable_ingredients = []
+        for ingredient in ingredients_list:
+            serialized_ingredient = {}
+            for key, value in ingredient.items():
+                if isinstance(value, decimal.Decimal):
+                    serialized_ingredient[key] = float(value)
+                elif isinstance(value, (datetime.datetime, datetime.date)):
+                    serialized_ingredient[key] = value.isoformat() if value else None
+                else:
+                    serialized_ingredient[key] = value
+            serializable_ingredients.append(serialized_ingredient)
+        
+        return JSONResponse(content={"success": True, "ingredients": serializable_ingredients})
     
     except Exception as e:
         logger.error(f"Error al listar ingredientes: {e}")

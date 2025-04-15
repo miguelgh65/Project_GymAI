@@ -1,11 +1,24 @@
 # back_end/gym/services/db_utils.py
 import logging
+import json
+import decimal
 import psycopg2
 from typing import Optional, List, Dict, Any, Tuple, Union
 from ..config import DB_CONFIG
 
 # Configurar logger
 logger = logging.getLogger(__name__)
+
+# Clase para manejar la serialización de Decimal a JSON
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, decimal.Decimal):
+            return float(obj)  # Convertir Decimal a float para serialización JSON
+        return super(DecimalEncoder, self).default(obj)
+
+def json_dumps(obj):
+    """Serializa un objeto a JSON manejando correctamente los tipos Decimal."""
+    return json.dumps(obj, cls=DecimalEncoder)
 
 def execute_db_query(query: str, params=None, fetch_one=False, fetch_all=False, commit=False):
     """

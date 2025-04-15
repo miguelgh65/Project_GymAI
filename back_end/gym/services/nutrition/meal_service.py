@@ -1,8 +1,9 @@
-# back_end/gym/services/meal_service.py
+# back_end/gym/services/nutrition/meal_service.py
 import logging
 from typing import Optional, List, Dict, Any
 
-from .db_utils import execute_db_query
+# Importación absoluta
+from back_end.gym.services.db_utils import execute_db_query
 
 # Configurar logger
 logger = logging.getLogger(__name__)
@@ -25,16 +26,19 @@ def get_meal(meal_id: int, with_ingredients: bool = False) -> Optional[Dict]:
         if not result:
             return None
         
+        # Añadimos logs para depuración
+        logger.info(f"Datos de comida obtenidos: {result}")
+        
         meal = {
             "id": result[0],
-            "meal_name": result[1],
-            "recipe": result[2],
-            "ingredients": result[3],
-            "calories": result[4],
-            "proteins": result[5],
-            "carbohydrates": result[6],
-            "fats": result[7],
-            "image_url": result[8],
+            "meal_name": result[1] or "",  # Aseguramos que no sea None
+            "recipe": result[2] or "",     # Aseguramos que no sea None
+            "ingredients": result[3] or "", # Aseguramos que no sea None
+            "calories": result[4] or 0,    # Aseguramos que no sea None
+            "proteins": result[5] or 0,    # Aseguramos que no sea None
+            "carbohydrates": result[6] or 0, # Aseguramos que no sea None
+            "fats": result[7] or 0,        # Aseguramos que no sea None
+            "image_url": result[8] or "",  # Aseguramos que no sea None
             "created_at": result[9],
             "updated_at": result[10]
         }
@@ -56,16 +60,16 @@ def get_meal(meal_id: int, with_ingredients: bool = False) -> Optional[Dict]:
                 detailed_ingredients.append({
                     "id": row[0],
                     "ingredient_id": row[1],
-                    "name": row[2],
-                    "quantity": row[3],
-                    "calories_per_100g": row[4],
-                    "proteins_per_100g": row[5],
-                    "carbs_per_100g": row[6],
-                    "fats_per_100g": row[7],
-                    "calories_total": (row[4] * row[3]) / 100,
-                    "proteins_total": (row[5] * row[3]) / 100,
-                    "carbs_total": (row[6] * row[3]) / 100,
-                    "fats_total": (row[7] * row[3]) / 100
+                    "name": row[2] or "",  # Aseguramos que no sea None
+                    "quantity": row[3] or 0, # Aseguramos que no sea None
+                    "calories_per_100g": row[4] or 0, # Aseguramos que no sea None
+                    "proteins_per_100g": row[5] or 0, # Aseguramos que no sea None
+                    "carbs_per_100g": row[6] or 0, # Aseguramos que no sea None
+                    "fats_per_100g": row[7] or 0, # Aseguramos que no sea None
+                    "calories_total": (row[4] or 0) * (row[3] or 0) / 100, # Aseguramos que no sea None
+                    "proteins_total": (row[5] or 0) * (row[3] or 0) / 100, # Aseguramos que no sea None
+                    "carbs_total": (row[6] or 0) * (row[3] or 0) / 100, # Aseguramos que no sea None
+                    "fats_total": (row[7] or 0) * (row[3] or 0) / 100 # Aseguramos que no sea None
                 })
             
             meal["detailed_ingredients"] = detailed_ingredients
@@ -85,14 +89,14 @@ def create_meal(meal_data: Dict) -> Optional[Dict]:
         """
         
         params = (
-            meal_data.get('meal_name'),
-            meal_data.get('recipe'),
-            meal_data.get('ingredients'),
-            meal_data.get('calories'),
-            meal_data.get('proteins'),
-            meal_data.get('carbohydrates'),
-            meal_data.get('fats'),
-            meal_data.get('image_url')
+            meal_data.get('meal_name', ''),
+            meal_data.get('recipe', ''),
+            meal_data.get('ingredients', ''),
+            meal_data.get('calories', 0),
+            meal_data.get('proteins', 0),
+            meal_data.get('carbohydrates', 0),
+            meal_data.get('fats', 0),
+            meal_data.get('image_url', '')
         )
         
         result = execute_db_query(query, params, fetch_one=True)
@@ -100,16 +104,19 @@ def create_meal(meal_data: Dict) -> Optional[Dict]:
         if not result:
             return None
         
+        # Log para depuración
+        logger.info(f"Comida creada con datos: {result}")
+        
         return {
             "id": result[0],
-            "meal_name": result[1],
-            "recipe": result[2],
-            "ingredients": result[3],
-            "calories": result[4],
-            "proteins": result[5],
-            "carbohydrates": result[6],
-            "fats": result[7],
-            "image_url": result[8],
+            "meal_name": result[1] or "",
+            "recipe": result[2] or "",
+            "ingredients": result[3] or "",
+            "calories": result[4] or 0,
+            "proteins": result[5] or 0,
+            "carbohydrates": result[6] or 0,
+            "fats": result[7] or 0,
+            "image_url": result[8] or "",
             "created_at": result[9],
             "updated_at": result[10]
         }
@@ -135,18 +142,23 @@ def list_meals(search: Optional[str] = None) -> List[Dict]:
         
         results = execute_db_query(query, params, fetch_all=True)
         
+        # Log para depuración
+        logger.info(f"Número de comidas obtenidas: {len(results)}")
+        if results and len(results) > 0:
+            logger.info(f"Primera comida encontrada: {results[0]}")
+        
         meals = []
         for row in results:
             meals.append({
                 "id": row[0],
-                "meal_name": row[1],
-                "recipe": row[2],
-                "ingredients": row[3],
-                "calories": row[4],
-                "proteins": row[5],
-                "carbohydrates": row[6],
-                "fats": row[7],
-                "image_url": row[8],
+                "meal_name": row[1] or "",     # Aseguramos que no sea None
+                "recipe": row[2] or "",        # Aseguramos que no sea None
+                "ingredients": row[3] or "",   # Aseguramos que no sea None
+                "calories": row[4] or 0,       # Aseguramos que no sea None
+                "proteins": row[5] or 0,       # Aseguramos que no sea None
+                "carbohydrates": row[6] or 0,  # Aseguramos que no sea None
+                "fats": row[7] or 0,           # Aseguramos que no sea None
+                "image_url": row[8] or "",     # Aseguramos que no sea None
                 "created_at": row[9],
                 "updated_at": row[10]
             })
@@ -155,6 +167,8 @@ def list_meals(search: Optional[str] = None) -> List[Dict]:
     except Exception as e:
         logger.error(f"Error al listar comidas: {e}")
         raise
+
+# El resto del código permanece igual...
 
 def update_meal(meal_id: int, update_data: Dict) -> Optional[Dict]:
     """Actualiza una comida existente."""

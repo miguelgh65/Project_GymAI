@@ -34,7 +34,8 @@ const MealPlanForm = () => {
             setLoading(true);
             MealPlanService.getById(planId)
                 .then(data => {
-                    setPlanName(data.name);
+                    // Verificar la estructura de los datos y adaptarse a ella
+                    setPlanName(data.plan_name || data.name || '');
                     setIsActive(data.is_active);
                     setItems(data.items || []);
                     setLoading(false);
@@ -49,8 +50,24 @@ const MealPlanForm = () => {
 
     useEffect(() => {
         MealService.getAll()
-            .then(data => setAvailableMeals(data))
-            .catch(err => console.error("Error fetching available meals:", err));
+            .then(response => {
+                // Asegurarse de acceder a la propiedad correcta
+                const meals = response.meals || response || [];
+                
+                // Transformar los datos si es necesario
+                const processedMeals = meals.map(meal => ({
+                    id: meal.id,
+                    name: meal.meal_name || meal.name || `Comida ${meal.id}`,
+                    calories: meal.calories
+                }));
+                
+                setAvailableMeals(processedMeals);
+                console.log("Comidas cargadas:", processedMeals);
+            })
+            .catch(err => {
+                console.error("Error fetching available meals:", err);
+                setError("Error al cargar el listado de comidas disponibles.");
+            });
     }, []);
 
     const handleAddItem = () => {
@@ -74,12 +91,18 @@ const MealPlanForm = () => {
 
     const handleSubmit = async (event) => {
         event.preventDefault();
+        
+        if (!planName.trim()) {
+            setError("El nombre del plan es obligatorio");
+            return;
+        }
+        
         setLoading(true);
         setError(null);
         setSuccess(null);
 
         const planData = {
-            name: planName,
+            plan_name: planName,  // Asegurarse de usar el nombre correcto de campo
             is_active: isActive,
             items: items.map(item => ({
                  meal_id: item.meal_id,
@@ -89,14 +112,16 @@ const MealPlanForm = () => {
         };
 
         try {
-            let savedPlan;
             if (isEditing) {
-                savedPlan = await MealPlanService.update(planId, planData);
+                await MealPlanService.update(planId, planData);
                 setSuccess('Plan actualizado con éxito.');
             } else {
-                savedPlan = await MealPlanService.create(planData);
+                await MealPlanService.create(planData);
                 setSuccess('Plan creado con éxito.');
             }
+            
+            // Opcional: redirigir después de un éxito
+            setTimeout(() => navigate('/nutrition/meal-plans'), 1500);
         } catch (err) {
             console.error("Error saving meal plan:", err);
             setError(err.message || 'Error al guardar el plan.');
@@ -128,6 +153,8 @@ const MealPlanForm = () => {
                 value={planName}
                 onChange={(e) => setPlanName(e.target.value)}
                 autoFocus={!isEditing}
+                error={!planName.trim()}
+                helperText={!planName.trim() ? "El nombre es obligatorio" : ""}
             />
              <FormControlLabel
                 control={
@@ -186,6 +213,7 @@ const MealPlanForm = () => {
                         startIcon={<FontAwesomeIcon icon={faPlus} />}
                         fullWidth
                         sx={{ height: '56px' }}
+                        disabled={!selectedMeal}
                     >
                         Añadir
                     </Button>
@@ -220,7 +248,7 @@ const MealPlanForm = () => {
                 fullWidth
                 variant="contained"
                 sx={{ mt: 3, mb: 2 }}
-                disabled={loading}
+                disabled={loading || !planName.trim()}
                 startIcon={loading ? <CircularProgress size={20} /> : <FontAwesomeIcon icon={faSave} />}
             >
                 {isEditing ? 'Guardar Cambios' : 'Crear Plan'}

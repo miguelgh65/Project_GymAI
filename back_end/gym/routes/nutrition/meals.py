@@ -1,10 +1,12 @@
-# back_end/gym/routes/meals.py
+# back_end/gym/routes/nutrition/meals.py - Usar CustomJSONResponse
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import JSONResponse
 from typing import Optional, List, Dict
+import decimal
+import datetime
 
-from ..middlewares import get_current_user
-from ..models.nutrition_schemas import (
+# Cambiar importaciones relativas a absolutas
+from back_end.gym.middlewares import get_current_user
+from back_end.gym.models.nutrition_schemas import (
     MealCreate, 
     MealUpdate, 
     MealResponse,
@@ -12,7 +14,7 @@ from ..models.nutrition_schemas import (
     MealIngredientUpdate,
     MealIngredientResponse
 )
-from ..services.meal_service import (
+from back_end.gym.services.nutrition.meal_service import (
     get_meal,
     create_meal,
     list_meals,
@@ -23,8 +25,9 @@ from ..services.meal_service import (
     get_meal_ingredients,
     update_meal_ingredient,
     delete_meal_ingredient,
-    recalculate_meal_macros  # Aunque no lo uses directamente, está disponible
+    recalculate_meal_macros
 )
+from back_end.gym.utils.json_utils import CustomJSONResponse  # Importar nuestra respuesta personalizada
 
 import logging
 logger = logging.getLogger(__name__)
@@ -62,7 +65,7 @@ async def create_meal_endpoint(
             raise HTTPException(status_code=409, detail=f"Ya existe una comida con el nombre '{meal.meal_name}'")
         raise HTTPException(status_code=500, detail=f"Error al crear comida: {str(e)}")
 
-@router.get("/meals", response_class=JSONResponse)
+@router.get("/meals", response_class=CustomJSONResponse)  # Usar CustomJSONResponse
 async def list_meals_endpoint(
     request: Request,
     search: Optional[str] = None,
@@ -74,13 +77,14 @@ async def list_meals_endpoint(
     
     try:
         meals_list = list_meals(search)
-        return JSONResponse(content={"success": True, "meals": meals_list})
+        # No necesitamos conversión manual
+        return {"success": True, "meals": meals_list}
     
     except Exception as e:
         logger.error(f"Error al listar comidas: {e}")
         raise HTTPException(status_code=500, detail=f"Error al listar comidas: {str(e)}")
 
-@router.get("/meals/{meal_id}", response_model=Dict)
+@router.get("/meals/{meal_id}", response_class=CustomJSONResponse)  # Cambiar a CustomJSONResponse
 async def get_meal_endpoint(
     request: Request,
     meal_id: int,
@@ -202,7 +206,7 @@ async def add_ingredient_to_meal_endpoint(
             raise HTTPException(status_code=409, detail="Este ingrediente ya está asociado a esta comida")
         raise HTTPException(status_code=500, detail=f"Error al añadir ingrediente a comida: {str(e)}")
 
-@router.get("/meals/{meal_id}/ingredients", response_class=JSONResponse)
+@router.get("/meals/{meal_id}/ingredients", response_class=CustomJSONResponse)  # Cambiar a CustomJSONResponse
 async def get_meal_ingredients_endpoint(
     request: Request,
     meal_id: int,
@@ -214,7 +218,7 @@ async def get_meal_ingredients_endpoint(
     
     try:
         ingredients_list = get_meal_ingredients(meal_id)
-        return JSONResponse(content={"success": True, "meal_id": meal_id, "ingredients": ingredients_list})
+        return {"success": True, "meal_id": meal_id, "ingredients": ingredients_list}
     
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

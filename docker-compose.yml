@@ -10,7 +10,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./back_end/gym/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     ports:
-      - "${DB_PORT}:5432"
+      - "5438:5432"
     restart: unless-stopped
     networks:
       - gymnet

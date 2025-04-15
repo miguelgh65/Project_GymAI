@@ -1,10 +1,11 @@
-# back_end/gym/routes/meal_plans.py
+# back_end/gym/routes/nutrition/meal_plans.py
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from typing import Optional, Dict
 
-from ..middlewares import get_current_user
-from ..models.nutrition_schemas import (
+# Cambiar importaciones relativas a absolutas
+from back_end.gym.middlewares import get_current_user
+from back_end.gym.models.nutrition_schemas import (
     MealPlanCreate,
     MealPlanUpdate,
     MealPlanResponse,
@@ -13,14 +14,14 @@ from ..models.nutrition_schemas import (
     MealPlanItemUpdate,
     MealPlanItemResponse
 )
-from ..services.meal_plans_service import (
+from back_end.gym.services.nutrition.meal_plans_service import (
     create_meal_plan,
     list_meal_plans,
     get_meal_plan,
     update_meal_plan,
     delete_meal_plan
 )
-from ..services.meal_plan_items_service import (
+from back_end.gym.services.nutrition.meal_plan_items_service import (
     add_meal_to_plan,
     get_meal_plan_items,
     get_meal_plan_item,

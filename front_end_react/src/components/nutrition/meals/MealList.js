@@ -84,7 +84,8 @@ function MealList() {
                   {meals.length > 0 ? (
                     meals.map((meal) => (
                       <TableRow key={meal.id}>
-                        <TableCell>{meal.name}</TableCell>
+                        <TableCell>{meal.meal_name}</TableCell>
+                        <TableCell>{meal.description || meal.recipe || meal.ingredients || '-'}</TableCell>
                         <TableCell>{meal.description || '-'}</TableCell>
                         <TableCell align="right">{meal.calories} kcal</TableCell>
                         <TableCell align="center">

@@ -1,8 +1,9 @@
-# back_end/gym/services/ingredient_service.py
+# back_end/gym/services/nutrition/ingredient_service.py
 import logging
 from typing import Optional, List, Dict
 
-from .db_utils import execute_db_query
+# Corregir esta importación para usar una ruta absoluta o la ruta relativa correcta
+from back_end.gym.services.db_utils import execute_db_query
 
 # Configurar logger
 logger = logging.getLogger(__name__)

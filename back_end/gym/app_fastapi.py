@@ -118,16 +118,21 @@ except NameError:
 # Importar routers (usando importaciones relativas)
 # --- Importaciones Corregidas ---
 # En la sección de importación de routers
+# En app_fastapi.py - Sección de importación de routers
+
 try:
-    # Usar importación relativa (. significa desde el mismo directorio gym)
+    # Routers existentes
     from .routes import auth as auth_routes
     from .routes import chatbot as chatbot_routes
     from .routes import dashboard as dashboard_routes
     from .routes import main as main_routes
     from .routes import profile as profile_routes
-    from .routes.fitbit import router as fitbit_router  # NUEVO: Importar router combinado de fitbit
+    from .routes.fitbit import router as fitbit_router
     from .routes import routine as routine_routes
     from .routes import login_handler as login_routes
+    
+    # NUEVO: Importar el router combinado de nutrición
+    from .routes.nutrition import router as nutrition_router
 
     logger.info("Incluyendo routers...")
     app.include_router(login_routes.router)
@@ -135,16 +140,18 @@ try:
     app.include_router(routine_routes.router)
     app.include_router(dashboard_routes.router)
     app.include_router(profile_routes.router)
-    app.include_router(fitbit_router)  # NUEVO: Incluir router de Fitbit
+    app.include_router(fitbit_router)
     app.include_router(chatbot_routes.router)
     app.include_router(auth_routes.router)
+    
+    # NUEVO: Incluir el router combinado de nutrición
+    app.include_router(nutrition_router)
+    
     logger.info("✅ Routers incluidos.")
-# --- Fin Importaciones Corregidas ---
 except ImportError as e:
-    # Loguea el error específico de importación del router
     logger.critical(f"💥 Error Crítico importando routers (relativa): {e}", exc_info=True)
     sys.exit(f"Error importando routers: {e}")
-# Direct route for Fitbit callback to match the FITBIT_REDIRECT_URI in .env
+    
 @app.get("/fitbit-callback")
 async def fitbit_callback_direct(request: Request):
     """Endpoint para manejar callback de OAuth de Fitbit y redirigir al handler correcto"""
