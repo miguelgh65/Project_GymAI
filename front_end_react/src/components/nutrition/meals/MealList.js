@@ -1,296 +1,410 @@
-// src/components/nutrition/meal-plans/MealPlanList.js
+// src/components/nutrition/meal-plans/MealPlanCalendar.js
 import React, { useState, useEffect } from 'react';
-import { MealPlanService } from '../../../services/NutritionService';
-import {
-    Box, Typography, IconButton,
-    CircularProgress, Alert, Button, Card, CardContent, Chip,
-    Grid, Paper, Divider, Switch, FormControlLabel, Tooltip
+import { 
+  Box, Typography, CircularProgress, Alert, Grid, Paper, 
+  List, ListItem, ListItemText, IconButton, Button, Chip
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
-    faEdit, faTrash, faPlus, faClipboardList, 
-    faCalendarWeek, faSync, faExclamationTriangle,
-    faUtensils
+  faChevronLeft, faChevronRight, faSync, 
+  faInfoCircle, faPlus, faUtensils
 } from '@fortawesome/free-solid-svg-icons';
+import { format, startOfWeek, endOfWeek, addDays, subDays, isSameDay, eachDayOfInterval } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { MealPlanService } from '../../../services/nutrition';
 import { useNavigate } from 'react-router-dom';
-import { getNutritionSummary } from '../../../utils/nutrition-utils';
 
-const MealPlanList = ({ onCreateNew, onEdit }) => {
-    const [mealPlans, setMealPlans] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [showActive, setShowActive] = useState(true);
-    const [usingLocalData, setUsingLocalData] = useState(false);
-    const navigate = useNavigate();
+const MealPlanCalendar = () => {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [weekPlans, setWeekPlans] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [activePlans, setActivePlans] = useState([]);
+  const [usingLocalData, setUsingLocalData] = useState(false);
+  const navigate = useNavigate();
 
-    const fetchMealPlans = async () => {
+  // Inicio y fin de la semana actual (lunes a domingo)
+  const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+  const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
+  const daysInWeek = eachDayOfInterval({ start: weekStart, end: weekEnd });
+  
+  // Días de la semana en español
+  const dayNames = {
+    'Lunes': 0,
+    'Martes': 1, 
+    'Miércoles': 2, 
+    'Jueves': 3, 
+    'Viernes': 4, 
+    'Sábado': 5, 
+    'Domingo': 6
+  };
+
+  // Cargar planes activos al inicio
+  useEffect(() => {
+    const fetchActivePlans = async () => {
+      try {
         setLoading(true);
         setError(null);
+        
+        // Limpiar caché primero
+        MealPlanService.clearCache();
+        
+        // Obtener planes activos
+        const response = await MealPlanService.getAll(true);
+        console.log("Planes activos:", response);
+        
+        const plans = response.meal_plans || [];
+        setActivePlans(plans);
+        setUsingLocalData(response.fromCache || response.fromLocalOnly || false);
+        
+        // Si no hay planes de la API, intentar obtener directamente de localStorage
+        if (plans.length === 0) {
+          try {
+            const localStorageKey = 'local_meal_plans';
+            const localData = localStorage.getItem(localStorageKey);
+            
+            if (localData) {
+              const localPlans = JSON.parse(localData);
+              const activeLocalPlans = localPlans.filter(p => p.is_active);
+              
+              console.log("Planes locales activos:", activeLocalPlans);
+              if (activeLocalPlans.length > 0) {
+                setActivePlans(activeLocalPlans);
+                setUsingLocalData(true);
+              }
+            }
+          } catch (localErr) {
+            console.error("Error obteniendo planes locales:", localErr);
+          }
+        }
+      } catch (err) {
+        console.error("Error obteniendo planes activos:", err);
+        setError("Error al cargar los planes activos");
+        
+        // Intentar cargar desde localStorage como último recurso
         try {
-            console.log("Fetching meal plans...");
-            const response = await MealPlanService.getAll(showActive ? true : null);
-            console.log("Meal plans response:", response);
+          const localStorageKey = 'local_meal_plans';
+          const localData = localStorage.getItem(localStorageKey);
+          
+          if (localData) {
+            const localPlans = JSON.parse(localData);
+            const activeLocalPlans = localPlans.filter(p => p.is_active);
             
-            // Extraer los planes correctamente de la respuesta
-            const plans = response?.meal_plans || [];
-            
-            // Determinar si estamos usando datos locales
-            setUsingLocalData(plans.some(plan => plan.id.toString().startsWith('local-')));
-            
-            console.log("Processed meal plans:", plans);
-            setMealPlans(plans);
-            
-            if (plans.length === 0) {
-                console.log("No se encontraron planes de comida");
+            if (activeLocalPlans.length > 0) {
+              setActivePlans(activeLocalPlans);
+              setUsingLocalData(true);
             }
-        } catch (err) {
-            console.error("Error fetching meal plans:", err);
-            setError(err.message || 'Error al cargar los planes de comida.');
-        } finally {
-            setLoading(false);
+          }
+        } catch (localErr) {
+          console.error("Error obteniendo planes locales:", localErr);
         }
+      } finally {
+        setLoading(false);
+      }
     };
 
-    useEffect(() => {
-        fetchMealPlans();
-    }, [showActive]); // Se ejecuta cuando cambia el filtro de activos
+    fetchActivePlans();
+  }, []);
 
-    const handleDelete = async (id) => {
-        if (window.confirm('¿Estás seguro de que quieres eliminar este plan de comida?')) {
-            try {
-                await MealPlanService.delete(id);
-                fetchMealPlans();
-            } catch (err) {
-                console.error("Error deleting meal plan:", err);
-                setError(err.message || 'Error al eliminar el plan.');
-            }
+  // Procesar datos de la semana cuando cambien planes activos o la semana
+  useEffect(() => {
+    if (activePlans.length === 0) return;
+
+    const startDateStr = format(weekStart, 'yyyy-MM-dd');
+    const endDateStr = format(weekEnd, 'yyyy-MM-dd');
+    console.log(`Procesando planes para semana: ${startDateStr} a ${endDateStr}`);
+
+    // Inicializar objeto para agrupar comidas por día
+    const grouped = {};
+    
+    // Inicializar arrays vacíos para cada día
+    daysInWeek.forEach(day => {
+      const dateKey = format(day, 'yyyy-MM-dd');
+      grouped[dateKey] = [];
+    });
+    
+    // Mapeo de nombre de día a fecha de la semana actual
+    const dayToDateMap = {};
+    Object.keys(dayNames).forEach((dayName, index) => {
+      dayToDateMap[dayName] = format(daysInWeek[index], 'yyyy-MM-dd');
+    });
+    
+    // Procesar todos los planes activos
+    let totalItems = 0;
+    
+    activePlans.forEach(plan => {
+      console.log(`Procesando plan: ${plan.name || plan.plan_name}`, plan);
+      
+      // Verificar si el plan tiene items
+      if (!plan.items || !Array.isArray(plan.items) || plan.items.length === 0) {
+        console.log(`El plan ${plan.id} no tiene comidas asignadas`);
+        return;
+      }
+      
+      // Recorrer items del plan y asignarlos a los días correctos
+      plan.items.forEach(item => {
+        if (item.day_of_week && dayToDateMap[item.day_of_week]) {
+          const dateKey = dayToDateMap[item.day_of_week];
+          
+          if (!grouped[dateKey]) {
+            grouped[dateKey] = [];
+          }
+          
+          // Añadir información del plan e item
+          const formattedItem = {
+            ...item,
+            plan_id: plan.id,
+            plan_name: plan.name || plan.plan_name,
+            meal_name: item.meal_name || `Comida ${item.meal_id}`
+          };
+          
+          // Añadir al grupo de este día
+          grouped[dateKey].push(formattedItem);
+          totalItems++;
         }
-    };
+      });
+    });
+    
+    // Ordenar por tipo de comida en cada día
+    Object.keys(grouped).forEach(dateKey => {
+      const mealTypes = ['Desayuno', 'Almuerzo', 'Comida', 'Merienda', 'Cena'];
+      grouped[dateKey].sort((a, b) => {
+        const indexA = mealTypes.indexOf(a.meal_type);
+        const indexB = mealTypes.indexOf(b.meal_type);
+        return indexA - indexB;
+      });
+    });
+    
+    console.log(`Procesadas ${totalItems} comidas para la semana`);
+    setWeekPlans(grouped);
+  }, [activePlans, weekStart, weekEnd]);
 
-    // CORREGIDO: Cambiamos la navegación para usar las funciones proporcionadas
-    const handleCreateNew = () => {
-        if (onCreateNew) {
-            onCreateNew();
-        } else {
-            // Navegación alternativa usando localStorage si no tenemos la función
-            localStorage.setItem('nutrition_tab', '1');
-            navigate('/nutrition');
-        }
-    };
+  // Navegación entre semanas
+  const handlePrevWeek = () => setCurrentDate(subDays(currentDate, 7));
+  const handleNextWeek = () => setCurrentDate(addDays(currentDate, 7));
+  const handleToday = () => setCurrentDate(new Date());
+  
+  // Refrescar datos
+  const handleRefresh = () => {
+    // Limpiar caché y recargar
+    MealPlanService.clearCache();
+    setLoading(true);
+    setActivePlans([]);
+    
+    // Recargar planes activos
+    MealPlanService.getAll(true)
+      .then(response => {
+        setActivePlans(response.meal_plans || []);
+        setUsingLocalData(response.fromCache || response.fromLocalOnly || false);
+      })
+      .catch(err => {
+        console.error("Error al refrescar planes:", err);
+        setError("Error al refrescar los planes");
+      })
+      .finally(() => setLoading(false));
+  };
+  
+  // Navegar a crear un plan
+  const handleCreatePlan = () => {
+    navigate('/nutrition');
+    localStorage.setItem('nutrition_tab', '1'); // "Crear Plan" tab
+    window.location.reload();
+  };
 
-    // Función para editar un plan
-    const handleEdit = (id) => {
-        if (onEdit) {
-            onEdit(id);
-        } else {
-            // Navegación alternativa usando localStorage si no tenemos la función
-            localStorage.setItem('nutrition_edit_plan_id', id);
-            localStorage.setItem('nutrition_tab', '1');
-            navigate('/nutrition');
-        }
-    };
-
-    // Función para obtener un resumen de macros para un plan
-    const getPlanMacroSummary = (plan) => {
-        if (!plan.items || plan.items.length === 0) {
-            return null;
-        }
-
-        // Si el plan tiene información de macros precalculados, usarla
-        if (plan.total_calories && plan.total_proteins && plan.total_carbs && plan.total_fats) {
-            return getNutritionSummary({
-                calories: plan.total_calories,
-                proteins: plan.total_proteins,
-                carbohydrates: plan.total_carbs,
-                fats: plan.total_fats
-            });
-        }
-
-        // Calcular macros en base a los días (7)
-        const totalDays = 7;
-        const mockMacros = {
-            calories: Math.round(1800 + Math.random() * 800),
-            proteins: Math.round(120 + Math.random() * 80),
-            carbohydrates: Math.round(180 + Math.random() * 120),
-            fats: Math.round(60 + Math.random() * 40)
-        };
-
-        return getNutritionSummary(mockMacros);
-    };
-
-    return (
-        <Box sx={{ m: 2 }}>
-            <Card elevation={3}>
-                <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                        <Typography variant="h5" component="h1">
-                            <FontAwesomeIcon icon={faClipboardList} style={{ marginRight: '10px' }} />
-                            Planes de Comida
-                        </Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            {usingLocalData && (
-                                <Tooltip title="Algunos planes solo existen localmente">
-                                    <Alert severity="info" icon={<FontAwesomeIcon icon={faExclamationTriangle} />} sx={{ mr: 2, py: 0 }}>
-                                        Datos locales
-                                    </Alert>
-                                </Tooltip>
-                            )}
-                            <FormControlLabel 
-                                control={
-                                    <Switch 
-                                        checked={showActive} 
-                                        onChange={() => setShowActive(!showActive)}
-                                        color="primary"
-                                    />
-                                } 
-                                label="Solo planes activos" 
-                                sx={{ mr: 2 }}
-                            />
-                            <Button 
-                                variant="contained" 
-                                color="primary"
-                                startIcon={<FontAwesomeIcon icon={faPlus} />}
-                                onClick={handleCreateNew}
-                            >
-                                Nuevo Plan
-                            </Button>
-                        </Box>
-                    </Box>
-                    
-                    {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-                    
-                    {loading ? (
-                        <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}>
-                            <CircularProgress />
-                        </Box>
-                    ) : (
-                        <>
-                            {mealPlans.length === 0 ? (
-                                <Alert severity="info" sx={{ mb: 2 }}>
-                                    No se encontraron planes de comida. ¡Crea tu primer plan usando el botón "Nuevo Plan"!
-                                </Alert>
-                            ) : (
-                                <Grid container spacing={3}>
-                                    {mealPlans.map((plan) => {
-                                        const macroSummary = getPlanMacroSummary(plan);
-                                        const isLocalPlan = plan.id.toString().startsWith('local-');
-                                        
-                                        return (
-                                            <Grid item xs={12} md={6} lg={4} key={plan.id}>
-                                                <Paper 
-                                                    elevation={2} 
-                                                    sx={{ 
-                                                        p: 2, 
-                                                        height: '100%', 
-                                                        position: 'relative',
-                                                        border: isLocalPlan ? '1px dashed #1976d2' : 'none'
-                                                    }}
-                                                >
-                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                                                        <Typography variant="h6">
-                                                            {plan.plan_name || plan.name || `Plan ${plan.id}`}
-                                                        </Typography>
-                                                        <Chip 
-                                                            label={plan.is_active ? "Activo" : "Inactivo"} 
-                                                            color={plan.is_active ? "success" : "default"}
-                                                            size="small"
-                                                        />
-                                                    </Box>
-                                                    
-                                                    <Divider sx={{ mb: 2 }} />
-                                                    
-                                                    {/* Resumen de días */}
-                                                    <Typography variant="body2" color="text.secondary" gutterBottom>
-                                                        <FontAwesomeIcon icon={faCalendarWeek} style={{ marginRight: '5px' }} />
-                                                        {plan.items && plan.items.length > 0 
-                                                            ? `${plan.items.length} comidas programadas` 
-                                                            : "Sin comidas programadas"}
-                                                    </Typography>
-                                                    
-                                                    {/* Macros si están disponibles */}
-                                                    {macroSummary && (
-                                                        <Box sx={{ mb: 2 }}>
-                                                            <Typography variant="subtitle2" gutterBottom>
-                                                                Promedio diario:
-                                                            </Typography>
-                                                            <Grid container spacing={1}>
-                                                                <Grid item xs={12}>
-                                                                    <Typography variant="body2" fontWeight="bold">
-                                                                        {macroSummary.calories} kcal
-                                                                    </Typography>
-                                                                </Grid>
-                                                                <Grid item xs={4}>
-                                                                    <Typography variant="caption">
-                                                                        P: {macroSummary.macros.proteins.grams}g
-                                                                    </Typography>
-                                                                </Grid>
-                                                                <Grid item xs={4}>
-                                                                    <Typography variant="caption">
-                                                                        C: {macroSummary.macros.carbs.grams}g
-                                                                    </Typography>
-                                                                </Grid>
-                                                                <Grid item xs={4}>
-                                                                    <Typography variant="caption">
-                                                                        G: {macroSummary.macros.fats.grams}g
-                                                                    </Typography>
-                                                                </Grid>
-                                                            </Grid>
-                                                        </Box>
-                                                    )}
-                                                    
-                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-                                                        <Button 
-                                                            variant="outlined" 
-                                                            size="small"
-                                                            startIcon={<FontAwesomeIcon icon={faUtensils} />}
-                                                            onClick={() => navigate(`/nutrition/meal-plans/detail/${plan.id}`)}
-                                                        >
-                                                            Ver Detalles
-                                                        </Button>
-                                                        <Box>
-                                                            <Tooltip title="Editar plan">
-                                                                <IconButton
-                                                                    size="small"
-                                                                    color="primary"
-                                                                    onClick={() => handleEdit(plan.id)}
-                                                                >
-                                                                    <FontAwesomeIcon icon={faEdit} />
-                                                                </IconButton>
-                                                            </Tooltip>
-                                                            <Tooltip title="Eliminar plan">
-                                                                <IconButton
-                                                                    size="small"
-                                                                    color="error"
-                                                                    onClick={() => handleDelete(plan.id)}
-                                                                    sx={{ ml: 1 }}
-                                                                >
-                                                                    <FontAwesomeIcon icon={faTrash} />
-                                                                </IconButton>
-                                                            </Tooltip>
-                                                        </Box>
-                                                    </Box>
-                                                    
-                                                    {isLocalPlan && (
-                                                        <Chip 
-                                                            label="Guardado localmente" 
-                                                            size="small" 
-                                                            variant="outlined"
-                                                            color="primary"
-                                                            sx={{ position: 'absolute', top: '8px', right: '8px', fontSize: '0.6rem' }}
-                                                        />
-                                                    )}
-                                                </Paper>
-                                            </Grid>
-                                        );
-                                    })}
-                                </Grid>
-                            )}
-                        </>
-                    )}
-                </CardContent>
-            </Card>
+  return (
+    <Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <IconButton onClick={handlePrevWeek} aria-label="Semana anterior">
+            <FontAwesomeIcon icon={faChevronLeft} />
+          </IconButton>
+          <Box textAlign="center" sx={{ mx: 2 }}>
+            <Typography variant="h6">
+              Semana del {format(weekStart, 'd LLLL', { locale: es })} al {format(weekEnd, 'd LLLL yyyy', { locale: es })}
+            </Typography>
+            <Button size="small" onClick={handleToday}>Hoy</Button>
+          </Box>
+          <IconButton onClick={handleNextWeek} aria-label="Semana siguiente">
+            <FontAwesomeIcon icon={faChevronRight} />
+          </IconButton>
         </Box>
-    );
+        
+        <Box>
+          <Button 
+            variant="outlined" 
+            startIcon={<FontAwesomeIcon icon={faSync} />}
+            onClick={handleRefresh}
+            sx={{ mr: 1 }}
+          >
+            Actualizar
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<FontAwesomeIcon icon={faPlus} />}
+            onClick={handleCreatePlan}
+          >
+            Crear Plan
+          </Button>
+        </Box>
+      </Box>
+
+      {usingLocalData && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          <FontAwesomeIcon icon={faInfoCircle} style={{ marginRight: '8px' }} />
+          Mostrando planes guardados localmente. Algunos cambios pueden no estar sincronizados con el servidor.
+        </Alert>
+      )}
+
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>
+          <CircularProgress size={30} sx={{ mr: 2 }} />
+          <Typography>Cargando calendario de planes...</Typography>
+        </Box>
+      ) : error ? (
+        <Alert 
+          severity="error" 
+          sx={{ mb: 3 }}
+          action={
+            <Button size="small" onClick={handleRefresh}>
+              Reintentar
+            </Button>
+          }
+        >
+          {error}
+        </Alert>
+      ) : activePlans.length === 0 ? (
+        <Alert severity="info" sx={{ mb: 3, py: 2 }}>
+          <Box>
+            <Typography variant="body1" paragraph>
+              No hay planes de comida activos para mostrar en el calendario.
+            </Typography>
+            <Button
+              variant="outlined"
+              startIcon={<FontAwesomeIcon icon={faPlus} />}
+              onClick={handleCreatePlan}
+              size="small"
+            >
+              Crear Primer Plan
+            </Button>
+          </Box>
+        </Alert>
+      ) : (
+        <Grid container spacing={1}>
+          {daysInWeek.map((day, index) => {
+            const dateKey = format(day, 'yyyy-MM-dd');
+            const dayItems = weekPlans[dateKey] || [];
+            const isToday = isSameDay(day, new Date());
+            const dayName = Object.keys(dayNames)[index];
+
+            return (
+              <Grid item xs={12} sm={6} md={3} lg={12 / 7} key={dateKey}>
+                <Paper 
+                  elevation={isToday ? 4 : 1} 
+                  sx={{ 
+                    p: 1, 
+                    height: '100%', 
+                    border: isToday ? '2px solid' : 'none', 
+                    borderColor: 'primary.main',
+                    minHeight: '200px'
+                  }}
+                >
+                  <Typography 
+                    variant="subtitle2" 
+                    align="center" 
+                    gutterBottom 
+                    sx={{ 
+                      fontWeight: 'bold',
+                      pb: 1,
+                      borderBottom: '1px solid #eee'
+                    }}
+                  >
+                    {format(day, 'EEEE d', { locale: es })}
+                  </Typography>
+                  <List dense disablePadding>
+                    {dayItems.length === 0 ? (
+                      <ListItem>
+                        <ListItemText 
+                          primary="No hay comidas" 
+                          primaryTypographyProps={{ 
+                            variant: 'body2', 
+                            color: 'text.secondary',
+                            align: 'center'
+                          }} 
+                        />
+                      </ListItem>
+                    ) : (
+                      dayItems.map((item, index) => (
+                        <ListItem 
+                          key={`${item.meal_id}-${index}`} 
+                          disableGutters
+                          sx={{ 
+                            py: 0.5,
+                            borderLeft: '3px solid',
+                            borderColor: 
+                              item.meal_type === 'Desayuno' ? 'success.light' :
+                              item.meal_type === 'Almuerzo' ? 'primary.light' :
+                              item.meal_type === 'Comida' ? 'secondary.light' :
+                              item.meal_type === 'Merienda' ? 'warning.light' : 
+                              'info.light',
+                            pl: 1,
+                            mb: 0.5,
+                            borderRadius: '4px',
+                            '&:hover': {
+                              bgcolor: 'action.hover'
+                            }
+                          }}
+                        >
+                          <ListItemText
+                            primary={item.meal_name}
+                            secondary={item.meal_type}
+                            primaryTypographyProps={{ 
+                              variant: 'body2', 
+                              noWrap: true,
+                              title: item.meal_name
+                            }}
+                            secondaryTypographyProps={{ 
+                              variant: 'caption',
+                              sx: {
+                                display: 'inline-block',
+                                bgcolor: 'background.paper',
+                                px: 0.5,
+                                borderRadius: '4px'
+                              }
+                            }}
+                          />
+                        </ListItem>
+                      ))
+                    )}
+                  </List>
+                  {/* Añadir botón de acceso directo para añadir comida a este día */}
+                  {activePlans.length > 0 && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1 }}>
+                      <Button 
+                        size="small" 
+                        startIcon={<FontAwesomeIcon icon={faUtensils} />}
+                        onClick={() => {
+                          // Navegar a editar el primer plan activo
+                          navigate('/nutrition');
+                          localStorage.setItem('nutrition_edit_plan_id', activePlans[0].id);
+                          localStorage.setItem('nutrition_edit_day', dayName);
+                          localStorage.setItem('nutrition_tab', '1');
+                          window.location.reload();
+                        }}
+                        sx={{ fontSize: '0.7rem' }}
+                      >
+                        Añadir comida
+                      </Button>
+                    </Box>
+                  )}
+                </Paper>
+              </Grid>
+            );
+          })}
+        </Grid>
+      )}
+    </Box>
+  );
 };
 
-export default MealPlanList;
+export default MealPlanCalendar;

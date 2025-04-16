@@ -4,15 +4,15 @@ import {
   Box, Typography, TextField, Button, Checkbox, FormControlLabel,
   CircularProgress, Alert, Grid, Autocomplete, Card, CardContent,
   InputAdornment, Divider, Paper, Tabs, Tab, IconButton,
-  Tooltip
+  Tooltip, Chip
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faSave, faCalculator, faUtensils, faArrowLeft, 
-  faSpinner, faInfoCircle, faTrash
+  faSpinner, faInfoCircle, faTrash, faBowlFood
 } from '@fortawesome/free-solid-svg-icons';
 import { useNavigate } from 'react-router-dom';
-import { MealPlanService, MealService } from '../../../services/NutritionService';
+import { MealPlanService, MealService } from '../../../services/nutrition';
 import { getNutritionSummary } from '../../../utils/nutrition-utils';
 
 // Componente para mostrar macros
@@ -52,13 +52,13 @@ const MealSelector = ({ meals, mealType, onSelect, selectedMeal, quantity, onQua
   const [searchText, setSearchText] = useState('');
   
   return (
-    <Grid container spacing={1} alignItems="center" sx={{ mb: 1 }}>
+    <Grid container spacing={1} alignItems="center" sx={{ mb: 2 }}>
       <Grid item xs={12} sm={3}>
         <Typography variant="body2">{mealType}:</Typography>
       </Grid>
       <Grid item xs={7} sm={5}>
         <Autocomplete
-          options={meals}
+          options={meals || []}
           getOptionLabel={(option) => option.meal_name || option.name || ''}
           value={selectedMeal}
           onChange={(event, newValue) => onSelect(mealType, newValue)}
@@ -142,7 +142,7 @@ const DayMeals = ({ dayName, mealData, meals, onChange, onQuantityChange, onRemo
   const dayMacros = calculateDayMacros();
   
   return (
-    <Paper elevation={1} sx={{ p: 2, mb: 2 }}>
+    <Paper elevation={1} sx={{ p: 2, mb: 3 }}>
       <Typography variant="h6" gutterBottom>{dayName}</Typography>
       
       {/* Selectores para cada comida del día */}
@@ -196,16 +196,24 @@ const DayMeals = ({ dayName, mealData, meals, onChange, onQuantityChange, onRemo
         onRemove={(mealType) => onRemove(dayName, mealType)}
       />
       
+      {/* Resumen de macros del día */}
       <Divider sx={{ my: 2 }} />
       
-      {/* Resumen de macros del día */}
-      <Typography variant="subtitle2" gutterBottom>Macros totales del día:</Typography>
-      {dayMacros ? (
-        <MacroSummary macros={dayMacros} />
+      {Object.values(mealData).some(item => item.meal) ? (
+        <>
+          <Typography variant="subtitle2" gutterBottom>Macros totales del día:</Typography>
+          {dayMacros ? (
+            <MacroSummary macros={dayMacros} />
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              Añade comidas para ver los macros del día
+            </Typography>
+          )}
+        </>
       ) : (
-        <Typography variant="body2" color="text.secondary">
-          Añade comidas para ver los macros del día
-        </Typography>
+        <Alert severity="info" icon={<FontAwesomeIcon icon={faBowlFood} />} sx={{ mt: 1 }}>
+          No hay comidas asignadas para este día
+        </Alert>
       )}
     </Paper>
   );
@@ -224,6 +232,7 @@ const EnhancedMealPlanForm = ({ editId, onSaveSuccess }) => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [availableMeals, setAvailableMeals] = useState([]);
+  const [debug, setDebug] = useState(null);
   
   // Estado para las tabs de días
   const [currentDay, setCurrentDay] = useState(0);
@@ -247,7 +256,6 @@ const EnhancedMealPlanForm = ({ editId, onSaveSuccess }) => {
       try {
         setLoadingMeals(true);
         const response = await MealService.getAll();
-        console.log("Meals loaded:", response);
         
         // Normalizar las estructuras de datos para manejar diferentes formatos de respuesta
         let meals = [];
@@ -257,9 +265,10 @@ const EnhancedMealPlanForm = ({ editId, onSaveSuccess }) => {
           meals = response.meals;
         }
         
+        console.log("Comidas cargadas:", meals);
         setAvailableMeals(meals);
       } catch (err) {
-        console.error("Error fetching meals:", err);
+        console.error("Error al cargar comidas:", err);
         setError("No se pudieron cargar las comidas disponibles.");
       } finally {
         setLoadingMeals(false);
@@ -276,58 +285,55 @@ const EnhancedMealPlanForm = ({ editId, onSaveSuccess }) => {
         try {
           setLoading(true);
           setError(null);
-          console.log(`Loading meal plan with ID: ${editId}`);
+          console.log(`Cargando plan con ID: ${editId}`);
           
           const data = await MealPlanService.getById(editId);
-          console.log("Loaded meal plan data:", data);
+          console.log("Datos del plan cargado:", data);
           
           // Normalizar datos
           setPlanName(data.plan_name || data.name || '');
           setIsActive(Boolean(data.is_active));
           
-          // Mapear items a la estructura de weekMeals
-          if (data.items && Array.isArray(data.items)) {
-            // Esperar a que las comidas estén cargadas
-            if (availableMeals.length === 0) {
-              // Esperar antes de procesar
-              await new Promise(resolve => setTimeout(resolve, 1000));
-            }
+          // Inicializar el estado de las comidas por día
+          const newWeekMeals = { ...weekMeals };
+          
+          // Si el plan tiene items, mapeamos cada uno a su día y tipo de comida
+          if (data.items && Array.isArray(data.items) && data.items.length > 0) {
+            console.log(`Cargando ${data.items.length} items del plan`);
             
-            const newWeekMeals = { ...weekMeals };
+            // Esperar a que las comidas estén cargadas para asociarlas con los items
+            await new Promise(resolve => {
+              const checkMeals = () => {
+                if (availableMeals.length > 0) {
+                  resolve();
+                } else {
+                  setTimeout(checkMeals, 500);
+                }
+              };
+              checkMeals();
+            });
             
             data.items.forEach(item => {
-              if (item.day_of_week && item.meal_type) {
-                const day = item.day_of_week;
-                const mealType = item.meal_type;
-                
-                // Buscar la comida completa basada en meal_id
-                let meal = availableMeals.find(m => m.id === item.meal_id);
-                
-                // Si no la encontramos, usar datos simplificados
-                if (!meal && item.meal_name) {
-                  meal = {
-                    id: item.meal_id,
-                    meal_name: item.meal_name,
-                    calories: item.calories || 0,
-                    proteins: item.proteins || 0,
-                    carbohydrates: item.carbohydrates || 0,
-                    fats: item.fats || 0
-                  };
-                }
-                
-                if (meal && newWeekMeals[day]) {
-                  newWeekMeals[day][mealType] = {
-                    meal: meal,
-                    quantity: item.quantity || 100
-                  };
-                }
+              const { day_of_week, meal_type, meal_id, quantity } = item;
+              
+              // Buscar la comida completa basada en meal_id
+              const meal = availableMeals.find(m => m.id === meal_id);
+              
+              if (meal && newWeekMeals[day_of_week]) {
+                newWeekMeals[day_of_week][meal_type] = {
+                  meal: meal,
+                  quantity: quantity || 100
+                };
               }
             });
             
+            console.log("Comidas del plan cargadas:", newWeekMeals);
             setWeekMeals(newWeekMeals);
+          } else {
+            console.log("El plan no tiene items");
           }
         } catch (err) {
-          console.error("Error fetching meal plan:", err);
+          console.error("Error al cargar el plan:", err);
           setError(err.message || 'Error al cargar el plan.');
         } finally {
           setLoading(false);
@@ -345,12 +351,21 @@ const EnhancedMealPlanForm = ({ editId, onSaveSuccess }) => {
   
   // Manejador para seleccionar una comida
   const handleMealSelect = (day, mealType, selectedMeal) => {
-    console.log(`Setting meal for ${day} - ${mealType}:`, selectedMeal);
+    console.log(`Seleccionando comida para ${day} - ${mealType}:`, selectedMeal);
+    
+    if (!selectedMeal) {
+      // Si no hay comida seleccionada, limpiamos ese espacio
+      setWeekMeals(prev => {
+        const newWeekMeals = { ...prev };
+        newWeekMeals[day][mealType] = {};
+        return newWeekMeals;
+      });
+      return;
+    }
     
     setWeekMeals(prev => {
       const newWeekMeals = { ...prev };
       newWeekMeals[day][mealType] = {
-        ...newWeekMeals[day][mealType],
         meal: selectedMeal,
         quantity: newWeekMeals[day][mealType].quantity || 100 // Valor por defecto si no existe
       };
@@ -366,10 +381,7 @@ const EnhancedMealPlanForm = ({ editId, onSaveSuccess }) => {
     setWeekMeals(prev => {
       const newWeekMeals = { ...prev };
       if (newWeekMeals[day][mealType].meal) {
-        newWeekMeals[day][mealType] = {
-          ...newWeekMeals[day][mealType],
-          quantity: numQuantity
-        };
+        newWeekMeals[day][mealType].quantity = numQuantity;
       }
       return newWeekMeals;
     });
@@ -419,11 +431,15 @@ const EnhancedMealPlanForm = ({ editId, onSaveSuccess }) => {
     
     const planItems = generatePlanItems();
     
+    // Verificar si hay al menos un item
     if (planItems.length === 0) {
       setError("Debes añadir al menos una comida al plan");
       setLoading(false);
       return;
     }
+    
+    console.log(`${planItems.length} items en el plan`);
+    setDebug(`Items: ${JSON.stringify(planItems, null, 2)}`);
     
     const planData = {
       plan_name: planName,
@@ -431,7 +447,7 @@ const EnhancedMealPlanForm = ({ editId, onSaveSuccess }) => {
       items: planItems
     };
     
-    console.log("Saving meal plan with data:", planData);
+    console.log("Guardando plan con datos:", planData);
     
     try {
       if (isEditing) {
@@ -442,16 +458,21 @@ const EnhancedMealPlanForm = ({ editId, onSaveSuccess }) => {
         setSuccess('Plan creado con éxito.');
       }
       
+      // Limpiar cache
+      MealPlanService.clearCache();
+      
       // Redirigir después de un éxito
       setTimeout(() => {
         if (onSaveSuccess) {
           onSaveSuccess();
         } else {
           navigate('/nutrition');
+          localStorage.setItem('nutrition_tab', '0'); // Volver a la lista de planes
+          window.location.reload();
         }
       }, 1500);
     } catch (err) {
-      console.error("Error saving meal plan:", err);
+      console.error("Error al guardar el plan:", err);
       setError(err.message || 'Error al guardar el plan.');
     } finally {
       setLoading(false);
@@ -479,14 +500,19 @@ const EnhancedMealPlanForm = ({ editId, onSaveSuccess }) => {
     
     return {
       calories: Math.round(totalCalories),
-      proteins: Math.round(totalProteins),
-      carbohydrates: Math.round(totalCarbs),
-      fats: Math.round(totalFats)
+      proteins: Math.round(totalProteins * 10) / 10,
+      carbohydrates: Math.round(totalCarbs * 10) / 10,
+      fats: Math.round(totalFats * 10) / 10
     };
   };
   
   const totalMacros = calculateTotalMacros();
   const macroSummary = getNutritionSummary(totalMacros);
+  
+  // Calcular el número total de comidas en el plan
+  const totalMeals = Object.values(weekMeals).reduce((count, dayMeals) => {
+    return count + Object.values(dayMeals).filter(meal => meal.meal).length;
+  }, 0);
   
   if (loading && isEditing && !availableMeals.length) {
     return (
@@ -509,7 +535,11 @@ const EnhancedMealPlanForm = ({ editId, onSaveSuccess }) => {
             <Button
               variant="outlined"
               startIcon={<FontAwesomeIcon icon={faArrowLeft} />}
-              onClick={() => navigate('/nutrition')}
+              onClick={() => {
+                navigate('/nutrition');
+                localStorage.setItem('nutrition_tab', '0'); // Volver a la lista de planes
+                window.location.reload();
+              }}
             >
               Volver
             </Button>
@@ -524,6 +554,12 @@ const EnhancedMealPlanForm = ({ editId, onSaveSuccess }) => {
           {success && (
             <Alert severity="success" sx={{ mb: 2 }}>
               {success}
+            </Alert>
+          )}
+          
+          {debug && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              <pre style={{ fontSize: '0.7rem', whiteSpace: 'pre-wrap' }}>{debug}</pre>
             </Alert>
           )}
           
@@ -558,12 +594,18 @@ const EnhancedMealPlanForm = ({ editId, onSaveSuccess }) => {
             <Typography variant="h6" gutterBottom>
               Macros Totales del Plan <FontAwesomeIcon icon={faCalculator} />
             </Typography>
-            {macroSummary ? (
-              <MacroSummary macros={macroSummary} />
+            
+            {totalMeals > 0 ? (
+              <>
+                <Typography variant="body2" gutterBottom>
+                  {totalMeals} comidas planificadas en total
+                </Typography>
+                <MacroSummary macros={macroSummary} />
+              </>
             ) : (
-              <Typography variant="body2" color="text.secondary">
+              <Alert severity="info" sx={{ mb: 2 }}>
                 Añade comidas al plan para ver los macros totales
-              </Typography>
+              </Alert>
             )}
           </Box>
         </CardContent>
@@ -578,9 +620,31 @@ const EnhancedMealPlanForm = ({ editId, onSaveSuccess }) => {
             scrollButtons="auto"
             aria-label="Días de la semana"
           >
-            {daysOfWeek.map((day, index) => (
-              <Tab key={day} label={day} id={`day-tab-${index}`} aria-controls={`day-tabpanel-${index}`} />
-            ))}
+            {daysOfWeek.map((day, index) => {
+              // Contar comidas por día para mostrar en la pestaña
+              const mealCount = Object.values(weekMeals[day]).filter(item => item.meal).length;
+              
+              return (
+                <Tab 
+                  key={day} 
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      {day}
+                      {mealCount > 0 && (
+                        <Chip 
+                          size="small" 
+                          label={mealCount} 
+                          color="primary" 
+                          sx={{ ml: 1, height: 20, fontSize: '0.7rem' }} 
+                        />
+                      )}
+                    </Box>
+                  } 
+                  id={`day-tab-${index}`} 
+                  aria-controls={`day-tabpanel-${index}`} 
+                />
+              );
+            })}
           </Tabs>
           
           <Box p={2}>
@@ -622,7 +686,11 @@ const EnhancedMealPlanForm = ({ editId, onSaveSuccess }) => {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3, mb: 2 }}>
         <Button
           variant="outlined"
-          onClick={() => navigate('/nutrition')}
+          onClick={() => {
+            navigate('/nutrition');
+            localStorage.setItem('nutrition_tab', '0');
+            window.location.reload();
+          }}
         >
           Cancelar
         </Button>
@@ -630,7 +698,7 @@ const EnhancedMealPlanForm = ({ editId, onSaveSuccess }) => {
           type="submit"
           variant="contained"
           color="primary"
-          disabled={loading || !planName.trim() || loadingMeals}
+          disabled={loading || !planName.trim() || loadingMeals || totalMeals === 0}
           startIcon={loading ? <CircularProgress size={20} /> : <FontAwesomeIcon icon={faSave} />}
         >
           {isEditing ? 'Guardar Cambios' : 'Crear Plan'}

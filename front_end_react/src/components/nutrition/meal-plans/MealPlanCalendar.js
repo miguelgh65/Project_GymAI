@@ -1,5 +1,5 @@
 // src/components/nutrition/meal-plans/MealPlanCalendar.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { MealPlanService } from '../../../services/NutritionService';
 import { Box, Typography, CircularProgress, Alert, Grid, Paper, List, ListItem, ListItemText, IconButton, Button } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -12,47 +12,88 @@ const MealPlanCalendar = () => {
     const [weekPlans, setWeekPlans] = useState({});
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [activePlans, setActivePlans] = useState([]);
 
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 }); // Lunes
     const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
     const daysInWeek = eachDayOfInterval({ start: weekStart, end: weekEnd });
 
+    // First fetch active plans once
     useEffect(() => {
-        const fetchWeekData = async () => {
-            setLoading(true);
-            setError(null);
-            const startDateStr = format(weekStart, 'yyyy-MM-dd');
-            const endDateStr = format(weekEnd, 'yyyy-MM-dd');
-
+        const fetchActivePlans = async () => {
             try {
-                // Necesitas un endpoint en tu backend que devuelva los items de planes ACTIVOS
-                console.warn("Endpoint getMealPlansByDateRange asumido. Verifica tu backend y su respuesta.");
-                const plansData = await MealPlanService.getMealPlansByDateRange(startDateStr, endDateStr);
-
-                // Agrupar los items por fecha
-                const grouped = {};
-                plansData?.forEach(item => {
-                    const dateKey = format(new Date(item.date), 'yyyy-MM-dd');
-                    if (!grouped[dateKey]) {
-                        grouped[dateKey] = [];
-                    }
-                    // Ordenar por tipo de comida (opcional)
-                    const order = ['Desayuno', 'Almuerzo', 'Comida', 'Merienda', 'Cena', 'Otro'];
-                    grouped[dateKey].push(item);
-                    grouped[dateKey].sort((a, b) => order.indexOf(a.meal_type) - order.indexOf(b.meal_type));
-                });
-                setWeekPlans(grouped);
-
+                setLoading(true);
+                setError(null);
+                const response = await MealPlanService.getAll(true);
+                setActivePlans(response.meal_plans || []);
             } catch (err) {
-                console.error("Error fetching weekly meal plans:", err);
-                setError(err.message || 'Error al cargar el calendario del plan.');
+                console.error("Error fetching active meal plans:", err);
+                setError(err.message || 'Error al cargar los planes activos.');
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchWeekData();
-    }, [weekStart, weekEnd]);
+        fetchActivePlans();
+    }, []);
+
+    // Process week data when active plans change or week changes
+    useEffect(() => {
+        if (activePlans.length === 0) return;
+
+        const startDateStr = format(weekStart, 'yyyy-MM-dd');
+        const endDateStr = format(weekEnd, 'yyyy-MM-dd');
+        console.log(`Processing meal plans for week: ${startDateStr} to ${endDateStr}`);
+
+        // Process the plans to organize by days
+        const grouped = {};
+        
+        // Initialize empty arrays for each day
+        daysInWeek.forEach(day => {
+            const dateKey = format(day, 'yyyy-MM-dd');
+            grouped[dateKey] = [];
+        });
+        
+        // Sort active plans to relevant days 
+        activePlans.forEach(plan => {
+            if (!plan.items || !Array.isArray(plan.items)) return;
+            
+            // Map days of week to dates in current week
+            const dayMap = {
+                'Lunes': format(daysInWeek[0], 'yyyy-MM-dd'),
+                'Martes': format(daysInWeek[1], 'yyyy-MM-dd'),
+                'Miércoles': format(daysInWeek[2], 'yyyy-MM-dd'),
+                'Jueves': format(daysInWeek[3], 'yyyy-MM-dd'),
+                'Viernes': format(daysInWeek[4], 'yyyy-MM-dd'),
+                'Sábado': format(daysInWeek[5], 'yyyy-MM-dd'),
+                'Domingo': format(daysInWeek[6], 'yyyy-MM-dd')
+            };
+            
+            plan.items.forEach(item => {
+                if (item.day_of_week && dayMap[item.day_of_week]) {
+                    const dateKey = dayMap[item.day_of_week];
+                    if (!grouped[dateKey]) {
+                        grouped[dateKey] = [];
+                    }
+                    
+                    // Add plan info
+                    grouped[dateKey].push({
+                        ...item,
+                        plan_name: plan.plan_name || plan.name,
+                        meal_name: item.meal_name || `Comida ${item.meal_id}`
+                    });
+                }
+            });
+        });
+        
+        // Sort items by meal type
+        Object.keys(grouped).forEach(date => {
+            const order = ['Desayuno', 'Almuerzo', 'Comida', 'Merienda', 'Cena'];
+            grouped[date].sort((a, b) => order.indexOf(a.meal_type) - order.indexOf(b.meal_type));
+        });
+        
+        setWeekPlans(grouped);
+    }, [activePlans, weekStart, weekEnd]);
 
     const handlePrevWeek = () => {
         setCurrentDate(subDays(currentDate, 7));
@@ -87,6 +128,12 @@ const MealPlanCalendar = () => {
              {loading && <CircularProgress />}
             {error && <Alert severity="error">{error}</Alert>}
 
+            {!loading && activePlans.length === 0 && (
+                <Alert severity="info">
+                    No hay planes de comida activos. Activa un plan o crea uno nuevo.
+                </Alert>
+            )}
+
              <Grid container spacing={1}>
                  {daysInWeek.map(day => {
                      const dateKey = format(day, 'yyyy-MM-dd');
@@ -101,12 +148,12 @@ const MealPlanCalendar = () => {
                                  </Typography>
                                  <List dense disablePadding>
                                      {dayItems.length === 0 ? (
-                                        <ListItem><ListItemText secondary="-" sx={{ textAlign: 'center' }} /></ListItem>
+                                        <ListItem><ListItemText secondary="No hay comidas" sx={{ textAlign: 'center' }} /></ListItem>
                                      ) : (
                                         dayItems.map((item, index) => (
                                             <ListItem key={`${item.meal_id}-${index}`} disableGutters>
                                                 <ListItemText
-                                                     primary={item.meal_name || `Comida ID: ${item.meal_id}`}
+                                                     primary={item.meal_name}
                                                      secondary={item.meal_type}
                                                      primaryTypographyProps={{ variant: 'body2', noWrap: true }}
                                                      secondaryTypographyProps={{ variant: 'caption' }}
