@@ -4,7 +4,7 @@ from typing import Optional, List, Dict
 import decimal
 import datetime
 
-# Corregir esta importación para usar una ruta absoluta
+# Usar ruta absoluta
 from back_end.gym.services.db_utils import execute_db_query
 
 # Configurar logger
@@ -13,41 +13,108 @@ logger = logging.getLogger(__name__)
 def create_meal_plan(user_id: str, plan_data: Dict) -> Optional[Dict]:
     """Crea un nuevo plan de comida."""
     try:
-        query = """
-        INSERT INTO meal_plans (user_id, plan_name, start_date, end_date, description, is_active)
-        VALUES (%s, %s, %s, %s, %s, %s)
-        RETURNING id, user_id, plan_name, start_date, end_date, description, is_active, created_at, updated_at
-        """
+        # Crear transacción para asegurar que todo se guarde correctamente
+        conn = None
+        cur = None
         
-        params = (
-            str(user_id),  # Convertir user_id a string
-            plan_data.get('plan_name', ''),
-            plan_data.get('start_date'),
-            plan_data.get('end_date'),
-            plan_data.get('description', ''),
-            plan_data.get('is_active', True)
-        )
-        
-        result = execute_db_query(query, params, fetch_one=True)
-        
-        if not result:
-            return None
-        
-        # Log para depuración
-        logger.info(f"Plan de comida creado: {result}")
-        
-        # Convertir tipos de datos para serialización JSON
-        return {
-            "id": result[0],
-            "user_id": result[1],
-            "plan_name": result[2] or "",
-            "start_date": result[3].isoformat() if isinstance(result[3], (datetime.date, datetime.datetime)) else result[3],
-            "end_date": result[4].isoformat() if isinstance(result[4], (datetime.date, datetime.datetime)) else result[4],
-            "description": result[5] or "",
-            "is_active": result[6],
-            "created_at": result[7].isoformat() if isinstance(result[7], (datetime.date, datetime.datetime)) else result[7],
-            "updated_at": result[8].isoformat() if isinstance(result[8], (datetime.date, datetime.datetime)) else result[8]
-        }
+        try:
+            from back_end.gym.config import DB_CONFIG
+            import psycopg2
+            
+            conn = psycopg2.connect(**DB_CONFIG)
+            cur = conn.cursor()
+            
+            # Asegurarse de que estamos en el esquema correcto
+            cur.execute("SET search_path TO nutrition, public")
+            
+            # 1. Primero, insertar el plan principal
+            plan_query = """
+            INSERT INTO meal_plans (user_id, plan_name, start_date, end_date, description, is_active)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            RETURNING id, user_id, plan_name, start_date, end_date, description, is_active, created_at, updated_at
+            """
+            
+            plan_params = (
+                str(user_id),  # Convertir user_id a string
+                plan_data.get('plan_name', ''),
+                plan_data.get('start_date'),
+                plan_data.get('end_date'),
+                plan_data.get('description', ''),
+                plan_data.get('is_active', True)
+            )
+            
+            cur.execute(plan_query, plan_params)
+            plan_result = cur.fetchone()
+            
+            if not plan_result:
+                raise ValueError("Error al crear el plan principal")
+            
+            plan_id = plan_result[0]  # ID del plan creado
+            
+            # 2. Luego, procesar y guardar cada item
+            if 'items' in plan_data and plan_data['items']:
+                logger.info(f"Procesando {len(plan_data['items'])} items para el plan {plan_id}")
+                
+                for item in plan_data['items']:
+                    # Validar campos obligatorios
+                    if not all(k in item for k in ['meal_id', 'day_of_week', 'meal_type']):
+                        logger.warning(f"Item incompleto, omitiendo: {item}")
+                        continue
+                    
+                    # Construir query para insertar item
+                    item_query = """
+                    INSERT INTO meal_plan_items 
+                    (meal_plan_id, meal_id, day_of_week, meal_time, quantity, notes)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    """
+                    
+                    # Mapear meal_type a meal_time y asegurar consistencia de valores
+                    meal_time = item.get('meal_time', item.get('meal_type'))
+                    quantity = item.get('quantity', 100)  # Valor por defecto
+                    
+                    item_params = (
+                        plan_id,
+                        item['meal_id'],
+                        item['day_of_week'],
+                        meal_time,
+                        quantity,
+                        item.get('notes')
+                    )
+                    
+                    # Ejecutar la inserción del item
+                    cur.execute(item_query, item_params)
+                    logger.info(f"Item añadido al plan {plan_id}: {item['meal_id']} - {item['day_of_week']} - {meal_time}")
+            
+            # Confirmar todas las operaciones
+            conn.commit()
+            
+            # Log para depuración
+            logger.info(f"Plan de comida {plan_id} creado con éxito con {len(plan_data.get('items', []))} items")
+            
+            # Convertir tipos de datos para serialización JSON
+            return {
+                "id": plan_result[0],
+                "user_id": plan_result[1],
+                "plan_name": plan_result[2] or "",
+                "start_date": plan_result[3].isoformat() if isinstance(plan_result[3], (datetime.date, datetime.datetime)) else plan_result[3],
+                "end_date": plan_result[4].isoformat() if isinstance(plan_result[4], (datetime.date, datetime.datetime)) else plan_result[4],
+                "description": plan_result[5] or "",
+                "is_active": plan_result[6],
+                "created_at": plan_result[7].isoformat() if isinstance(plan_result[7], (datetime.date, datetime.datetime)) else plan_result[7],
+                "updated_at": plan_result[8].isoformat() if isinstance(plan_result[8], (datetime.date, datetime.datetime)) else plan_result[8]
+            }
+            
+        except Exception as transaction_error:
+            if conn:
+                conn.rollback()
+            logger.error(f"Error en transacción para crear plan: {transaction_error}")
+            raise
+        finally:
+            if cur:
+                cur.close()
+            if conn:
+                conn.close()
+                
     except Exception as e:
         logger.error(f"Error al crear plan de comida para usuario {user_id}: {e}")
         raise
@@ -162,70 +229,145 @@ def get_meal_plan(meal_plan_id: int, user_id: str, with_items: bool = True) -> O
         logger.error(f"Error al obtener plan de comida {meal_plan_id} para usuario {user_id}: {e}")
         raise
 
-# El resto del código permanece igual...
 def update_meal_plan(meal_plan_id: int, user_id: str, update_data: Dict) -> Optional[Dict]:
     """Actualiza un plan de comida existente."""
     try:
-        # Construir consulta dinámica con los campos proporcionados
-        update_fields = []
-        params = []
+        # Iniciar transacción para actualizar plan e items
+        conn = None
+        cur = None
         
-        if 'plan_name' in update_data:
-            update_fields.append("plan_name = %s")
-            params.append(update_data['plan_name'])
-        
-        if 'start_date' in update_data:
-            update_fields.append("start_date = %s")
-            params.append(update_data['start_date'])
-        
-        if 'end_date' in update_data:
-            update_fields.append("end_date = %s")
-            params.append(update_data['end_date'])
-        
-        if 'description' in update_data:
-            update_fields.append("description = %s")
-            params.append(update_data['description'])
-        
-        if 'is_active' in update_data:
-            update_fields.append("is_active = %s")
-            params.append(update_data['is_active'])
-        
-        # Si no hay campos para actualizar
-        if not update_fields:
-            return get_meal_plan(meal_plan_id, user_id)
-        
-        # Añadir campo updated_at
-        update_fields.append("updated_at = CURRENT_TIMESTAMP")
-        
-        # Construir consulta
-        update_query = f"""
-        UPDATE meal_plans 
-        SET {", ".join(update_fields)}
-        WHERE id = %s AND user_id = %s
-        RETURNING id, user_id, plan_name, start_date, end_date, description, is_active, created_at, updated_at
-        """
-        
-        # Añadir id y user_id al final de los parámetros
-        params.append(meal_plan_id)
-        params.append(str(user_id))  # Convertir user_id a string
-        
-        result = execute_db_query(update_query, params, fetch_one=True)
-        
-        if not result:
-            return None
-        
-        # Convertir para serialización JSON
-        return {
-            "id": result[0],
-            "user_id": result[1],
-            "plan_name": result[2],
-            "start_date": result[3].isoformat() if isinstance(result[3], (datetime.date, datetime.datetime)) else result[3],
-            "end_date": result[4].isoformat() if isinstance(result[4], (datetime.date, datetime.datetime)) else result[4],
-            "description": result[5],
-            "is_active": result[6],
-            "created_at": result[7].isoformat() if isinstance(result[7], (datetime.date, datetime.datetime)) else result[7],
-            "updated_at": result[8].isoformat() if isinstance(result[8], (datetime.date, datetime.datetime)) else result[8]
-        }
+        try:
+            from back_end.gym.config import DB_CONFIG
+            import psycopg2
+            
+            conn = psycopg2.connect(**DB_CONFIG)
+            cur = conn.cursor()
+            
+            # Asegurarse de que estamos en el esquema correcto
+            cur.execute("SET search_path TO nutrition, public")
+            
+            # 1. Primero, actualizar el plan principal
+            update_fields = []
+            params = []
+            
+            if 'plan_name' in update_data:
+                update_fields.append("plan_name = %s")
+                params.append(update_data['plan_name'])
+            
+            if 'start_date' in update_data:
+                update_fields.append("start_date = %s")
+                params.append(update_data['start_date'])
+            
+            if 'end_date' in update_data:
+                update_fields.append("end_date = %s")
+                params.append(update_data['end_date'])
+            
+            if 'description' in update_data:
+                update_fields.append("description = %s")
+                params.append(update_data['description'])
+            
+            if 'is_active' in update_data:
+                update_fields.append("is_active = %s")
+                params.append(update_data['is_active'])
+            
+            # Si no hay campos para actualizar en el plan principal
+            if not update_fields:
+                # Si hay items para actualizar, continuar con ese proceso
+                if 'items' in update_data and update_data['items']:
+                    pass
+                else:
+                    # Si no hay nada que actualizar, simplemente devolver el plan actual
+                    return get_meal_plan(meal_plan_id, user_id)
+            
+            # Añadir campo updated_at
+            update_fields.append("updated_at = CURRENT_TIMESTAMP")
+            
+            # Construir consulta para actualizar plan
+            update_query = f"""
+            UPDATE meal_plans 
+            SET {", ".join(update_fields)}
+            WHERE id = %s AND user_id = %s
+            RETURNING id, user_id, plan_name, start_date, end_date, description, is_active, created_at, updated_at
+            """
+            
+            # Añadir id y user_id al final de los parámetros
+            params.append(meal_plan_id)
+            params.append(str(user_id))  # Convertir user_id a string
+            
+            # Ejecutar la actualización del plan
+            cur.execute(update_query, params)
+            plan_result = cur.fetchone()
+            
+            if not plan_result:
+                logger.warning(f"No se encontró plan {meal_plan_id} para actualizar")
+                return None
+            
+            # 2. Si hay items para actualizar, procesar esa parte
+            if 'items' in update_data and update_data['items']:
+                # Primero eliminar todos los items existentes
+                cur.execute("DELETE FROM meal_plan_items WHERE meal_plan_id = %s", (meal_plan_id,))
+                logger.info(f"Items eliminados para plan {meal_plan_id}")
+                
+                # Luego insertar los nuevos items
+                logger.info(f"Insertando {len(update_data['items'])} items para plan {meal_plan_id}")
+                
+                for item in update_data['items']:
+                    # Validar campos obligatorios
+                    if not all(k in item for k in ['meal_id', 'day_of_week', 'meal_type']):
+                        logger.warning(f"Item incompleto, omitiendo: {item}")
+                        continue
+                    
+                    # Construir query para insertar item
+                    item_query = """
+                    INSERT INTO meal_plan_items 
+                    (meal_plan_id, meal_id, day_of_week, meal_time, quantity, notes)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    """
+                    
+                    # Mapear meal_type a meal_time y asegurar consistencia de valores
+                    meal_time = item.get('meal_time', item.get('meal_type'))
+                    quantity = item.get('quantity', 100)  # Valor por defecto
+                    
+                    item_params = (
+                        meal_plan_id,
+                        item['meal_id'],
+                        item['day_of_week'],
+                        meal_time,
+                        quantity,
+                        item.get('notes')
+                    )
+                    
+                    # Ejecutar la inserción del item
+                    cur.execute(item_query, item_params)
+                    logger.info(f"Item añadido al plan {meal_plan_id}: {item['meal_id']} - {item['day_of_week']} - {meal_time}")
+            
+            # Confirmar todas las operaciones
+            conn.commit()
+            
+            # Convertir para serialización JSON
+            return {
+                "id": plan_result[0],
+                "user_id": plan_result[1],
+                "plan_name": plan_result[2],
+                "start_date": plan_result[3].isoformat() if isinstance(plan_result[3], (datetime.date, datetime.datetime)) else plan_result[3],
+                "end_date": plan_result[4].isoformat() if isinstance(plan_result[4], (datetime.date, datetime.datetime)) else plan_result[4],
+                "description": plan_result[5],
+                "is_active": plan_result[6],
+                "created_at": plan_result[7].isoformat() if isinstance(plan_result[7], (datetime.date, datetime.datetime)) else plan_result[7],
+                "updated_at": plan_result[8].isoformat() if isinstance(plan_result[8], (datetime.date, datetime.datetime)) else plan_result[8]
+            }
+            
+        except Exception as transaction_error:
+            if conn:
+                conn.rollback()
+            logger.error(f"Error en transacción para actualizar plan: {transaction_error}")
+            raise
+        finally:
+            if cur:
+                cur.close()
+            if conn:
+                conn.close()
+                
     except Exception as e:
         logger.error(f"Error al actualizar plan de comida {meal_plan_id} para usuario {user_id}: {e}")
         raise

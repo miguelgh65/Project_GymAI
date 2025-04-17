@@ -41,7 +41,7 @@ const NutritionPage = ({ user }) => {
       localStorage.removeItem('nutrition_tab');
       return parseInt(savedTab, 10);
     }
-    return 0; // Por defecto, empezamos con Planes de Comida
+    return 0; // Por defecto, empezamos con Planes de Nutrición
   };
 
   // Estado para controlar la pestaña activa
@@ -96,8 +96,8 @@ const NutritionPage = ({ user }) => {
             variant="scrollable" // Para que funcione bien en móvil
             scrollButtons="auto" // Muestra botones si no caben todas
           >
-            {/* Pestañas para las vistas principales */}
-            <Tab label="Planes de Comida" id="nutrition-tab-0" aria-controls="nutrition-tabpanel-0"/>
+            {/* Pestañas para las vistas principales - CAMBIO DE NOMBRE AQUÍ */}
+            <Tab label="Planes de Nutrición" id="nutrition-tab-0" aria-controls="nutrition-tabpanel-0"/>
             <Tab label="Crear Plan" id="nutrition-tab-1" aria-controls="nutrition-tabpanel-1"/>
             <Tab label="Calendario Plan" id="nutrition-tab-2" aria-controls="nutrition-tabpanel-2"/>
             <Tab label="Comidas" id="nutrition-tab-3" aria-controls="nutrition-tabpanel-3"/>

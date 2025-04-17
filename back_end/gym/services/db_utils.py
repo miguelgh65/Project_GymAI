@@ -1,68 +1,94 @@
 # back_end/gym/services/db_utils.py
 import logging
-import json
-import decimal
 import psycopg2
-from typing import Optional, List, Dict, Any, Tuple, Union
-from ..config import DB_CONFIG
+from psycopg2.extras import RealDictCursor
+from typing import List, Dict, Any, Tuple, Optional, Union
+from back_end.gym.config import DB_CONFIG
 
 # Configurar logger
 logger = logging.getLogger(__name__)
 
-# Clase para manejar la serialización de Decimal a JSON
-class DecimalEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, decimal.Decimal):
-            return float(obj)  # Convertir Decimal a float para serialización JSON
-        return super(DecimalEncoder, self).default(obj)
-
-def json_dumps(obj):
-    """Serializa un objeto a JSON manejando correctamente los tipos Decimal."""
-    return json.dumps(obj, cls=DecimalEncoder)
-
-def execute_db_query(query: str, params=None, fetch_one=False, fetch_all=False, commit=False):
+def execute_db_query(
+    query: str,
+    params: Union[Tuple, List] = (),
+    fetch_one: bool = False,
+    fetch_all: bool = False,
+    commit: bool = True,
+    as_dict: bool = False,
+    use_transaction: bool = False
+) -> Any:
     """
-    Función auxiliar para ejecutar consultas a la base de datos.
+    Ejecuta una consulta SQL en la base de datos con mejor manejo de transacciones.
     
     Args:
         query: Consulta SQL a ejecutar
-        params: Parámetros para la consulta SQL
-        fetch_one: Si es True, devuelve solo la primera fila del resultado
-        fetch_all: Si es True, devuelve todas las filas del resultado
-        commit: Si es True, realiza un commit después de ejecutar la consulta
+        params: Parámetros para la consulta
+        fetch_one: Si es True, retorna solo un resultado
+        fetch_all: Si es True, retorna todos los resultados
+        commit: Si es True, hace commit de la transacción
+        as_dict: Si es True, retorna resultados como diccionarios
+        use_transaction: Si es True, inicia una transacción explícita
         
     Returns:
-        El resultado de la consulta según los parámetros especificados
+        Resultado de la consulta según los parámetros especificados
     """
     conn = None
     cur = None
-    result = None
     try:
         conn = psycopg2.connect(**DB_CONFIG)
-        cur = conn.cursor()
         
-        # Asegurarse que estamos en el esquema correcto
-        cur.execute("SET search_path TO nutrition, public")
+        # Usar cursor de diccionario si se solicita
+        cursor_factory = RealDictCursor if as_dict else None
+        cur = conn.cursor(cursor_factory=cursor_factory)
+        
+        # Establecer esquema de nutrición para consultas relacionadas
+        if 'meal_plans' in query or 'ingredients' in query or 'meals' in query or 'meal_plan_items' in query or 'meal_ingredients' in query:
+            cur.execute("SET search_path TO nutrition, public")
+        
+        # Iniciar transacción explícita si se solicita
+        if use_transaction:
+            cur.execute("BEGIN")
+            logger.debug("Iniciando transacción explícita")
+        
+        # Ejecutar la consulta con parámetros
+        logger.debug(f"Ejecutando consulta: {query}")
+        logger.debug(f"Parámetros: {params}")
         
         cur.execute(query, params)
-
-        if commit:
-            conn.commit()
-            result = cur.rowcount if cur.rowcount is not None else True
-        elif fetch_one:
+        
+        # Para comandos especiales como COMMIT o ROLLBACK
+        if query.upper() in ("COMMIT", "ROLLBACK"):
+            if query.upper() == "COMMIT":
+                conn.commit()
+            else:
+                conn.rollback()
+            return True
+        
+        # Obtener resultados según lo solicitado
+        if fetch_one:
             result = cur.fetchone()
         elif fetch_all:
             result = cur.fetchall()
-
-    except psycopg2.Error as db_err:
-        logger.error(f"Error de base de datos: {db_err}", exc_info=True)
-        if conn: conn.rollback()
-        raise
+        else:
+            # Para consultas que no retornan datos (INSERT, UPDATE, DELETE)
+            result = cur.rowcount > 0
+        
+        # Commit si se solicita y no es parte de una transacción más grande
+        if commit and not use_transaction:
+            conn.commit()
+            
+        return result
     except Exception as e:
-        logger.error(f"Error inesperado en la base de datos: {e}", exc_info=True)
-        if conn: conn.rollback()
+        # Rollback en caso de error si no se maneja por fuera
+        if conn and not use_transaction:
+            conn.rollback()
+        logger.error(f"Error en la consulta SQL: {str(e)}")
+        logger.error(f"Consulta: {query}")
+        logger.error(f"Parámetros: {params}")
         raise
     finally:
-        if cur: cur.close()
-        if conn: conn.close()
-    return result
+        # Cerrar cursor y conexión
+        if cur:
+            cur.close()
+        if conn and not use_transaction:
+            conn.close()

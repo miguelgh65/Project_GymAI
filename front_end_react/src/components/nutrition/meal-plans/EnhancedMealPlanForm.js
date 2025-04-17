@@ -314,15 +314,17 @@ const EnhancedMealPlanForm = ({ editId, onSaveSuccess }) => {
             });
             
             data.items.forEach(item => {
-              const { day_of_week, meal_type, meal_id, quantity } = item;
+              // Mapeo: meal_time -> meal_type para compatibilidad
+              const meal_type = item.meal_time || item.meal_type;
+              const day_of_week = item.day_of_week;
               
               // Buscar la comida completa basada en meal_id
-              const meal = availableMeals.find(m => m.id === meal_id);
+              const meal = availableMeals.find(m => m.id === item.meal_id);
               
-              if (meal && newWeekMeals[day_of_week]) {
+              if (meal && newWeekMeals[day_of_week] && meal_type) {
                 newWeekMeals[day_of_week][meal_type] = {
                   meal: meal,
-                  quantity: quantity || 100
+                  quantity: item.quantity || 100
                 };
               }
             });
@@ -400,13 +402,17 @@ const EnhancedMealPlanForm = ({ editId, onSaveSuccess }) => {
   const generatePlanItems = () => {
     const items = [];
     
+    // Recorrer cada día de la semana
     Object.entries(weekMeals).forEach(([day, meals]) => {
+      // Recorrer cada tipo de comida del día
       Object.entries(meals).forEach(([mealType, data]) => {
+        // Solo incluir si hay una comida y una cantidad válida
         if (data.meal && data.quantity) {
           items.push({
             meal_id: data.meal.id,
             day_of_week: day,
-            meal_type: mealType,
+            meal_type: mealType,  // Usar como tipo de comida
+            meal_time: mealType,  // También enviar como meal_time para compatibilidad
             quantity: data.quantity
           });
         }
@@ -529,7 +535,7 @@ const EnhancedMealPlanForm = ({ editId, onSaveSuccess }) => {
         <CardContent>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
             <Typography variant="h5">
-              {isEditing ? 'Editar Plan de Comida' : 'Crear Nuevo Plan de Comida'}
+              {isEditing ? 'Editar Plan de Nutrición' : 'Crear Nuevo Plan de Nutrición'}
             </Typography>
             
             <Button

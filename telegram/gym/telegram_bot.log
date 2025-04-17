@@ -3568,3 +3568,2565 @@ requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='api.telegram.org', po
 2025-04-17 01:37:34,614 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
 2025-04-17 01:38:05,249 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
 2025-04-17 01:38:35,937 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 01:41:13,815 - INFO - Iniciando bot con token que comienza con 7808656374
+2025-04-17 01:41:13,817 - INFO - Iniciando bot polling
+2025-04-17 01:41:13,819 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 01:41:14,206 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getMe HTTP/1.1" 200 268
+2025-04-17 01:41:14,708 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 01:41:44,996 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 01:42:15,738 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 01:42:46,365 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 01:43:17,030 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 01:43:47,703 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 01:44:18,270 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 01:44:48,847 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 01:45:19,576 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 01:45:50,279 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 01:46:33,323 - INFO - Iniciando bot con token que comienza con 7808656374
+2025-04-17 01:46:33,325 - INFO - Iniciando bot polling
+2025-04-17 01:46:33,328 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 01:46:33,931 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getMe HTTP/1.1" 200 268
+2025-04-17 01:46:34,436 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 01:47:04,846 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 01:47:35,474 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 01:48:09,544 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 01:48:45,699 - ERROR - Error inesperado en bot polling
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 534, in _make_request
+    response = conn.getresponse()
+               ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 516, in getresponse
+    httplib_response = super().getresponse()
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/http/client.py", line 1395, in getresponse
+    response.begin()
+  File "/usr/local/lib/python3.11/http/client.py", line 325, in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/http/client.py", line 286, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/socket.py", line 718, in readinto
+    return self._sock.recv_into(b)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/ssl.py", line 1314, in recv_into
+    return self.read(nbytes, buffer)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/ssl.py", line 1166, in read
+    return self._sslobj.read(len, buffer)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: The read operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/retry.py", line 474, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/util.py", line 39, in reraise
+    raise value
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 536, in _make_request
+    self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 367, in _raise_timeout
+    raise ReadTimeoutError(
+urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='api.telegram.org', port=443): Read timed out. (read timeout=35)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/telegram/gym/main.py", line 79, in start_bot
+    bot.polling(
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1198, in polling
+    self.__threaded_polling(non_stop=non_stop, interval=interval, timeout=timeout, long_polling_timeout=long_polling_timeout,
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1273, in __threaded_polling
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1234, in __threaded_polling
+    polling_thread.raise_exceptions()
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 111, in raise_exceptions
+    raise self.exception_info
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 93, in run
+    task(*args, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 688, in __retrieve_updates
+    updates = self.get_updates(offset=(self.last_update_id + 1),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 660, in get_updates
+    json_updates = apihelper.get_updates(
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 332, in get_updates
+    return _make_request(token, method_url, params=payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 162, in _make_request
+    result = _get_req_session().request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 713, in send
+    raise ReadTimeout(e, request=request)
+requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='api.telegram.org', port=443): Read timed out. (read timeout=35)
+2025-04-17 01:48:45,727 - WARNING - Reintento 1/10 en 5 segundos...
+2025-04-17 01:48:50,728 - INFO - Iniciando bot polling
+2025-04-17 01:48:51,242 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 01:48:51,418 - ERROR - Error inesperado en bot polling
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/socket.py", line 974, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno -2] Name or service not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 704, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x7f0bd3b68fd0>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd3b68fd0>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/telegram/gym/main.py", line 79, in start_bot
+    bot.polling(
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1198, in polling
+    self.__threaded_polling(non_stop=non_stop, interval=interval, timeout=timeout, long_polling_timeout=long_polling_timeout,
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1273, in __threaded_polling
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1234, in __threaded_polling
+    polling_thread.raise_exceptions()
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 111, in raise_exceptions
+    raise self.exception_info
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 93, in run
+    task(*args, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 688, in __retrieve_updates
+    updates = self.get_updates(offset=(self.last_update_id + 1),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 660, in get_updates
+    json_updates = apihelper.get_updates(
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 332, in get_updates
+    return _make_request(token, method_url, params=payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 162, in _make_request
+    result = _get_req_session().request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 700, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd3b68fd0>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+2025-04-17 01:48:51,435 - WARNING - Reintento 2/10 en 7.5 segundos...
+2025-04-17 01:48:58,935 - INFO - Iniciando bot polling
+2025-04-17 01:48:59,565 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 01:48:59,736 - ERROR - Error inesperado en bot polling
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/socket.py", line 974, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno -2] Name or service not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 704, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x7f0bd4390550>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd4390550>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/telegram/gym/main.py", line 79, in start_bot
+    bot.polling(
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1198, in polling
+    self.__threaded_polling(non_stop=non_stop, interval=interval, timeout=timeout, long_polling_timeout=long_polling_timeout,
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1273, in __threaded_polling
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1234, in __threaded_polling
+    polling_thread.raise_exceptions()
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 111, in raise_exceptions
+    raise self.exception_info
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 93, in run
+    task(*args, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 688, in __retrieve_updates
+    updates = self.get_updates(offset=(self.last_update_id + 1),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 660, in get_updates
+    json_updates = apihelper.get_updates(
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 332, in get_updates
+    return _make_request(token, method_url, params=payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 162, in _make_request
+    result = _get_req_session().request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 700, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd4390550>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+2025-04-17 01:48:59,742 - WARNING - Reintento 3/10 en 11.25 segundos...
+2025-04-17 01:49:11,152 - INFO - Iniciando bot polling
+2025-04-17 01:49:11,660 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 01:49:11,893 - ERROR - Error inesperado en bot polling
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/socket.py", line 974, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno -2] Name or service not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 704, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x7f0bd3b689d0>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd3b689d0>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/telegram/gym/main.py", line 79, in start_bot
+    bot.polling(
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1198, in polling
+    self.__threaded_polling(non_stop=non_stop, interval=interval, timeout=timeout, long_polling_timeout=long_polling_timeout,
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1273, in __threaded_polling
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1234, in __threaded_polling
+    polling_thread.raise_exceptions()
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 111, in raise_exceptions
+    raise self.exception_info
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 93, in run
+    task(*args, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 688, in __retrieve_updates
+    updates = self.get_updates(offset=(self.last_update_id + 1),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 660, in get_updates
+    json_updates = apihelper.get_updates(
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 332, in get_updates
+    return _make_request(token, method_url, params=payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 162, in _make_request
+    result = _get_req_session().request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 700, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd3b689d0>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+2025-04-17 01:49:11,920 - WARNING - Reintento 4/10 en 16.875 segundos...
+2025-04-17 01:49:28,874 - INFO - Iniciando bot polling
+2025-04-17 01:49:29,383 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 01:49:29,645 - ERROR - Error inesperado en bot polling
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/socket.py", line 974, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno -2] Name or service not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 704, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x7f0bd3b70810>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd3b70810>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/telegram/gym/main.py", line 79, in start_bot
+    bot.polling(
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1198, in polling
+    self.__threaded_polling(non_stop=non_stop, interval=interval, timeout=timeout, long_polling_timeout=long_polling_timeout,
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1273, in __threaded_polling
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1234, in __threaded_polling
+    polling_thread.raise_exceptions()
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 111, in raise_exceptions
+    raise self.exception_info
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 93, in run
+    task(*args, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 688, in __retrieve_updates
+    updates = self.get_updates(offset=(self.last_update_id + 1),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 660, in get_updates
+    json_updates = apihelper.get_updates(
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 332, in get_updates
+    return _make_request(token, method_url, params=payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 162, in _make_request
+    result = _get_req_session().request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 700, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd3b70810>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+2025-04-17 01:49:29,654 - WARNING - Reintento 5/10 en 25.3125 segundos...
+2025-04-17 01:49:55,007 - INFO - Iniciando bot polling
+2025-04-17 01:49:55,529 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 01:49:55,809 - ERROR - Error inesperado en bot polling
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/socket.py", line 974, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno -2] Name or service not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 704, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x7f0bd4360210>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd4360210>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/telegram/gym/main.py", line 79, in start_bot
+    bot.polling(
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1198, in polling
+    self.__threaded_polling(non_stop=non_stop, interval=interval, timeout=timeout, long_polling_timeout=long_polling_timeout,
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1273, in __threaded_polling
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1234, in __threaded_polling
+    polling_thread.raise_exceptions()
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 111, in raise_exceptions
+    raise self.exception_info
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 93, in run
+    task(*args, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 688, in __retrieve_updates
+    updates = self.get_updates(offset=(self.last_update_id + 1),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 660, in get_updates
+    json_updates = apihelper.get_updates(
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 332, in get_updates
+    return _make_request(token, method_url, params=payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 162, in _make_request
+    result = _get_req_session().request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 700, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd4360210>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+2025-04-17 01:49:55,818 - WARNING - Reintento 6/10 en 37.96875 segundos...
+2025-04-17 01:50:33,801 - INFO - Iniciando bot polling
+2025-04-17 01:50:34,313 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 01:50:34,374 - ERROR - Error inesperado en bot polling
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/socket.py", line 974, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno -2] Name or service not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 704, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x7f0bd3b68e90>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd3b68e90>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/telegram/gym/main.py", line 79, in start_bot
+    bot.polling(
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1198, in polling
+    self.__threaded_polling(non_stop=non_stop, interval=interval, timeout=timeout, long_polling_timeout=long_polling_timeout,
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1273, in __threaded_polling
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1234, in __threaded_polling
+    polling_thread.raise_exceptions()
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 111, in raise_exceptions
+    raise self.exception_info
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 93, in run
+    task(*args, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 688, in __retrieve_updates
+    updates = self.get_updates(offset=(self.last_update_id + 1),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 660, in get_updates
+    json_updates = apihelper.get_updates(
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 332, in get_updates
+    return _make_request(token, method_url, params=payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 162, in _make_request
+    result = _get_req_session().request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 700, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd3b68e90>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+2025-04-17 01:50:34,380 - WARNING - Reintento 7/10 en 56.953125 segundos...
+2025-04-17 01:51:31,341 - INFO - Iniciando bot polling
+2025-04-17 01:51:31,847 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 01:51:32,057 - ERROR - Error inesperado en bot polling
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/socket.py", line 974, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno -2] Name or service not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 704, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x7f0bd3b738d0>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd3b738d0>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/telegram/gym/main.py", line 79, in start_bot
+    bot.polling(
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1198, in polling
+    self.__threaded_polling(non_stop=non_stop, interval=interval, timeout=timeout, long_polling_timeout=long_polling_timeout,
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1273, in __threaded_polling
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1234, in __threaded_polling
+    polling_thread.raise_exceptions()
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 111, in raise_exceptions
+    raise self.exception_info
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 93, in run
+    task(*args, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 688, in __retrieve_updates
+    updates = self.get_updates(offset=(self.last_update_id + 1),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 660, in get_updates
+    json_updates = apihelper.get_updates(
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 332, in get_updates
+    return _make_request(token, method_url, params=payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 162, in _make_request
+    result = _get_req_session().request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 700, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd3b738d0>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+2025-04-17 01:51:32,079 - WARNING - Reintento 8/10 en 85.4296875 segundos...
+2025-04-17 01:52:57,500 - INFO - Iniciando bot polling
+2025-04-17 01:52:58,003 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 01:52:58,025 - ERROR - Error inesperado en bot polling
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/socket.py", line 974, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno -2] Name or service not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 704, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x7f0bd3b73610>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd3b73610>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/telegram/gym/main.py", line 79, in start_bot
+    bot.polling(
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1198, in polling
+    self.__threaded_polling(non_stop=non_stop, interval=interval, timeout=timeout, long_polling_timeout=long_polling_timeout,
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1273, in __threaded_polling
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1234, in __threaded_polling
+    polling_thread.raise_exceptions()
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 111, in raise_exceptions
+    raise self.exception_info
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 93, in run
+    task(*args, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 688, in __retrieve_updates
+    updates = self.get_updates(offset=(self.last_update_id + 1),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 660, in get_updates
+    json_updates = apihelper.get_updates(
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 332, in get_updates
+    return _make_request(token, method_url, params=payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 162, in _make_request
+    result = _get_req_session().request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 700, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd3b73610>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+2025-04-17 01:52:58,027 - WARNING - Reintento 9/10 en 128.14453125 segundos...
+2025-04-17 01:55:06,158 - INFO - Iniciando bot polling
+2025-04-17 01:55:06,683 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 01:55:06,783 - ERROR - Error inesperado en bot polling
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/socket.py", line 974, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno -2] Name or service not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 704, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x7f0bd3b68e90>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd3b68e90>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/telegram/gym/main.py", line 79, in start_bot
+    bot.polling(
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1198, in polling
+    self.__threaded_polling(non_stop=non_stop, interval=interval, timeout=timeout, long_polling_timeout=long_polling_timeout,
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1273, in __threaded_polling
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1234, in __threaded_polling
+    polling_thread.raise_exceptions()
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 111, in raise_exceptions
+    raise self.exception_info
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 93, in run
+    task(*args, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 688, in __retrieve_updates
+    updates = self.get_updates(offset=(self.last_update_id + 1),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 660, in get_updates
+    json_updates = apihelper.get_updates(
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 332, in get_updates
+    return _make_request(token, method_url, params=payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 162, in _make_request
+    result = _get_req_session().request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 700, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd3b68e90>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+2025-04-17 01:55:06,789 - WARNING - Reintento 10/10 en 192.216796875 segundos...
+2025-04-17 14:37:46,003 - INFO - Reiniciando contador de reintentos
+2025-04-17 14:37:46,003 - INFO - Iniciando bot polling
+2025-04-17 14:37:46,505 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 14:38:16,741 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:38:47,528 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:39:18,148 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:39:49,135 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:40:19,941 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:40:50,691 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:41:21,445 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:41:52,162 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:42:23,293 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:42:54,197 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:43:24,856 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:43:55,460 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:44:26,314 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:44:56,955 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:45:27,603 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:45:58,261 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:46:28,942 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:46:59,641 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:47:29,948 - ERROR - Error inesperado en bot polling
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 534, in _make_request
+    response = conn.getresponse()
+               ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 516, in getresponse
+    httplib_response = super().getresponse()
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/http/client.py", line 1395, in getresponse
+    response.begin()
+  File "/usr/local/lib/python3.11/http/client.py", line 325, in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/http/client.py", line 294, in _read_status
+    raise RemoteDisconnected("Remote end closed connection without"
+http.client.RemoteDisconnected: Remote end closed connection without response
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/retry.py", line 474, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/util.py", line 38, in reraise
+    raise value.with_traceback(tb)
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 534, in _make_request
+    response = conn.getresponse()
+               ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 516, in getresponse
+    httplib_response = super().getresponse()
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/http/client.py", line 1395, in getresponse
+    response.begin()
+  File "/usr/local/lib/python3.11/http/client.py", line 325, in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/http/client.py", line 294, in _read_status
+    raise RemoteDisconnected("Remote end closed connection without"
+urllib3.exceptions.ProtocolError: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/telegram/gym/main.py", line 79, in start_bot
+    bot.polling(
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1198, in polling
+    self.__threaded_polling(non_stop=non_stop, interval=interval, timeout=timeout, long_polling_timeout=long_polling_timeout,
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1273, in __threaded_polling
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1234, in __threaded_polling
+    polling_thread.raise_exceptions()
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 111, in raise_exceptions
+    raise self.exception_info
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 93, in run
+    task(*args, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 688, in __retrieve_updates
+    updates = self.get_updates(offset=(self.last_update_id + 1),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 660, in get_updates
+    json_updates = apihelper.get_updates(
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 332, in get_updates
+    return _make_request(token, method_url, params=payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 162, in _make_request
+    result = _get_req_session().request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 682, in send
+    raise ConnectionError(err, request=request)
+requests.exceptions.ConnectionError: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+2025-04-17 14:47:29,950 - WARNING - Reintento 1/10 en 5 segundos...
+2025-04-17 14:47:34,423 - INFO - Iniciando bot polling
+2025-04-17 14:47:34,925 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 14:47:34,944 - ERROR - Error inesperado en bot polling
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/socket.py", line 974, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno -2] Name or service not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 704, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x7f0bd3b8d850>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd3b8d850>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/telegram/gym/main.py", line 79, in start_bot
+    bot.polling(
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1198, in polling
+    self.__threaded_polling(non_stop=non_stop, interval=interval, timeout=timeout, long_polling_timeout=long_polling_timeout,
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1273, in __threaded_polling
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1234, in __threaded_polling
+    polling_thread.raise_exceptions()
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 111, in raise_exceptions
+    raise self.exception_info
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 93, in run
+    task(*args, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 688, in __retrieve_updates
+    updates = self.get_updates(offset=(self.last_update_id + 1),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 660, in get_updates
+    json_updates = apihelper.get_updates(
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 332, in get_updates
+    return _make_request(token, method_url, params=payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 162, in _make_request
+    result = _get_req_session().request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 700, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd3b8d850>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+2025-04-17 14:47:34,946 - WARNING - Reintento 2/10 en 7.5 segundos...
+2025-04-17 14:47:42,451 - INFO - Iniciando bot polling
+2025-04-17 14:47:42,955 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 14:47:42,982 - ERROR - Error inesperado en bot polling
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/socket.py", line 974, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno -2] Name or service not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 704, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x7f0bd3b6b450>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd3b6b450>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/telegram/gym/main.py", line 79, in start_bot
+    bot.polling(
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1198, in polling
+    self.__threaded_polling(non_stop=non_stop, interval=interval, timeout=timeout, long_polling_timeout=long_polling_timeout,
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1273, in __threaded_polling
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1234, in __threaded_polling
+    polling_thread.raise_exceptions()
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 111, in raise_exceptions
+    raise self.exception_info
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 93, in run
+    task(*args, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 688, in __retrieve_updates
+    updates = self.get_updates(offset=(self.last_update_id + 1),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 660, in get_updates
+    json_updates = apihelper.get_updates(
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 332, in get_updates
+    return _make_request(token, method_url, params=payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 162, in _make_request
+    result = _get_req_session().request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 700, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd3b6b450>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+2025-04-17 14:47:42,984 - WARNING - Reintento 3/10 en 11.25 segundos...
+2025-04-17 14:47:54,235 - INFO - Iniciando bot polling
+2025-04-17 14:47:54,736 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 14:47:54,758 - ERROR - Error inesperado en bot polling
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/socket.py", line 974, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno -2] Name or service not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 704, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x7f0bd3b73d10>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd3b73d10>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/telegram/gym/main.py", line 79, in start_bot
+    bot.polling(
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1198, in polling
+    self.__threaded_polling(non_stop=non_stop, interval=interval, timeout=timeout, long_polling_timeout=long_polling_timeout,
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1273, in __threaded_polling
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1234, in __threaded_polling
+    polling_thread.raise_exceptions()
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 111, in raise_exceptions
+    raise self.exception_info
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 93, in run
+    task(*args, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 688, in __retrieve_updates
+    updates = self.get_updates(offset=(self.last_update_id + 1),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 660, in get_updates
+    json_updates = apihelper.get_updates(
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 332, in get_updates
+    return _make_request(token, method_url, params=payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 162, in _make_request
+    result = _get_req_session().request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 700, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd3b73d10>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+2025-04-17 14:47:54,759 - WARNING - Reintento 4/10 en 16.875 segundos...
+2025-04-17 14:48:11,384 - INFO - Iniciando bot polling
+2025-04-17 14:48:11,888 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 14:48:11,909 - ERROR - Error inesperado en bot polling
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/socket.py", line 974, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno -2] Name or service not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 704, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x7f0bd3b90b90>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd3b90b90>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/telegram/gym/main.py", line 79, in start_bot
+    bot.polling(
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1198, in polling
+    self.__threaded_polling(non_stop=non_stop, interval=interval, timeout=timeout, long_polling_timeout=long_polling_timeout,
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1273, in __threaded_polling
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1234, in __threaded_polling
+    polling_thread.raise_exceptions()
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 111, in raise_exceptions
+    raise self.exception_info
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 93, in run
+    task(*args, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 688, in __retrieve_updates
+    updates = self.get_updates(offset=(self.last_update_id + 1),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 660, in get_updates
+    json_updates = apihelper.get_updates(
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 332, in get_updates
+    return _make_request(token, method_url, params=payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 162, in _make_request
+    result = _get_req_session().request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 700, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd3b90b90>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+2025-04-17 14:48:11,910 - WARNING - Reintento 5/10 en 25.3125 segundos...
+2025-04-17 14:48:36,972 - INFO - Iniciando bot polling
+2025-04-17 14:48:37,474 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 14:48:37,493 - ERROR - Error inesperado en bot polling
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/socket.py", line 974, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno -2] Name or service not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 704, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x7f0bd438afd0>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd438afd0>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/telegram/gym/main.py", line 79, in start_bot
+    bot.polling(
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1198, in polling
+    self.__threaded_polling(non_stop=non_stop, interval=interval, timeout=timeout, long_polling_timeout=long_polling_timeout,
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1273, in __threaded_polling
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1234, in __threaded_polling
+    polling_thread.raise_exceptions()
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 111, in raise_exceptions
+    raise self.exception_info
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 93, in run
+    task(*args, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 688, in __retrieve_updates
+    updates = self.get_updates(offset=(self.last_update_id + 1),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 660, in get_updates
+    json_updates = apihelper.get_updates(
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 332, in get_updates
+    return _make_request(token, method_url, params=payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 162, in _make_request
+    result = _get_req_session().request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 700, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd438afd0>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+2025-04-17 14:48:37,494 - WARNING - Reintento 6/10 en 37.96875 segundos...
+2025-04-17 14:49:15,222 - INFO - Iniciando bot polling
+2025-04-17 14:49:15,732 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 14:49:15,758 - ERROR - Error inesperado en bot polling
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/socket.py", line 974, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno -2] Name or service not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 704, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x7f0bd3b81e10>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd3b81e10>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/telegram/gym/main.py", line 79, in start_bot
+    bot.polling(
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1198, in polling
+    self.__threaded_polling(non_stop=non_stop, interval=interval, timeout=timeout, long_polling_timeout=long_polling_timeout,
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1273, in __threaded_polling
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1234, in __threaded_polling
+    polling_thread.raise_exceptions()
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 111, in raise_exceptions
+    raise self.exception_info
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 93, in run
+    task(*args, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 688, in __retrieve_updates
+    updates = self.get_updates(offset=(self.last_update_id + 1),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 660, in get_updates
+    json_updates = apihelper.get_updates(
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 332, in get_updates
+    return _make_request(token, method_url, params=payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 162, in _make_request
+    result = _get_req_session().request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 700, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd3b81e10>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+2025-04-17 14:49:15,760 - WARNING - Reintento 7/10 en 56.953125 segundos...
+2025-04-17 14:50:12,205 - INFO - Iniciando bot polling
+2025-04-17 14:50:12,710 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 14:50:12,735 - ERROR - Error inesperado en bot polling
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/socket.py", line 974, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno -2] Name or service not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 704, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x7f0bd3b93a50>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd3b93a50>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/telegram/gym/main.py", line 79, in start_bot
+    bot.polling(
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1198, in polling
+    self.__threaded_polling(non_stop=non_stop, interval=interval, timeout=timeout, long_polling_timeout=long_polling_timeout,
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1273, in __threaded_polling
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1234, in __threaded_polling
+    polling_thread.raise_exceptions()
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 111, in raise_exceptions
+    raise self.exception_info
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 93, in run
+    task(*args, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 688, in __retrieve_updates
+    updates = self.get_updates(offset=(self.last_update_id + 1),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 660, in get_updates
+    json_updates = apihelper.get_updates(
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 332, in get_updates
+    return _make_request(token, method_url, params=payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 162, in _make_request
+    result = _get_req_session().request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 700, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f0bd3b93a50>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+2025-04-17 14:50:12,737 - WARNING - Reintento 8/10 en 85.4296875 segundos...
+2025-04-17 14:51:37,511 - INFO - Iniciando bot polling
+2025-04-17 14:51:38,015 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 14:52:08,638 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:52:38,977 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:53:09,426 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:53:40,215 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:54:10,899 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:54:41,608 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:55:12,324 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:55:43,085 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:56:13,826 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:56:44,494 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:57:15,304 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:57:46,119 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:58:16,819 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:58:47,564 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:59:18,187 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 14:59:48,965 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:00:19,696 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:00:50,505 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:01:20,526 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:01:51,173 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:01:51,677 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 15:02:22,331 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:02:53,094 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:03:23,790 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:03:54,411 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:04:25,214 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:04:55,782 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:05:27,050 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:05:57,588 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:06:28,436 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:06:58,855 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:07:29,560 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:08:00,343 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:08:31,003 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:09:01,646 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:09:32,369 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:10:03,012 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:10:33,676 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:11:08,245 - ERROR - Error inesperado en bot polling
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 534, in _make_request
+    response = conn.getresponse()
+               ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 516, in getresponse
+    httplib_response = super().getresponse()
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/http/client.py", line 1395, in getresponse
+    response.begin()
+  File "/usr/local/lib/python3.11/http/client.py", line 325, in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/http/client.py", line 286, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/socket.py", line 718, in readinto
+    return self._sock.recv_into(b)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/ssl.py", line 1314, in recv_into
+    return self.read(nbytes, buffer)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/ssl.py", line 1166, in read
+    return self._sslobj.read(len, buffer)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: The read operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/retry.py", line 474, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/util.py", line 39, in reraise
+    raise value
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 536, in _make_request
+    self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 367, in _raise_timeout
+    raise ReadTimeoutError(
+urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='api.telegram.org', port=443): Read timed out. (read timeout=35)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/telegram/gym/main.py", line 79, in start_bot
+    bot.polling(
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1198, in polling
+    self.__threaded_polling(non_stop=non_stop, interval=interval, timeout=timeout, long_polling_timeout=long_polling_timeout,
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1273, in __threaded_polling
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1234, in __threaded_polling
+    polling_thread.raise_exceptions()
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 111, in raise_exceptions
+    raise self.exception_info
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 93, in run
+    task(*args, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 688, in __retrieve_updates
+    updates = self.get_updates(offset=(self.last_update_id + 1),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 660, in get_updates
+    json_updates = apihelper.get_updates(
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 332, in get_updates
+    return _make_request(token, method_url, params=payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 162, in _make_request
+    result = _get_req_session().request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 713, in send
+    raise ReadTimeout(e, request=request)
+requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='api.telegram.org', port=443): Read timed out. (read timeout=35)
+2025-04-17 15:11:08,252 - WARNING - Reintento 9/10 en 128.14453125 segundos...
+2025-04-17 15:13:13,117 - INFO - Iniciando bot polling
+2025-04-17 15:13:13,624 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 15:13:44,139 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:14:14,879 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:14:45,532 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:15:16,212 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:15:46,862 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:16:17,427 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:16:48,061 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:17:18,825 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:17:49,439 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:18:20,314 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:22:36,931 - INFO - Iniciando bot con token que comienza con 7808656374
+2025-04-17 15:22:36,935 - INFO - Iniciando bot polling
+2025-04-17 15:22:36,939 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 15:22:37,509 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getMe HTTP/1.1" 200 268
+2025-04-17 15:22:38,012 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 15:23:08,474 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:23:39,153 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:24:09,824 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:24:40,550 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:25:11,369 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:25:42,049 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:26:13,658 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:26:44,304 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:27:15,007 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:27:45,605 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:28:16,330 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:28:47,014 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:29:17,675 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:29:48,362 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:30:19,326 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:30:50,086 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:31:21,254 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:31:51,967 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:32:22,659 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 15:32:53,701 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:11:00,344 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 16:15:14,405 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:15:44,957 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:16:15,599 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:16:46,338 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:17:17,006 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:17:47,363 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:18:17,548 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:18:48,177 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:19:18,961 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:19:49,678 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:25:20,554 - INFO - Iniciando bot con token que comienza con 7808656374
+2025-04-17 16:25:20,556 - INFO - Iniciando bot polling
+2025-04-17 16:25:20,559 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 16:25:20,929 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getMe HTTP/1.1" 200 268
+2025-04-17 16:25:21,434 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 16:25:51,999 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:26:22,733 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:26:53,480 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:27:24,202 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:27:54,969 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:28:29,617 - ERROR - Error inesperado en bot polling
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 534, in _make_request
+    response = conn.getresponse()
+               ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 516, in getresponse
+    httplib_response = super().getresponse()
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/http/client.py", line 1395, in getresponse
+    response.begin()
+  File "/usr/local/lib/python3.11/http/client.py", line 325, in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/http/client.py", line 286, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/socket.py", line 718, in readinto
+    return self._sock.recv_into(b)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/ssl.py", line 1314, in recv_into
+    return self.read(nbytes, buffer)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/ssl.py", line 1166, in read
+    return self._sslobj.read(len, buffer)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: The read operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/retry.py", line 474, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/util.py", line 39, in reraise
+    raise value
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 536, in _make_request
+    self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 367, in _raise_timeout
+    raise ReadTimeoutError(
+urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='api.telegram.org', port=443): Read timed out. (read timeout=35)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/telegram/gym/main.py", line 79, in start_bot
+    bot.polling(
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1198, in polling
+    self.__threaded_polling(non_stop=non_stop, interval=interval, timeout=timeout, long_polling_timeout=long_polling_timeout,
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1273, in __threaded_polling
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1234, in __threaded_polling
+    polling_thread.raise_exceptions()
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 111, in raise_exceptions
+    raise self.exception_info
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 93, in run
+    task(*args, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 688, in __retrieve_updates
+    updates = self.get_updates(offset=(self.last_update_id + 1),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 660, in get_updates
+    json_updates = apihelper.get_updates(
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 332, in get_updates
+    return _make_request(token, method_url, params=payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 162, in _make_request
+    result = _get_req_session().request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 713, in send
+    raise ReadTimeout(e, request=request)
+requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='api.telegram.org', port=443): Read timed out. (read timeout=35)
+2025-04-17 16:28:29,619 - WARNING - Reintento 1/10 en 5 segundos...
+2025-04-17 16:28:34,369 - INFO - Iniciando bot polling
+2025-04-17 16:28:34,877 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 16:28:34,904 - ERROR - Error inesperado en bot polling
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/socket.py", line 974, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno -2] Name or service not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 704, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x7fab3d774ed0>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7fab3d774ed0>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/telegram/gym/main.py", line 79, in start_bot
+    bot.polling(
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1198, in polling
+    self.__threaded_polling(non_stop=non_stop, interval=interval, timeout=timeout, long_polling_timeout=long_polling_timeout,
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1273, in __threaded_polling
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1234, in __threaded_polling
+    polling_thread.raise_exceptions()
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 111, in raise_exceptions
+    raise self.exception_info
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 93, in run
+    task(*args, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 688, in __retrieve_updates
+    updates = self.get_updates(offset=(self.last_update_id + 1),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 660, in get_updates
+    json_updates = apihelper.get_updates(
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 332, in get_updates
+    return _make_request(token, method_url, params=payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 162, in _make_request
+    result = _get_req_session().request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 700, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7fab3d774ed0>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+2025-04-17 16:28:34,905 - WARNING - Reintento 2/10 en 7.5 segundos...
+2025-04-17 16:28:42,432 - INFO - Iniciando bot polling
+2025-04-17 16:28:42,941 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 16:28:42,962 - ERROR - Error inesperado en bot polling
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/socket.py", line 974, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno -2] Name or service not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 704, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x7fab3df8d6d0>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7fab3df8d6d0>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/telegram/gym/main.py", line 79, in start_bot
+    bot.polling(
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1198, in polling
+    self.__threaded_polling(non_stop=non_stop, interval=interval, timeout=timeout, long_polling_timeout=long_polling_timeout,
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1273, in __threaded_polling
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1234, in __threaded_polling
+    polling_thread.raise_exceptions()
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 111, in raise_exceptions
+    raise self.exception_info
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 93, in run
+    task(*args, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 688, in __retrieve_updates
+    updates = self.get_updates(offset=(self.last_update_id + 1),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 660, in get_updates
+    json_updates = apihelper.get_updates(
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 332, in get_updates
+    return _make_request(token, method_url, params=payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 162, in _make_request
+    result = _get_req_session().request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 700, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7fab3df8d6d0>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+2025-04-17 16:28:42,964 - WARNING - Reintento 3/10 en 11.25 segundos...
+2025-04-17 16:28:54,218 - INFO - Iniciando bot polling
+2025-04-17 16:28:54,724 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 16:28:54,744 - ERROR - Error inesperado en bot polling
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/socket.py", line 974, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno -2] Name or service not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 704, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x7fab3d776690>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7fab3d776690>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/telegram/gym/main.py", line 79, in start_bot
+    bot.polling(
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1198, in polling
+    self.__threaded_polling(non_stop=non_stop, interval=interval, timeout=timeout, long_polling_timeout=long_polling_timeout,
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1273, in __threaded_polling
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1234, in __threaded_polling
+    polling_thread.raise_exceptions()
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 111, in raise_exceptions
+    raise self.exception_info
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 93, in run
+    task(*args, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 688, in __retrieve_updates
+    updates = self.get_updates(offset=(self.last_update_id + 1),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 660, in get_updates
+    json_updates = apihelper.get_updates(
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 332, in get_updates
+    return _make_request(token, method_url, params=payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 162, in _make_request
+    result = _get_req_session().request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 700, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7fab3d776690>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+2025-04-17 16:28:54,746 - WARNING - Reintento 4/10 en 16.875 segundos...
+2025-04-17 16:29:10,906 - INFO - Iniciando bot polling
+2025-04-17 16:29:11,413 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 16:29:11,434 - ERROR - Error inesperado en bot polling
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/socket.py", line 974, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno -2] Name or service not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 704, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x7fab3d780390>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7fab3d780390>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/telegram/gym/main.py", line 79, in start_bot
+    bot.polling(
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1198, in polling
+    self.__threaded_polling(non_stop=non_stop, interval=interval, timeout=timeout, long_polling_timeout=long_polling_timeout,
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1273, in __threaded_polling
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1234, in __threaded_polling
+    polling_thread.raise_exceptions()
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 111, in raise_exceptions
+    raise self.exception_info
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 93, in run
+    task(*args, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 688, in __retrieve_updates
+    updates = self.get_updates(offset=(self.last_update_id + 1),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 660, in get_updates
+    json_updates = apihelper.get_updates(
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 332, in get_updates
+    return _make_request(token, method_url, params=payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 162, in _make_request
+    result = _get_req_session().request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 700, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7fab3d780390>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+2025-04-17 16:29:11,435 - WARNING - Reintento 5/10 en 25.3125 segundos...
+2025-04-17 16:29:36,182 - INFO - Iniciando bot polling
+2025-04-17 16:29:36,692 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 16:29:36,716 - ERROR - Error inesperado en bot polling
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/socket.py", line 974, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno -2] Name or service not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 704, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x7fab3df6c9d0>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7fab3df6c9d0>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/telegram/gym/main.py", line 79, in start_bot
+    bot.polling(
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1198, in polling
+    self.__threaded_polling(non_stop=non_stop, interval=interval, timeout=timeout, long_polling_timeout=long_polling_timeout,
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1273, in __threaded_polling
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1234, in __threaded_polling
+    polling_thread.raise_exceptions()
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 111, in raise_exceptions
+    raise self.exception_info
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 93, in run
+    task(*args, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 688, in __retrieve_updates
+    updates = self.get_updates(offset=(self.last_update_id + 1),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 660, in get_updates
+    json_updates = apihelper.get_updates(
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 332, in get_updates
+    return _make_request(token, method_url, params=payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 162, in _make_request
+    result = _get_req_session().request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 700, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7fab3df6c9d0>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+2025-04-17 16:29:36,717 - WARNING - Reintento 6/10 en 37.96875 segundos...
+2025-04-17 16:30:14,319 - INFO - Iniciando bot polling
+2025-04-17 16:30:14,821 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 16:30:14,844 - ERROR - Error inesperado en bot polling
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/socket.py", line 974, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno -2] Name or service not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 704, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x7fab3d7745d0>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7fab3d7745d0>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/telegram/gym/main.py", line 79, in start_bot
+    bot.polling(
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1198, in polling
+    self.__threaded_polling(non_stop=non_stop, interval=interval, timeout=timeout, long_polling_timeout=long_polling_timeout,
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1273, in __threaded_polling
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1234, in __threaded_polling
+    polling_thread.raise_exceptions()
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 111, in raise_exceptions
+    raise self.exception_info
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 93, in run
+    task(*args, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 688, in __retrieve_updates
+    updates = self.get_updates(offset=(self.last_update_id + 1),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 660, in get_updates
+    json_updates = apihelper.get_updates(
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 332, in get_updates
+    return _make_request(token, method_url, params=payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 162, in _make_request
+    result = _get_req_session().request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 700, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7fab3d7745d0>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+2025-04-17 16:30:14,846 - WARNING - Reintento 7/10 en 56.953125 segundos...
+2025-04-17 16:31:11,149 - INFO - Iniciando bot polling
+2025-04-17 16:31:11,652 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 16:31:11,679 - ERROR - Error inesperado en bot polling
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 198, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/connection.py", line 60, in create_connection
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/socket.py", line 974, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno -2] Name or service not known
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 704, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 205, in _new_conn
+    raise NameResolutionError(self.host, self, e) from e
+urllib3.exceptions.NameResolutionError: <urllib3.connection.HTTPSConnection object at 0x7fab3d783d10>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7fab3d783d10>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/telegram/gym/main.py", line 79, in start_bot
+    bot.polling(
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1198, in polling
+    self.__threaded_polling(non_stop=non_stop, interval=interval, timeout=timeout, long_polling_timeout=long_polling_timeout,
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1273, in __threaded_polling
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1234, in __threaded_polling
+    polling_thread.raise_exceptions()
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 111, in raise_exceptions
+    raise self.exception_info
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 93, in run
+    task(*args, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 688, in __retrieve_updates
+    updates = self.get_updates(offset=(self.last_update_id + 1),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 660, in get_updates
+    json_updates = apihelper.get_updates(
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 332, in get_updates
+    return _make_request(token, method_url, params=payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 162, in _make_request
+    result = _get_req_session().request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 700, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPSConnectionPool(host='api.telegram.org', port=443): Max retries exceeded with url: /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7fab3d783d10>: Failed to resolve 'api.telegram.org' ([Errno -2] Name or service not known)"))
+2025-04-17 16:31:11,681 - WARNING - Reintento 8/10 en 85.4296875 segundos...
+2025-04-17 16:32:36,602 - INFO - Iniciando bot polling
+2025-04-17 16:32:37,108 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 16:33:07,614 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:33:38,297 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:34:09,117 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:34:39,976 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:35:10,751 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:35:42,651 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:36:13,853 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:36:44,505 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:37:15,624 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:37:31,358 - ERROR - Error inesperado en bot polling
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 534, in _make_request
+    response = conn.getresponse()
+               ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 516, in getresponse
+    httplib_response = super().getresponse()
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/http/client.py", line 1395, in getresponse
+    response.begin()
+  File "/usr/local/lib/python3.11/http/client.py", line 325, in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/http/client.py", line 294, in _read_status
+    raise RemoteDisconnected("Remote end closed connection without"
+http.client.RemoteDisconnected: Remote end closed connection without response
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/retry.py", line 474, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/util.py", line 38, in reraise
+    raise value.with_traceback(tb)
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 534, in _make_request
+    response = conn.getresponse()
+               ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 516, in getresponse
+    httplib_response = super().getresponse()
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/http/client.py", line 1395, in getresponse
+    response.begin()
+  File "/usr/local/lib/python3.11/http/client.py", line 325, in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/http/client.py", line 294, in _read_status
+    raise RemoteDisconnected("Remote end closed connection without"
+urllib3.exceptions.ProtocolError: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/telegram/gym/main.py", line 79, in start_bot
+    bot.polling(
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1198, in polling
+    self.__threaded_polling(non_stop=non_stop, interval=interval, timeout=timeout, long_polling_timeout=long_polling_timeout,
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1273, in __threaded_polling
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1234, in __threaded_polling
+    polling_thread.raise_exceptions()
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 111, in raise_exceptions
+    raise self.exception_info
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 93, in run
+    task(*args, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 688, in __retrieve_updates
+    updates = self.get_updates(offset=(self.last_update_id + 1),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 660, in get_updates
+    json_updates = apihelper.get_updates(
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 332, in get_updates
+    return _make_request(token, method_url, params=payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 162, in _make_request
+    result = _get_req_session().request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 682, in send
+    raise ConnectionError(err, request=request)
+requests.exceptions.ConnectionError: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+2025-04-17 16:37:31,383 - WARNING - Reintento 9/10 en 128.14453125 segundos...
+2025-04-17 16:50:41,054 - INFO - Iniciando bot polling
+2025-04-17 16:50:41,560 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-17 16:51:14,030 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:51:44,648 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:52:15,259 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:52:46,054 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:53:16,707 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:53:47,481 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:54:17,375 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:54:47,955 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:55:18,529 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:55:49,292 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:56:20,439 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:56:50,589 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:57:21,321 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-17 16:57:52,060 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
