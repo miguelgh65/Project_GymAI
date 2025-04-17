@@ -1,717 +1,282 @@
-// src/components/nutrition/meal-plans/EnhancedMealPlanForm.js
-import React, { useState, useEffect } from 'react';
-import { 
-  Box, Typography, TextField, Button, Checkbox, FormControlLabel,
-  CircularProgress, Alert, Grid, Autocomplete, Card, CardContent,
-  InputAdornment, Divider, Paper, Tabs, Tab, IconButton,
-  Tooltip, Chip
-} from '@mui/material';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faSave, faCalculator, faUtensils, faArrowLeft, 
-  faSpinner, faInfoCircle, faTrash, faBowlFood
-} from '@fortawesome/free-solid-svg-icons';
-import { useNavigate } from 'react-router-dom';
-import { MealPlanService, MealService } from '../../../services/nutrition';
-import { getNutritionSummary } from '../../../utils/nutrition-utils';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Box, TextField, Button, CircularProgress, Alert, Paper, Typography, Grid, Tabs, Tab } from '@mui/material';
+import { format, addDays, startOfWeek, eachDayOfInterval, parseISO, isValid } from 'date-fns';
 
-// Componente para mostrar macros
-const MacroSummary = ({ macros }) => {
-  if (!macros) return <Typography variant="body2">No hay datos disponibles</Typography>;
-  
-  return (
-    <Box sx={{ mt: 2, mb: 2 }}>
-      <Grid container spacing={1}>
-        <Grid item xs={12}>
-          <Typography variant="subtitle1" fontWeight="bold">
-            Total: {macros.calories} kcal
-          </Typography>
-        </Grid>
-        <Grid item xs={4}>
-          <Typography variant="body2">
-            Proteínas: {macros.macros.proteins.grams}g ({macros.macros.proteins.percentage}%)
-          </Typography>
-        </Grid>
-        <Grid item xs={4}>
-          <Typography variant="body2">
-            Carbos: {macros.macros.carbs.grams}g ({macros.macros.carbs.percentage}%)
-          </Typography>
-        </Grid>
-        <Grid item xs={4}>
-          <Typography variant="body2">
-            Grasas: {macros.macros.fats.grams}g ({macros.macros.fats.percentage}%)
-          </Typography>
-        </Grid>
-      </Grid>
-    </Box>
-  );
-};
+// --- Importar los NUEVOS componentes y hooks ---
+import NutritionTargetInputs from './form-components/NutritionTargetInputs';
+import DayMealSelector from './form-components/DayMealSelector';
+import MealSearchInput from './form-components/MealSearchInput';
+import TotalPlanSummary from './form-components/TotalPlanSummary';
+import useNutritionCalculations from '../../../hooks/useNutritionCalculations'; // Nuevo hook
 
-// Componente para el selector de comidas
-const MealSelector = ({ meals, mealType, onSelect, selectedMeal, quantity, onQuantityChange, onRemove }) => {
-  const [searchText, setSearchText] = useState('');
-  
-  return (
-    <Grid container spacing={1} alignItems="center" sx={{ mb: 2 }}>
-      <Grid item xs={12} sm={3}>
-        <Typography variant="body2">{mealType}:</Typography>
-      </Grid>
-      <Grid item xs={7} sm={5}>
-        <Autocomplete
-          options={meals || []}
-          getOptionLabel={(option) => option.meal_name || option.name || ''}
-          value={selectedMeal}
-          onChange={(event, newValue) => onSelect(mealType, newValue)}
-          inputValue={searchText}
-          onInputChange={(event, value) => setSearchText(value)}
-          isOptionEqualToValue={(option, value) => option?.id === value?.id}
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              variant="outlined"
-              placeholder="Selecciona o busca una comida"
-              size="small"
-              fullWidth
-            />
-          )}
-        />
-      </Grid>
-      <Grid item xs={3} sm={2}>
-        <TextField
-          type="number"
-          label="Cantidad"
-          value={quantity || ''}
-          onChange={(e) => onQuantityChange(mealType, e.target.value)}
-          size="small"
-          fullWidth
-          InputProps={{
-            endAdornment: <InputAdornment position="end">g</InputAdornment>,
-            inputProps: { min: 0, step: 10 }
-          }}
-          disabled={!selectedMeal}
-        />
-      </Grid>
-      <Grid item xs={2} sm={1}>
-        <Tooltip title="Quitar comida">
-          <IconButton 
-            color="error" 
-            size="small" 
-            onClick={() => onRemove(mealType)}
-            disabled={!selectedMeal}
-          >
-            <FontAwesomeIcon icon={faTrash} />
-          </IconButton>
-        </Tooltip>
-      </Grid>
-    </Grid>
-  );
-};
+// --- Importar hooks y servicios EXISTENTES ---
+import { useMealPlanFormState } from '../../../hooks/useMealPlanFormState';
+import { useAvailableMeals } from '../../../hooks/useAvailableMeals';
+// import MealPlanService from '../../../services/nutrition/MealPlanService'; // No se usa directamente si useMealPlanFormState lo maneja
 
-// Componente para un día de comidas
-const DayMeals = ({ dayName, mealData, meals, onChange, onQuantityChange, onRemove }) => {
-  // Calcular macros totales del día
-  const calculateDayMacros = () => {
-    // Filtrar comidas seleccionadas con cantidades
-    const selectedMeals = Object.entries(mealData)
-      .filter(([_, data]) => data.meal && data.quantity)
-      .map(([_, data]) => {
-        // Calcular macros proporcionales a la cantidad
-        const ratio = data.quantity / 100; // Las cantidades se expresan en gramos, macros típicamente por 100g
-        const mealMacros = {
-          calories: data.meal.calories * ratio,
-          proteins: data.meal.proteins * ratio,
-          carbohydrates: data.meal.carbohydrates * ratio,
-          fats: data.meal.fats * ratio
-        };
-        return mealMacros;
-      });
-    
-    // Sumar todos los macros
-    if (selectedMeals.length === 0) return null;
-    
-    const totalMacros = selectedMeals.reduce((total, current) => ({
-      calories: total.calories + current.calories,
-      proteins: total.proteins + current.proteins,
-      carbohydrates: total.carbohydrates + current.carbohydrates,
-      fats: total.fats + current.fats
-    }), { calories: 0, proteins: 0, carbohydrates: 0, fats: 0 });
-    
-    return getNutritionSummary(totalMacros);
-  };
+// *** Asegúrate de que useMealPlanFormState devuelve una estructura como esta: ***
+// const {
+//   plan: { id, name, description, start_date, end_date, target_calories, target_protein_g, target_carbs_g, target_fat_g, days }, // days = { 'YYYY-MM-DD': [mealItem] } mealItem necesita un id único (e.g., meal_plan_item_id o generado)
+//   setPlan,
+//   isLoading, // Estado de carga general (lectura inicial, guardado)
+//   error, // Error general
+//   handleChange, // Para campos base como name, description
+//   handleDateChange, // Para start_date, end_date (si no se usan DatePickers externos)
+//   addMealToDay, // Firma: (date: string, meal: object) => void - debe asignar un ID único si no viene
+//   removeMealFromDay, // Firma: (date: string, mealItemId: number | string) => void - elimina por id
+//   updateMealQuantity, // Firma: (date: string, mealItemId: number | string, quantity: number) => void
+//   saveMealPlan, // Función para guardar/actualizar el plan entero -> devuelve boolean (éxito/fallo)
+// } = useMealPlanFormState(planId);
+// *******************************************************************************
 
-  const dayMacros = calculateDayMacros();
-  
-  return (
-    <Paper elevation={1} sx={{ p: 2, mb: 3 }}>
-      <Typography variant="h6" gutterBottom>{dayName}</Typography>
-      
-      {/* Selectores para cada comida del día */}
-      <MealSelector 
-        meals={meals}
-        mealType="Desayuno"
-        onSelect={(mealType, meal) => onChange(dayName, mealType, meal)}
-        selectedMeal={mealData.Desayuno?.meal || null}
-        quantity={mealData.Desayuno?.quantity || ''}
-        onQuantityChange={(mealType, quantity) => onQuantityChange(dayName, mealType, quantity)}
-        onRemove={(mealType) => onRemove(dayName, mealType)}
-      />
-      
-      <MealSelector 
-        meals={meals}
-        mealType="Almuerzo"
-        onSelect={(mealType, meal) => onChange(dayName, mealType, meal)}
-        selectedMeal={mealData.Almuerzo?.meal || null}
-        quantity={mealData.Almuerzo?.quantity || ''}
-        onQuantityChange={(mealType, quantity) => onQuantityChange(dayName, mealType, quantity)}
-        onRemove={(mealType) => onRemove(dayName, mealType)}
-      />
-      
-      <MealSelector 
-        meals={meals}
-        mealType="Comida"
-        onSelect={(mealType, meal) => onChange(dayName, mealType, meal)}
-        selectedMeal={mealData.Comida?.meal || null}
-        quantity={mealData.Comida?.quantity || ''}
-        onQuantityChange={(mealType, quantity) => onQuantityChange(dayName, mealType, quantity)}
-        onRemove={(mealType) => onRemove(dayName, mealType)}
-      />
-      
-      <MealSelector 
-        meals={meals}
-        mealType="Merienda"
-        onSelect={(mealType, meal) => onChange(dayName, mealType, meal)}
-        selectedMeal={mealData.Merienda?.meal || null}
-        quantity={mealData.Merienda?.quantity || ''}
-        onQuantityChange={(mealType, quantity) => onQuantityChange(dayName, mealType, quantity)}
-        onRemove={(mealType) => onRemove(dayName, mealType)}
-      />
-      
-      <MealSelector 
-        meals={meals}
-        mealType="Cena"
-        onSelect={(mealType, meal) => onChange(dayName, mealType, meal)}
-        selectedMeal={mealData.Cena?.meal || null}
-        quantity={mealData.Cena?.quantity || ''}
-        onQuantityChange={(mealType, quantity) => onQuantityChange(dayName, mealType, quantity)}
-        onRemove={(mealType) => onRemove(dayName, mealType)}
-      />
-      
-      {/* Resumen de macros del día */}
-      <Divider sx={{ my: 2 }} />
-      
-      {Object.values(mealData).some(item => item.meal) ? (
-        <>
-          <Typography variant="subtitle2" gutterBottom>Macros totales del día:</Typography>
-          {dayMacros ? (
-            <MacroSummary macros={dayMacros} />
-          ) : (
-            <Typography variant="body2" color="text.secondary">
-              Añade comidas para ver los macros del día
-            </Typography>
-          )}
-        </>
-      ) : (
-        <Alert severity="info" icon={<FontAwesomeIcon icon={faBowlFood} />} sx={{ mt: 1 }}>
-          No hay comidas asignadas para este día
-        </Alert>
-      )}
-    </Paper>
-  );
-};
-
-// Componente principal del formulario
-const EnhancedMealPlanForm = ({ editId, onSaveSuccess }) => {
+function EnhancedMealPlanForm() {
+  const { planId } = useParams();
   const navigate = useNavigate();
-  const isEditing = Boolean(editId);
-  
-  // Estados principales del formulario
-  const [planName, setPlanName] = useState('');
-  const [isActive, setIsActive] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [loadingMeals, setLoadingMeals] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
-  const [availableMeals, setAvailableMeals] = useState([]);
-  const [debug, setDebug] = useState(null);
-  
-  // Estado para las tabs de días
-  const [currentDay, setCurrentDay] = useState(0);
-  
-  // Estado para las comidas por día
-  const [weekMeals, setWeekMeals] = useState({
-    Lunes: { Desayuno: {}, Almuerzo: {}, Comida: {}, Merienda: {}, Cena: {} },
-    Martes: { Desayuno: {}, Almuerzo: {}, Comida: {}, Merienda: {}, Cena: {} },
-    Miércoles: { Desayuno: {}, Almuerzo: {}, Comida: {}, Merienda: {}, Cena: {} },
-    Jueves: { Desayuno: {}, Almuerzo: {}, Comida: {}, Merienda: {}, Cena: {} },
-    Viernes: { Desayuno: {}, Almuerzo: {}, Comida: {}, Merienda: {}, Cena: {} },
-    Sábado: { Desayuno: {}, Almuerzo: {}, Comida: {}, Merienda: {}, Cena: {} },
-    Domingo: { Desayuno: {}, Almuerzo: {}, Comida: {}, Merienda: {}, Cena: {} }
-  });
-  
-  const daysOfWeek = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-  
-  // Cargar comidas disponibles
-  useEffect(() => {
-    const fetchMeals = async () => {
-      try {
-        setLoadingMeals(true);
-        const response = await MealService.getAll();
-        
-        // Normalizar las estructuras de datos para manejar diferentes formatos de respuesta
-        let meals = [];
-        if (Array.isArray(response)) {
-          meals = response;
-        } else if (response.meals && Array.isArray(response.meals)) {
-          meals = response.meals;
+  const isEditing = Boolean(planId);
+
+  // --- Hook principal para estado y lógica del formulario ---
+  const {
+    plan,
+    setPlan, // Necesario para actualizar targets
+    isLoading: isFormLoading, // Renombrar isLoading de este hook para claridad
+    error: formError,
+    handleChange: handleBaseChange, // Para name, description
+    // handleDateChange, // Asumiendo que no se usa directamente si hay DatePickers
+    addMealToDay: addMealToDayState,
+    removeMealFromDay: removeMealFromDayState,
+    updateMealQuantity: updateMealQuantityState,
+    saveMealPlan
+  } = useMealPlanFormState(planId);
+
+  // --- Hook para obtener comidas disponibles ---
+  const { availableMeals = [], isLoading: mealsLoading, error: mealsError } = useAvailableMeals(); // Default a []
+
+  // --- Hook para calcular macros (basado en plan.days) ---
+  // Asegurarse que plan y plan.days existen antes de pasarlo
+  const { dailyTotals, planTotal } = useNutritionCalculations(plan?.days);
+
+  // --- Estado local para la UI (semana, tabs) ---
+  // Intenta inicializar con start_date del plan, si es válido, sino con hoy.
+  const getInitialDate = () => {
+    if (plan?.start_date) {
+        const parsedDate = parseISO(plan.start_date);
+        if (isValid(parsedDate)) {
+            return parsedDate;
         }
-        
-        console.log("Comidas cargadas:", meals);
-        setAvailableMeals(meals);
-      } catch (err) {
-        console.error("Error al cargar comidas:", err);
-        setError("No se pudieron cargar las comidas disponibles.");
-      } finally {
-        setLoadingMeals(false);
-      }
-    };
-    
-    fetchMeals();
+    }
+    return new Date();
+  }
+  const [currentWeekStart, setCurrentWeekStart] = useState(() => startOfWeek(getInitialDate(), { weekStartsOn: 1 }));
+  const [activeTab, setActiveTab] = useState(0);
+
+  // Actualiza la semana inicial si el plan se carga después del montaje inicial
+  useEffect(() => {
+      setCurrentWeekStart(startOfWeek(getInitialDate(), { weekStartsOn: 1 }));
+      setActiveTab(0); // Reset tab al cargar plan
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan?.start_date]); // Dependencia en start_date del plan cargado
+
+  // --- Callbacks para pasar a los sub-componentes ---
+  const handleTargetsChange = useCallback((newTargets) => {
+    // Actualiza solo los campos de targets en el estado principal del plan
+    setPlan(prevPlan => ({
+        ...prevPlan,
+        target_calories: newTargets.target_calories,
+        target_protein_g: newTargets.target_protein_g,
+        target_carbs_g: newTargets.target_carbs_g,
+        target_fat_g: newTargets.target_fat_g,
+    }));
+  }, [setPlan]);
+
+  const handleAddMealToDay = useCallback((mealToAdd) => {
+    // Añade la comida al día que está actualmente visible en el tab
+    const currentWeekDates = eachDayOfInterval({ start: currentWeekStart, end: addDays(currentWeekStart, 6) });
+    if (currentWeekDates && currentWeekDates[activeTab]) {
+        const dateString = format(currentWeekDates[activeTab], 'yyyy-MM-dd');
+        // ¡IMPORTANTE! Asume que 'mealToAdd' de availableMeals tiene la info necesaria
+        // y que addMealToDayState en el hook se encarga de añadirlo correctamente
+        // y asigna un ID único si es necesario (meal_plan_item_id o uno temporal).
+        addMealToDayState(dateString, mealToAdd);
+    } else {
+        console.error("Cannot add meal, current date not selected.");
+        // Podrías mostrar un error al usuario aquí
+    }
+  }, [activeTab, currentWeekStart, addMealToDayState]);
+
+    const handleRemoveMeal = useCallback((date, mealItemId) => {
+        removeMealFromDayState(date, mealItemId);
+    }, [removeMealFromDayState]);
+
+    const handleUpdateQuantity = useCallback((date, mealItemId, newQuantity) => {
+        // Asegurar que la cantidad es un número antes de pasarla al hook
+        const quantity = Number(newQuantity);
+        if (!isNaN(quantity)) {
+            updateMealQuantityState(date, mealItemId, quantity);
+        }
+    }, [updateMealQuantityState]);
+
+  // --- Lógica de UI (semana/tabs) ---
+  // Memoizar las fechas de la semana actual para evitar recálculos innecesarios
+  const currentWeekDates = useMemo(() => eachDayOfInterval({ start: currentWeekStart, end: addDays(currentWeekStart, 6) }), [currentWeekStart]);
+
+  const handleWeekChange = useCallback((direction) => {
+      setCurrentWeekStart(prev => addDays(prev, direction * 7));
+      setActiveTab(0); // Reset tab al cambiar semana
   }, []);
-  
-  // Si estamos editando, cargar el plan existente
-  useEffect(() => {
-    if (isEditing && editId) {
-      const loadPlan = async () => {
-        try {
-          setLoading(true);
-          setError(null);
-          console.log(`Cargando plan con ID: ${editId}`);
-          
-          const data = await MealPlanService.getById(editId);
-          console.log("Datos del plan cargado:", data);
-          
-          // Normalizar datos
-          setPlanName(data.plan_name || data.name || '');
-          setIsActive(Boolean(data.is_active));
-          
-          // Inicializar el estado de las comidas por día
-          const newWeekMeals = { ...weekMeals };
-          
-          // Si el plan tiene items, mapeamos cada uno a su día y tipo de comida
-          if (data.items && Array.isArray(data.items) && data.items.length > 0) {
-            console.log(`Cargando ${data.items.length} items del plan`);
-            
-            // Esperar a que las comidas estén cargadas para asociarlas con los items
-            await new Promise(resolve => {
-              const checkMeals = () => {
-                if (availableMeals.length > 0) {
-                  resolve();
-                } else {
-                  setTimeout(checkMeals, 500);
-                }
-              };
-              checkMeals();
-            });
-            
-            data.items.forEach(item => {
-              // Mapeo: meal_time -> meal_type para compatibilidad
-              const meal_type = item.meal_time || item.meal_type;
-              const day_of_week = item.day_of_week;
-              
-              // Buscar la comida completa basada en meal_id
-              const meal = availableMeals.find(m => m.id === item.meal_id);
-              
-              if (meal && newWeekMeals[day_of_week] && meal_type) {
-                newWeekMeals[day_of_week][meal_type] = {
-                  meal: meal,
-                  quantity: item.quantity || 100
-                };
-              }
-            });
-            
-            console.log("Comidas del plan cargadas:", newWeekMeals);
-            setWeekMeals(newWeekMeals);
-          } else {
-            console.log("El plan no tiene items");
-          }
-        } catch (err) {
-          console.error("Error al cargar el plan:", err);
-          setError(err.message || 'Error al cargar el plan.');
-        } finally {
-          setLoading(false);
-        }
-      };
-      
-      loadPlan();
-    }
-  }, [isEditing, editId, availableMeals]);
-  
-  // Manejador para cambiar de día
-  const handleDayChange = (event, newDay) => {
-    setCurrentDay(newDay);
-  };
-  
-  // Manejador para seleccionar una comida
-  const handleMealSelect = (day, mealType, selectedMeal) => {
-    console.log(`Seleccionando comida para ${day} - ${mealType}:`, selectedMeal);
-    
-    if (!selectedMeal) {
-      // Si no hay comida seleccionada, limpiamos ese espacio
-      setWeekMeals(prev => {
-        const newWeekMeals = { ...prev };
-        newWeekMeals[day][mealType] = {};
-        return newWeekMeals;
-      });
-      return;
-    }
-    
-    setWeekMeals(prev => {
-      const newWeekMeals = { ...prev };
-      newWeekMeals[day][mealType] = {
-        meal: selectedMeal,
-        quantity: newWeekMeals[day][mealType].quantity || 100 // Valor por defecto si no existe
-      };
-      return newWeekMeals;
-    });
-  };
-  
-  // Manejador para cambiar la cantidad de una comida
-  const handleQuantityChange = (day, mealType, quantity) => {
-    const numQuantity = parseFloat(quantity);
-    if (isNaN(numQuantity) || numQuantity < 0) return;
-    
-    setWeekMeals(prev => {
-      const newWeekMeals = { ...prev };
-      if (newWeekMeals[day][mealType].meal) {
-        newWeekMeals[day][mealType].quantity = numQuantity;
-      }
-      return newWeekMeals;
-    });
-  };
-  
-  // Manejador para quitar una comida
-  const handleRemoveMeal = (day, mealType) => {
-    setWeekMeals(prev => {
-      const newWeekMeals = { ...prev };
-      newWeekMeals[day][mealType] = {};
-      return newWeekMeals;
-    });
-  };
-  
-  // Generador de estructura para guardar
-  const generatePlanItems = () => {
-    const items = [];
-    
-    // Recorrer cada día de la semana
-    Object.entries(weekMeals).forEach(([day, meals]) => {
-      // Recorrer cada tipo de comida del día
-      Object.entries(meals).forEach(([mealType, data]) => {
-        // Solo incluir si hay una comida y una cantidad válida
-        if (data.meal && data.quantity) {
-          items.push({
-            meal_id: data.meal.id,
-            day_of_week: day,
-            meal_type: mealType,  // Usar como tipo de comida
-            meal_time: mealType,  // También enviar como meal_time para compatibilidad
-            quantity: data.quantity
-          });
-        }
-      });
-    });
-    
-    return items;
-  };
-  
-  // Manejador para guardar el plan
+
+  const handleTabChange = useCallback((event, newValue) => {
+      setActiveTab(newValue);
+  }, []);
+
+  // --- Submit ---
   const handleSubmit = async (event) => {
     event.preventDefault();
-    
-    if (!planName.trim()) {
-      setError("El nombre del plan es obligatorio");
-      return;
+    // Validaciones adicionales podrían ir aquí si no están en el hook
+    const success = await saveMealPlan(); // saveMealPlan viene del hook useMealPlanFormState
+    if (success) {
+      navigate('/nutrition/meal-plans'); // O a la vista de detalle
     }
-    
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-    
-    const planItems = generatePlanItems();
-    
-    // Verificar si hay al menos un item
-    if (planItems.length === 0) {
-      setError("Debes añadir al menos una comida al plan");
-      setLoading(false);
-      return;
-    }
-    
-    console.log(`${planItems.length} items en el plan`);
-    setDebug(`Items: ${JSON.stringify(planItems, null, 2)}`);
-    
-    const planData = {
-      plan_name: planName,
-      is_active: isActive,
-      items: planItems
-    };
-    
-    console.log("Guardando plan con datos:", planData);
-    
-    try {
-      if (isEditing) {
-        await MealPlanService.update(editId, planData);
-        setSuccess('Plan actualizado con éxito.');
-      } else {
-        await MealPlanService.create(planData);
-        setSuccess('Plan creado con éxito.');
-      }
-      
-      // Limpiar cache
-      MealPlanService.clearCache();
-      
-      // Redirigir después de un éxito
-      setTimeout(() => {
-        if (onSaveSuccess) {
-          onSaveSuccess();
-        } else {
-          navigate('/nutrition');
-          localStorage.setItem('nutrition_tab', '0'); // Volver a la lista de planes
-          window.location.reload();
-        }
-      }, 1500);
-    } catch (err) {
-      console.error("Error al guardar el plan:", err);
-      setError(err.message || 'Error al guardar el plan.');
-    } finally {
-      setLoading(false);
-    }
+    // El hook useMealPlanFormState debería manejar el estado de carga/error durante el guardado
   };
-  
-  // Calcular macros totales del plan
-  const calculateTotalMacros = () => {
-    let totalCalories = 0;
-    let totalProteins = 0;
-    let totalCarbs = 0;
-    let totalFats = 0;
-    
-    Object.values(weekMeals).forEach(dayMeals => {
-      Object.values(dayMeals).forEach(mealData => {
-        if (mealData.meal && mealData.quantity) {
-          const ratio = mealData.quantity / 100;
-          totalCalories += (mealData.meal.calories || 0) * ratio;
-          totalProteins += (mealData.meal.proteins || 0) * ratio;
-          totalCarbs += (mealData.meal.carbohydrates || 0) * ratio;
-          totalFats += (mealData.meal.fats || 0) * ratio;
-        }
-      });
-    });
-    
-    return {
-      calories: Math.round(totalCalories),
-      proteins: Math.round(totalProteins * 10) / 10,
-      carbohydrates: Math.round(totalCarbs * 10) / 10,
-      fats: Math.round(totalFats * 10) / 10
-    };
-  };
-  
-  const totalMacros = calculateTotalMacros();
-  const macroSummary = getNutritionSummary(totalMacros);
-  
-  // Calcular el número total de comidas en el plan
-  const totalMeals = Object.values(weekMeals).reduce((count, dayMeals) => {
-    return count + Object.values(dayMeals).filter(meal => meal.meal).length;
-  }, 0);
-  
-  if (loading && isEditing && !availableMeals.length) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', my: 4, flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-        <CircularProgress />
-        <Typography>Cargando plan de comidas...</Typography>
-      </Box>
-    );
-  }
-  
+
+  // --- Renderizado ---
+  // Mostrar carga inicial si el plan se está cargando y aún no tenemos un ID (en modo edición)
+  const showInitialLoading = isEditing && isFormLoading && !plan?.id;
+  // Mostrar error si la carga inicial falló
+  const showInitialError = isEditing && formError && !plan?.id;
+  // Estado general para deshabilitar campos mientras se carga/guarda
+  const isUIDisabled = isFormLoading;
+
+
+  if (showInitialLoading) return <Box sx={{display: 'flex', justifyContent: 'center', p: 5}}><CircularProgress /></Box>;
+  if (showInitialError) return <Alert severity="error" sx={{m: 2}}>Error loading plan: {formError}</Alert>;
+
   return (
-    <Box component="form" onSubmit={handleSubmit} noValidate>
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-            <Typography variant="h5">
-              {isEditing ? 'Editar Plan de Nutrición' : 'Crear Nuevo Plan de Nutrición'}
-            </Typography>
-            
-            <Button
-              variant="outlined"
-              startIcon={<FontAwesomeIcon icon={faArrowLeft} />}
-              onClick={() => {
-                navigate('/nutrition');
-                localStorage.setItem('nutrition_tab', '0'); // Volver a la lista de planes
-                window.location.reload();
-              }}
-            >
-              Volver
-            </Button>
-          </Box>
-          
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-          
-          {success && (
-            <Alert severity="success" sx={{ mb: 2 }}>
-              {success}
-            </Alert>
-          )}
-          
-          {debug && (
-            <Alert severity="info" sx={{ mb: 2 }}>
-              <pre style={{ fontSize: '0.7rem', whiteSpace: 'pre-wrap' }}>{debug}</pre>
-            </Alert>
-          )}
-          
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={8}>
-              <TextField
-                required
-                fullWidth
-                id="planName"
-                label="Nombre del Plan"
-                value={planName}
-                onChange={(e) => setPlanName(e.target.value)}
-                margin="normal"
-              />
+    <Paper sx={{ p: { xs: 1, sm: 2, md: 3 }, mt: 2 }}>
+      <Typography variant="h4" gutterBottom>{isEditing ? 'Edit Meal Plan' : 'Create New Meal Plan'}</Typography>
+      <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
+        <Grid container spacing={3}>
+           {/* Campos básicos del plan */}
+            <Grid item xs={12} md={6}>
+                 <TextField
+                    name="name" label="Plan Name" required fullWidth
+                    value={plan?.name || ''} onChange={handleBaseChange}
+                    disabled={isUIDisabled}
+                 />
             </Grid>
-            <Grid item xs={12} sm={4}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={isActive}
-                    onChange={(e) => setIsActive(e.target.checked)}
-                    color="primary"
-                  />
-                }
-                label="Plan Activo"
-                sx={{ mt: 2 }}
-              />
-            </Grid>
-          </Grid>
-          
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="h6" gutterBottom>
-              Macros Totales del Plan <FontAwesomeIcon icon={faCalculator} />
-            </Typography>
-            
-            {totalMeals > 0 ? (
-              <>
-                <Typography variant="body2" gutterBottom>
-                  {totalMeals} comidas planificadas en total
-                </Typography>
-                <MacroSummary macros={macroSummary} />
-              </>
-            ) : (
-              <Alert severity="info" sx={{ mb: 2 }}>
-                Añade comidas al plan para ver los macros totales
-              </Alert>
-            )}
-          </Box>
-        </CardContent>
-      </Card>
-      
-      <Box sx={{ mb: 3 }}>
-        <Paper sx={{ width: '100%' }}>
-          <Tabs
-            value={currentDay}
-            onChange={handleDayChange}
-            variant="scrollable"
-            scrollButtons="auto"
-            aria-label="Días de la semana"
-          >
-            {daysOfWeek.map((day, index) => {
-              // Contar comidas por día para mostrar en la pestaña
-              const mealCount = Object.values(weekMeals[day]).filter(item => item.meal).length;
-              
-              return (
-                <Tab 
-                  key={day} 
-                  label={
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      {day}
-                      {mealCount > 0 && (
-                        <Chip 
-                          size="small" 
-                          label={mealCount} 
-                          color="primary" 
-                          sx={{ ml: 1, height: 20, fontSize: '0.7rem' }} 
-                        />
-                      )}
-                    </Box>
-                  } 
-                  id={`day-tab-${index}`} 
-                  aria-controls={`day-tabpanel-${index}`} 
+             <Grid item xs={12} md={6}>
+                <TextField
+                    name="description" label="Description" fullWidth
+                    value={plan?.description || ''} onChange={handleBaseChange}
+                    disabled={isUIDisabled} multiline maxRows={3}
                 />
-              );
-            })}
-          </Tabs>
-          
-          <Box p={2}>
-            {loadingMeals ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', my: 3, alignItems: 'center', gap: 2 }}>
-                <CircularProgress size={24} />
-                <Typography>Cargando comidas disponibles...</Typography>
-              </Box>
-            ) : availableMeals.length === 0 ? (
-              <Alert severity="warning" sx={{ mb: 2 }}>
-                No hay comidas disponibles. Por favor, crea algunas comidas primero.
-              </Alert>
-            ) : (
-              daysOfWeek.map((day, index) => (
-                <div
-                  key={day}
-                  role="tabpanel"
-                  hidden={currentDay !== index}
-                  id={`day-tabpanel-${index}`}
-                  aria-labelledby={`day-tab-${index}`}
-                >
-                  {currentDay === index && (
-                    <DayMeals
-                      dayName={day}
-                      mealData={weekMeals[day]}
-                      meals={availableMeals}
-                      onChange={handleMealSelect}
-                      onQuantityChange={handleQuantityChange}
-                      onRemove={handleRemoveMeal}
-                    />
-                  )}
-                </div>
-              ))
-            )}
-          </Box>
-        </Paper>
+            </Grid>
+            {/* TODO: Añadir Date Pickers para start_date y end_date si se usan */}
+            {/* <Grid item xs={12} sm={6}> <DatePicker label="Start Date" value={plan?.start_date} onChange={(newDate) => handleDateChange('start_date', newDate)} disabled={isUIDisabled} /> </Grid> */}
+            {/* <Grid item xs={12} sm={6}> <DatePicker label="End Date" value={plan?.end_date} onChange={(newDate) => handleDateChange('end_date', newDate)} disabled={isUIDisabled} /> </Grid> */}
+
+             {/* Inputs de Objetivos (nuevo componente) */}
+            <Grid item xs={12}>
+                 <NutritionTargetInputs
+                    targets={{
+                        target_calories: plan?.target_calories,
+                        target_protein_g: plan?.target_protein_g,
+                        target_carbs_g: plan?.target_carbs_g,
+                        target_fat_g: plan?.target_fat_g,
+                    }}
+                    onChange={handleTargetsChange}
+                    errors={null} // TODO: Pasar errores si hay validación específica aquí
+                    disabled={isUIDisabled}
+                 />
+            </Grid>
+
+             {/* Búsqueda de comidas (nuevo componente) */}
+            <Grid item xs={12}>
+                <MealSearchInput
+                    availableMeals={availableMeals}
+                    isLoading={mealsLoading} // Carga específica de las comidas
+                    error={mealsError}
+                    onAddMeal={handleAddMealToDay}
+                    disabled={isUIDisabled}
+                />
+            </Grid>
+
+             {/* Navegación Semana/Días */}
+            <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1, borderTop: '1px solid lightgray', borderBottom: '1px solid lightgray', py: 1 }}>
+                 <Button onClick={() => handleWeekChange(-1)} disabled={isUIDisabled}>{'< Prev Week'}</Button>
+                 <Typography variant="subtitle1" sx={{ textAlign: 'center', flexGrow: 1 }}>Week starting: {format(currentWeekStart, 'MMM d, yyyy')}</Typography>
+                 <Button onClick={() => handleWeekChange(1)} disabled={isUIDisabled}>{'Next Week >'}</Button>
+            </Grid>
+            <Grid item xs={12} sx={{borderBottom: '1px solid lightgray', mb: 1}}>
+                 <Tabs value={activeTab} onChange={handleTabChange} variant="scrollable" scrollButtons="auto" aria-label="day tabs">
+                    {currentWeekDates.map((date, index) => (
+                        <Tab key={index} label={format(date, 'EEE d')} disabled={isUIDisabled} id={`day-tab-${index}`} aria-controls={`day-tabpanel-${index}`} />
+                    ))}
+                 </Tabs>
+            </Grid>
+
+             {/* Selector de Comidas del Día (nuevo componente) */}
+             <Grid item xs={12}>
+                 {currentWeekDates.map((date, index) => {
+                    const dateString = format(date, 'yyyy-MM-dd');
+                    // El contenido del tab solo se monta si está activo para optimizar rendimiento
+                    return (
+                        <Box
+                            key={dateString}
+                            role="tabpanel"
+                            hidden={activeTab !== index}
+                            id={`day-tabpanel-${index}`}
+                            aria-labelledby={`day-tab-${index}`}
+                            sx={{ pt: 2, ...(activeTab !== index && { display: 'none' }) }} // Ocultar completamente si no está activo
+                        >
+                            {/* Renderizar el contenido solo cuando el tab esté activo */}
+                            {activeTab === index && (
+                                <DayMealSelector
+                                    date={dateString}
+                                    // Asegurarse que plan.days exista y tenga el formato correcto { date: [item] }
+                                    meals={plan?.days?.[dateString] || []}
+                                    dailyTotal={dailyTotals[dateString]} // Pasar totales diarios del hook de cálculo
+                                    onRemoveMeal={handleRemoveMeal}
+                                    onUpdateQuantity={handleUpdateQuantity}
+                                    // Pasar targets si es necesario para DayMealSelector
+                                    // targetMacros={ {calories: plan?.target_calories / 7, ...} } // Ejemplo de target diario
+                                    disabled={isUIDisabled}
+                                />
+                            )}
+                        </Box>
+                    );
+                })}
+            </Grid>
+
+            {/* Resumen Total (nuevo componente) */}
+            <Grid item xs={12}>
+                <TotalPlanSummary
+                    totalMacros={planTotal} // Pasar totales del hook de cálculo
+                    // Pasar targets si es necesario para el resumen
+                     targetMacros={{
+                         calories: plan?.target_calories,
+                         protein_g: plan?.target_protein_g,
+                         carbohydrates_g: plan?.target_carbs_g,
+                         fat_g: plan?.target_fat_g
+                     }}
+                 />
+             </Grid>
+
+            {/* Botón Guardar y Errores */}
+            <Grid item xs={12}>
+                 {/* Mostrar error general del formulario (e.g., fallo al guardar) */}
+                 {formError && !showInitialError && <Alert severity="error" sx={{ mb: 2 }}>{formError}</Alert>}
+                 <Button type="submit" variant="contained" color="primary" disabled={isUIDisabled} sx={{ mt: 1, mb: 2 }}>
+                    {/* Mostrar progreso si está guardando (asumiendo que isFormLoading cubre esto) */}
+                    {isUIDisabled && !showInitialLoading ? <CircularProgress size={24} /> : (isEditing ? 'Update Plan' : 'Create Plan')}
+                 </Button>
+
+            </Grid>
+        </Grid>
       </Box>
-      
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3, mb: 2 }}>
-        <Button
-          variant="outlined"
-          onClick={() => {
-            navigate('/nutrition');
-            localStorage.setItem('nutrition_tab', '0');
-            window.location.reload();
-          }}
-        >
-          Cancelar
-        </Button>
-        <Button
-          type="submit"
-          variant="contained"
-          color="primary"
-          disabled={loading || !planName.trim() || loadingMeals || totalMeals === 0}
-          startIcon={loading ? <CircularProgress size={20} /> : <FontAwesomeIcon icon={faSave} />}
-        >
-          {isEditing ? 'Guardar Cambios' : 'Crear Plan'}
-        </Button>
-      </Box>
-    </Box>
+    </Paper>
   );
-};
+}
 
 export default EnhancedMealPlanForm;
