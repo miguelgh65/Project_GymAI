@@ -280,10 +280,111 @@ class MealPlanServiceClass {
    * @returns {Object} Updated meal plan
    */
   async update(id, data) {
-    // Similar implementation to create, but using PUT instead of POST
-    // This method is quite long, so I'll omit it for brevity
-    // The implementation would be very similar to the original but with
-    // improved error handling and debugging logs
+    try {
+      console.log(`Updating meal plan ${id}:`, data);
+      
+      // If ID starts with "local-", it's a locally stored plan
+      if (id.toString().startsWith('local-')) {
+        console.log(`Updating local plan ${id}`);
+        const localPlans = this.getLocalPlansOnly();
+        const index = localPlans.findIndex(p => p.id.toString() === id.toString());
+        
+        if (index === -1) {
+          throw new Error(`Local plan ${id} not found`);
+        }
+        
+        // Update plan
+        const updatedPlan = {
+          ...localPlans[index],
+          ...data,
+          id: id, // Ensure ID doesn't change
+          updated_at: new Date().toISOString(),
+          _localOnly: true
+        };
+        
+        localPlans[index] = updatedPlan;
+        localStorage.setItem('local_meal_plans', JSON.stringify(localPlans));
+        
+        // Clear cache
+        this.clearCache();
+        
+        return updatedPlan;
+      }
+      
+      // Otherwise, try to update through API
+      try {
+        console.log(`Sending PUT request to API for plan ${id}`);
+        const response = await axios.put(`${API_BASE}/meal-plans/${id}`, data, {
+          timeout: 10000
+        });
+        
+        console.log("API response:", response.data);
+        
+        // Extract plan from response
+        let updatedPlan = null;
+        
+        if (response.data && response.data.id) {
+          updatedPlan = response.data;
+        } else if (response.data && response.data.meal_plan && response.data.meal_plan.id) {
+          updatedPlan = response.data.meal_plan;
+        }
+        
+        if (!updatedPlan) {
+          throw new Error("API returned success but no plan data");
+        }
+        
+        // Update in local storage if exists
+        try {
+          const localPlans = this.getLocalPlansOnly();
+          const index = localPlans.findIndex(p => p.id.toString() === id.toString());
+          
+          if (index !== -1) {
+            localPlans[index] = updatedPlan;
+            localStorage.setItem('local_meal_plans', JSON.stringify(localPlans));
+          }
+        } catch (storageErr) {
+          console.warn(`Could not update local storage: ${storageErr.message}`);
+        }
+        
+        // Clear cache
+        this.clearCache();
+        
+        return updatedPlan;
+      } catch (apiErr) {
+        console.error(`API error updating plan ${id}:`, apiErr);
+        
+        // If API fails but still needs updating locally
+        try {
+          const localPlans = this.getLocalPlansOnly();
+          const index = localPlans.findIndex(p => p.id.toString() === id.toString());
+          
+          if (index !== -1) {
+            const updatedPlan = {
+              ...localPlans[index],
+              ...data,
+              id: id,
+              updated_at: new Date().toISOString(),
+              _localOnly: true
+            };
+            
+            localPlans[index] = updatedPlan;
+            localStorage.setItem('local_meal_plans', JSON.stringify(localPlans));
+            
+            this.clearCache();
+            console.log(`Updated plan ${id} in local storage only due to API error`);
+            
+            return updatedPlan;
+          }
+        } catch (localErr) {
+          console.error(`Local storage error:`, localErr);
+        }
+        
+        throw apiErr; // Re-throw API error
+      }
+    } catch (error) {
+      console.error(`General error updating plan ${id}:`, error);
+      throw error;
+    }
   }
 
   /**
@@ -292,8 +393,58 @@ class MealPlanServiceClass {
    * @returns {boolean} Success status
    */
   async delete(id) {
-    // Similar implementation to the original but with improved error handling
-    // and debugging logs
+    try {
+      console.log(`Deleting meal plan with ID: ${id}`);
+      
+      // If it's a local plan (ID starts with "local-"), just remove from localStorage
+      if (id.toString().startsWith('local-')) {
+        console.log(`Deleting local plan ${id} from localStorage`);
+        const localPlans = this.getLocalPlansOnly();
+        const filteredPlans = localPlans.filter(p => p.id.toString() !== id.toString());
+        localStorage.setItem('local_meal_plans', JSON.stringify(filteredPlans));
+        this.clearCache();
+        return true;
+      }
+      
+      // Otherwise, try to delete from API
+      try {
+        console.log(`Sending DELETE request to API for plan ${id}`);
+        await axios.delete(`${API_BASE}/meal-plans/${id}`, {
+          timeout: 30000 // Longer timeout
+        });
+        
+        // Also remove from local storage if exists
+        try {
+          const localPlans = this.getLocalPlansOnly();
+          const filteredPlans = localPlans.filter(p => p.id.toString() !== id.toString());
+          localStorage.setItem('local_meal_plans', JSON.stringify(filteredPlans));
+        } catch (err) {
+          console.warn(`Could not update local storage after API delete: ${err.message}`);
+        }
+        
+        this.clearCache();
+        return true;
+      } catch (apiErr) {
+        console.error(`API error deleting plan ${id}:`, apiErr);
+        
+        // If API fails but it's a valid plan ID (not a local one), 
+        // we still try to remove it from local storage
+        try {
+          const localPlans = this.getLocalPlansOnly();
+          const filteredPlans = localPlans.filter(p => p.id.toString() !== id.toString());
+          localStorage.setItem('local_meal_plans', JSON.stringify(filteredPlans));
+          this.clearCache();
+          console.log(`Removed plan ${id} from local storage only due to API error`);
+          return true;
+        } catch (localErr) {
+          console.error(`Local storage error:`, localErr);
+          throw apiErr; // Re-throw API error
+        }
+      }
+    } catch (error) {
+      console.error(`General error deleting plan ${id}:`, error);
+      throw error;
+    }
   }
 
   /**

@@ -1,16 +1,17 @@
-// src/components/nutrition/meal-plans/MealPlanList.js
+// front_end_react/src/components/nutrition/meal-plans/MealPlanList.js
 import React, { useState, useEffect } from 'react';
 import { 
-  Box, Typography, IconButton, CircularProgress, Alert, Button, 
-  Card, CardContent, Chip, Grid, Paper, Divider, Switch, FormControlLabel
+  Box, Typography, CircularProgress, Alert, Grid, Paper, 
+  Card, CardContent, Button, IconButton, Chip, Divider,
+  FormControlLabel, Switch
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
-  faEdit, faTrash, faPlus, faClipboardList, 
-  faCalendarWeek, faSync, faUtensils, faInfoCircle
+  faPlus, faEdit, faTrash, faSync, faUtensils, 
+  faInfoCircle, faClipboardList, faCalendarWeek
 } from '@fortawesome/free-solid-svg-icons';
+import { MealPlanService } from '../../../services/NutritionService';
 import { useNavigate } from 'react-router-dom';
-import { MealPlanService } from '../../../services/nutrition';
 
 const MealPlanList = ({ onCreateNew, onEdit }) => {
   const [mealPlans, setMealPlans] = useState([]);
@@ -28,7 +29,9 @@ const MealPlanList = ({ onCreateNew, onEdit }) => {
       console.log("Cargando planes de comida...");
       
       // Limpiar caché para obtener datos frescos
-      MealPlanService.clearCache();
+      if (MealPlanService.clearCache) {
+        MealPlanService.clearCache();
+      }
       
       const response = await MealPlanService.getAll(showActive ? true : null);
       console.log("Respuesta de planes:", response);
@@ -36,67 +39,15 @@ const MealPlanList = ({ onCreateNew, onEdit }) => {
       // Obtener planes de la respuesta
       const plans = response?.meal_plans || [];
       
-      // Logs para depuración
-      console.log(`Encontrados ${plans.length} planes, incluyendo planes locales: ${plans.some(p => p.id.toString().startsWith('local-'))}`);
-      
-      // Indicar si sólo usamos planes locales
-      setUsingLocalOnly(response.fromCache || response.fromLocalOnly || false);
-      
       // Guardar planes en el estado
       setMealPlans(plans);
       
-      // Verificar almacenamiento local como respaldo
-      if (plans.length === 0) {
-        console.log("No hay planes de la API, verificando almacenamiento local");
-        try {
-          // Acceso directo al almacenamiento local
-          const localStorageKey = 'local_meal_plans';
-          const localData = localStorage.getItem(localStorageKey);
-          
-          if (localData) {
-            const localPlans = JSON.parse(localData);
-            console.log(`Encontrados ${localPlans.length} planes locales`, localPlans);
-            
-            if (localPlans.length > 0) {
-              const filteredPlans = showActive 
-                ? localPlans.filter(p => p.is_active) 
-                : localPlans;
-                
-              if (filteredPlans.length > 0) {
-                console.log("Usando planes del almacenamiento local", filteredPlans);
-                setMealPlans(filteredPlans);
-                setUsingLocalOnly(true);
-              }
-            }
-          }
-        } catch (localErr) {
-          console.error("Error al verificar almacenamiento local:", localErr);
-        }
-      }
+      // Indicar si sólo usamos planes locales
+      setUsingLocalOnly(response.fromCache || response.fromLocalStorage || false);
+      
     } catch (err) {
       console.error("Error al cargar planes de comida:", err);
       setError(err.message || 'Error al cargar los planes de comida.');
-      
-      // Intento directo al almacenamiento local como último recurso
-      try {
-        const localStorageKey = 'local_meal_plans';
-        const localData = localStorage.getItem(localStorageKey);
-        
-        if (localData) {
-          const localPlans = JSON.parse(localData);
-          const filteredPlans = showActive 
-            ? localPlans.filter(p => p.is_active) 
-            : localPlans;
-          
-          if (filteredPlans.length > 0) {
-            console.log("Usando planes locales después de error", filteredPlans);
-            setMealPlans(filteredPlans);
-            setUsingLocalOnly(true);
-          }
-        }
-      } catch (localErr) {
-        console.error("Error al acceder al almacenamiento local:", localErr);
-      }
     } finally {
       setLoading(false);
     }
@@ -107,18 +58,59 @@ const MealPlanList = ({ onCreateNew, onEdit }) => {
     fetchMealPlans();
   }, [showActive]);
 
-  // Eliminar un plan
-  const handleDelete = async (id) => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar este plan de comida?')) {
+  // Eliminar un plan - VERSIÓN DIRECTA Y SIMPLE
+  const handleDelete = async (id, name) => {
+    if (!id) {
+      console.error("ID de plan inválido:", id);
+      return;
+    }
+    
+    if (window.confirm(`¿Estás seguro que deseas eliminar el plan de comida "${name || `Plan ${id}`}"?`)) {
       try {
-        await MealPlanService.delete(id);
+        console.log(`Intentando eliminar plan con ID: ${id}`);
+        setLoading(true);
         
-        // Limpiar caché y refrescar
-        MealPlanService.clearCache();
+        // Implementación directa del delete
+        if (!MealPlanService.delete) {
+          // Si el método no está definido en el servicio, lo implementamos aquí
+          console.log("Método delete no encontrado en MealPlanService, usando implementación directa");
+          
+          // Para planes locales
+          if (id.toString().startsWith('local-')) {
+            const localData = localStorage.getItem('local_meal_plans');
+            if (localData) {
+              const localPlans = JSON.parse(localData);
+              const filteredPlans = localPlans.filter(p => p.id.toString() !== id.toString());
+              localStorage.setItem('local_meal_plans', JSON.stringify(filteredPlans));
+            }
+          } else {
+            // Para planes en el backend
+            const API_BASE = '/api/nutrition';
+            await fetch(`${API_BASE}/meal-plans/${id}`, {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+              }
+            });
+          }
+        } else {
+          // Usar el método del servicio si existe
+          await MealPlanService.delete(id);
+        }
+        
+        // Mostrar mensaje de éxito y actualizar lista
+        alert(`Plan "${name || `Plan ${id}`}" eliminado con éxito`);
+        
+        // Limpiar caché y refrescar lista
+        if (MealPlanService.clearCache) {
+          MealPlanService.clearCache();
+        }
         fetchMealPlans();
       } catch (err) {
-        console.error("Error al eliminar plan:", err);
-        setError(err.message || 'Error al eliminar el plan.');
+        console.error(`Error al eliminar plan ${id}:`, err);
+        setError(`No se pudo eliminar el plan. Error: ${err.message || 'Error desconocido'}`);
+        setLoading(false);
       }
     }
   };
@@ -128,99 +120,23 @@ const MealPlanList = ({ onCreateNew, onEdit }) => {
     if (onCreateNew) {
       onCreateNew();
     } else {
-      // Crear un plan local directamente
-      createLocalPlan();
+      navigate('/nutrition');
+      localStorage.setItem('nutrition_tab', '1'); // Tab de creación
+      window.location.reload();
     }
   };
   
-  // Crear un plan local directamente
-  const createLocalPlan = async () => {
-    try {
-      // Pedir nombre del plan
-      const planName = prompt("Nombre del plan de comida:", "Mi plan de comidas");
-      
-      // Cancelar si no hay nombre
-      if (!planName) return;
-      
-      setLoading(true);
-      
-      // Crear plan básico
-      const newPlan = {
-        plan_name: planName,
-        name: planName,
-        is_active: true,
-        items: [],
-        description: 'Plan creado localmente'
-      };
-      
-      // Guardar en almacenamiento local directamente
-      try {
-        const storageKey = 'local_meal_plans';
-        const existingPlansJSON = localStorage.getItem(storageKey);
-        const existingPlans = existingPlansJSON ? JSON.parse(existingPlansJSON) : [];
-        
-        // Crear plan local con ID temporal
-        const newLocalPlan = {
-          ...newPlan,
-          id: `local-${Date.now()}`,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-        
-        // Añadir a planes existentes
-        existingPlans.push(newLocalPlan);
-        localStorage.setItem(storageKey, JSON.stringify(existingPlans));
-        
-        // También intentar método del servicio
-        MealPlanService.clearCache();
-        await MealPlanService.create(newPlan);
-        
-        // Refrescar la lista
-        fetchMealPlans();
-      } catch (localErr) {
-        console.error("Error al guardar en almacenamiento local:", localErr);
-        throw localErr;
-      }
-    } catch (err) {
-      console.error("Error al crear plan local:", err);
-      setError("Error al crear plan local: " + (err.message || "Error desconocido"));
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Editar un plan existente
   const handleEdit = (id) => {
     if (onEdit) {
       onEdit(id);
     } else {
-      // Navegación alternativa
       localStorage.setItem('nutrition_edit_plan_id', id);
-      localStorage.setItem('nutrition_tab', '1');
+      localStorage.setItem('nutrition_tab', '1'); // Tab de edición
       navigate('/nutrition');
       window.location.reload();
     }
   };
-
-  // Estado vacío
-  const renderEmptyState = () => (
-    <Box sx={{ textAlign: 'center', py: 6, px: 2 }}>
-      <Typography variant="h6" gutterBottom color="text.secondary">
-        No hay planes de comida
-      </Typography>
-      <Typography variant="body2" color="text.secondary" paragraph sx={{ maxWidth: 500, mx: 'auto', mb: 4 }}>
-        Crea tu primer plan de comida para organizar tus comidas diarias y alcanzar tus objetivos nutricionales.
-      </Typography>
-      <Button
-        variant="contained"
-        size="large"
-        startIcon={<FontAwesomeIcon icon={faPlus} />}
-        onClick={handleCreateNew}
-      >
-        Crear Primer Plan de Comida
-      </Button>
-    </Box>
-  );
 
   return (
     <Box sx={{ m: 2 }}>
@@ -283,18 +199,33 @@ const MealPlanList = ({ onCreateNew, onEdit }) => {
             </Box>
           ) : (
             mealPlans.length === 0 ? (
-              renderEmptyState()
+              <Box sx={{ textAlign: 'center', py: 6, px: 2 }}>
+                <Typography variant="h6" gutterBottom color="text.secondary">
+                  No hay planes de comida
+                </Typography>
+                <Typography variant="body2" color="text.secondary" paragraph sx={{ maxWidth: 500, mx: 'auto', mb: 4 }}>
+                  Crea tu primer plan de comida para organizar tus comidas diarias y alcanzar tus objetivos nutricionales.
+                </Typography>
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={<FontAwesomeIcon icon={faPlus} />}
+                  onClick={handleCreateNew}
+                >
+                  Crear Primer Plan de Comida
+                </Button>
+              </Box>
             ) : (
               <Grid container spacing={3}>
                 {mealPlans.map((plan) => (
-                  <Grid item xs={12} md={6} lg={4} key={plan.id}>
+                  <Grid item xs={12} md={6} lg={4} key={plan.id || Math.random()}>
                     <Paper 
                       elevation={2} 
                       sx={{ 
                         p: 2, 
                         height: '100%', 
                         position: 'relative',
-                        border: plan.id.toString().startsWith('local-') ? '1px dashed #1976d2' : 'none'
+                        border: plan.id?.toString().startsWith('local-') ? '1px dashed #1976d2' : 'none'
                       }}
                     >
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
@@ -338,10 +269,15 @@ const MealPlanList = ({ onCreateNew, onEdit }) => {
                           >
                             <FontAwesomeIcon icon={faEdit} />
                           </IconButton>
+                          
+                          {/* BOTÓN DE ELIMINAR - CONEXIÓN DIRECTA Y ROBUSTA */}
                           <IconButton
                             size="small"
                             color="error"
-                            onClick={() => handleDelete(plan.id)}
+                            onClick={() => {
+                              console.log(`Clic en botón borrar para plan ${plan.id}`);
+                              handleDelete(plan.id, plan.plan_name || plan.name);
+                            }}
                             sx={{ ml: 1 }}
                           >
                             <FontAwesomeIcon icon={faTrash} />
@@ -349,7 +285,7 @@ const MealPlanList = ({ onCreateNew, onEdit }) => {
                         </Box>
                       </Box>
                       
-                      {plan.id.toString().startsWith('local-') && (
+                      {plan.id?.toString().startsWith('local-') && (
                         <Chip 
                           label="Guardado localmente" 
                           size="small" 
