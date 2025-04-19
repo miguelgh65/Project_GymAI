@@ -1,4 +1,4 @@
-// src/components/nutrition/dashboard/NutritionDashboard.js
+// src/components/nutrition/dashboard/NutritionDashboard.js - Versión corregida
 import React, { useState, useEffect } from 'react';
 import { 
   Box, Typography, Card, CardContent, Button, Grid, 
@@ -9,7 +9,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faCalculator, faUtensils, faEdit, faPlus,
   faFire, faDrumstickBite, faAppleAlt, faOilCan,
-  faChartPie, faChartLine
+  faChartPie, faChartLine, faSyncAlt
 } from '@fortawesome/free-solid-svg-icons';
 import { NutritionCalculator, MealPlanService } from '../../../services/NutritionService';
 import { useNavigate } from 'react-router-dom';
@@ -18,37 +18,70 @@ const NutritionDashboard = ({ user }) => {
   const [profile, setProfile] = useState(null);
   const [activePlans, setActivePlans] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [plansLoading, setPlansLoading] = useState(true); // Separar los estados de carga
   const [error, setError] = useState(null);
+  const [plansError, setPlansError] = useState(null); // Separar errores
   const [selectedPlanId, setSelectedPlanId] = useState(null);
   const [applyingToPlans, setApplyingToPlans] = useState(false);
   const navigate = useNavigate();
   
-  // Cargar perfil nutricional y planes activos
+  // Cargar perfil nutricional del usuario al inicio
   useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
+    const loadProfile = async () => {
       try {
-        // Cargar perfil
-        console.log("Dashboard: Cargando perfil nutricional...");
+        setLoading(true);
+        console.log("Intentando cargar perfil nutricional...");
         const profileData = await NutritionCalculator.getProfile();
-        console.log("Dashboard: Perfil recibido:", profileData);
-        setProfile(profileData);
+        console.log("Datos de perfil recibidos:", profileData);
         
-        // Cargar planes activos
-        console.log("Dashboard: Cargando planes activos...");
-        const plansResponse = await MealPlanService.getAll(true);
-        console.log("Dashboard: Planes activos recibidos:", plansResponse);
-        setActivePlans(plansResponse.meal_plans || []);
+        if (profileData) {
+          setProfile(profileData);
+        }
       } catch (err) {
-        console.error("Error cargando datos:", err);
-        setError("No se pudieron cargar tus datos nutricionales o planes");
+        console.error("Error al cargar perfil nutricional:", err);
+        setError("No se pudo cargar tu perfil nutricional. Puedes introducir los datos manualmente.");
       } finally {
         setLoading(false);
       }
     };
-    
-    loadData();
+
+    loadProfile();
   }, []);
+  
+  // Cargar planes activos en un efecto separado
+  useEffect(() => {
+    loadActivePlans();
+  }, []);
+
+  // Función separada para cargar planes activos
+  const loadActivePlans = async () => {
+    try {
+      setPlansLoading(true);
+      setPlansError(null);
+      console.log("Dashboard: Cargando planes activos...");
+      
+      const plansResponse = await MealPlanService.getAll(true);
+      console.log("Dashboard: Planes activos recibidos:", plansResponse);
+      
+      // IMPORTANTE: Verificar específicamente que meal_plans está presente
+      if (!plansResponse || !plansResponse.meal_plans) {
+        throw new Error("Formato de respuesta inválido - no se encontró meal_plans");
+      }
+      
+      setActivePlans(plansResponse.meal_plans);
+      
+      // Agregar información de diagnóstico en la consola
+      console.log("Planes cargados:", plansResponse.meal_plans.length);
+      console.log("¿Planes desde localStorage?", plansResponse.fromLocalStorage === true);
+      console.log("¿Planes desde API?", plansResponse.fromAPI === true);
+      
+    } catch (err) {
+      console.error("Error cargando planes activos:", err);
+      setPlansError("No se pudieron cargar tus planes activos. " + err.message);
+    } finally {
+      setPlansLoading(false);
+    }
+  };
   
   // Aplicar los objetivos del perfil a un plan seleccionado
   const applyProfileToPlan = async () => {
@@ -83,8 +116,7 @@ const NutritionDashboard = ({ user }) => {
       await MealPlanService.update(selectedPlanId, updatedPlan);
       
       // Recargar planes activos para reflejar cambios
-      const plansResponse = await MealPlanService.getAll(true);
-      setActivePlans(plansResponse.meal_plans || []);
+      await loadActivePlans();
       
       alert("¡Objetivos aplicados correctamente al plan!");
     } catch (err) {
@@ -325,6 +357,22 @@ const NutritionDashboard = ({ user }) => {
                 {!hasTargets ? (
                   <Alert severity="warning" sx={{ mt: 2 }}>
                     Tu perfil nutricional no tiene objetivos completos. Usa la calculadora de macros para establecerlos.
+                  </Alert>
+                ) : plansLoading ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                    <CircularProgress />
+                  </Box>
+                ) : plansError ? (
+                  <Alert severity="error" sx={{ mt: 2 }}>
+                    {plansError}
+                    <Button 
+                      size="small" 
+                      sx={{ ml: 2 }} 
+                      onClick={loadActivePlans}
+                      startIcon={<FontAwesomeIcon icon={faSyncAlt} />}
+                    >
+                      Reintentar
+                    </Button>
                   </Alert>
                 ) : activePlans.length === 0 ? (
                   <Alert severity="info" sx={{ mt: 2 }}>
