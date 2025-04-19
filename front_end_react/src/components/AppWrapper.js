@@ -1,82 +1,87 @@
+// src/components/AppWrapper.js
+// ****** ARCHIVO CORREGIDO (Versión Guardián de Rutas) ******
+
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Header from './Header';
-import Login from './Login';
-import Profile from './Profile';
-import ExerciseForm from './ExerciseForm';
-import Chatbot from './Chatbot';
-import TodayRoutine from './TodayRoutine';
-import WeeklyRoutine from './WeeklyRoutine';
+import { Navigate, useLocation } from 'react-router-dom'; // Necesitamos Navigate y useLocation
 import AuthService from '../services/AuthService';
+import axios from 'axios'; // Mantenemos axios por si se usa para validar token
 
-function AppWrapper() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+// Importar un componente de carga (opcional, pero bueno tenerlo)
+import { Box, CircularProgress } from '@mui/material';
 
-  // Función para cargar datos de usuario
-  // En AppWrapper.js - modificar la carga del usuario
+// Componente Guardián: recibe la ruta hija como 'children'
+const AppWrapper = ({ children }) => {
+  const [isAuthenticated, setIsAuthenticated] = useState(AuthService.isAuthenticated());
+  const [loading, setLoading] = useState(true); // Empezar cargando
+  const location = useLocation(); // Para redirigir de vuelta después del login
 
-// Función para cargar datos de usuario
-const loadUser = async () => {
-  setLoading(true);
-  try {
-    // Usar el servicio de autenticación para obtener el usuario desde localStorage
-    const userData = AuthService.getCurrentUser();
-    setUser(userData);
-    
-    // Si no hay usuario en localStorage pero hay token, intentar obtener el usuario
-    if (!userData && AuthService.getToken()) {
-      try {
-        // Opcional: Hacer una solicitud para validar el token y obtener datos actualizados
-        const response = await axios.get('/api/current-user');
-        if (response.data.success && response.data.user) {
-          setUser(response.data.user);
-          localStorage.setItem('user', JSON.stringify(response.data.user));
-        }
-      } catch (err) {
-        // Si hay un error, probablemente el token es inválido
-        AuthService.logout();
+  useEffect(() => {
+    let isMounted = true; // Para evitar actualizaciones en componente desmontado
+
+    const checkAuth = async () => {
+      setLoading(true);
+      const token = AuthService.getToken();
+      let authStatus = false;
+
+      if (token) {
+        // Opcional: Validar token con el backend aquí si quieres más seguridad
+        // Si la validación falla, AuthService.logout() y authStatus = false
+        // Por ahora, asumimos que si hay token, está autenticado inicialmente
+         authStatus = true;
+         // Ejemplo de validación (descomentar y adaptar si es necesario):
+         /*
+         try {
+           await axios.get('/api/current-user'); // O la ruta de validación que tengas
+           authStatus = true;
+         } catch (error) {
+           console.error("AppWrapper: Falló validación de token", error);
+           AuthService.logout();
+           authStatus = false;
+         }
+         */
+      } else {
+        authStatus = false;
       }
+
+      if (isMounted) {
+        setIsAuthenticated(authStatus);
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+
+    // Listener para cambios de autenticación (si AuthService lo implementa)
+    const handleAuthChange = () => {
+        if (isMounted) {
+            setIsAuthenticated(AuthService.isAuthenticated());
+        }
     }
-  } catch (error) {
-    console.error('Error cargando usuario:', error);
-    setUser(null);
-  } finally {
-    setLoading(false);
+    window.addEventListener('authChange', handleAuthChange);
+
+    return () => {
+      isMounted = false; // Cleanup
+      window.removeEventListener('authChange', handleAuthChange);
+    };
+  }, [location]); // Volver a comprobar si cambia la ruta (puede ser redundante)
+
+  // Mientras se comprueba la autenticación, mostrar un loader
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="calc(100vh - 64px)">
+        <CircularProgress />
+      </Box>
+    );
   }
-};
 
-// Manejador de logout para actualizar el estado
-const handleLogout = () => {
-  AuthService.logout();
-  setUser(null);
-};
+  // Si está autenticado, renderiza el componente hijo (la ruta protegida)
+  if (isAuthenticated) {
+    return children;
+  }
 
-  return (
-    <Router>
-      <div className="app-container">
-        {/* Pasa el usuario y la función de logout */}
-        <Header user={user} onLogout={handleLogout} />
-        
-        {loading ? (
-          <div className="loading-container">
-            <div className="spinner"></div>
-            <p>Cargando...</p>
-          </div>
-        ) : (
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/profile" element={<Profile user={user} />} />
-            <Route path="/" element={<ExerciseForm user={user} />} />
-            <Route path="/chatbot" element={<Chatbot user={user} />} />
-            <Route path="/rutina_hoy" element={<TodayRoutine user={user} />} />
-            <Route path="/rutina" element={<WeeklyRoutine user={user} />} />
-            {/* Agregar aquí las demás rutas */}
-          </Routes>
-        )}
-      </div>
-    </Router>
-  );
-}
+  // Si no está autenticado, redirige a la página de login
+  // state={{ from: location }} permite redirigir de vuelta después del login
+  return <Navigate to="/login" state={{ from: location }} replace />;
+};
 
 export default AppWrapper;

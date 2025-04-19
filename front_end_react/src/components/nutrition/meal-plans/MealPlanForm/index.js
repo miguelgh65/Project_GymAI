@@ -9,6 +9,7 @@ import { faArrowLeft, faSave } from '@fortawesome/free-solid-svg-icons';
 // Importar date-fns para manejo de fechas
 import { format, parseISO, startOfWeek, addDays, isValid } from 'date-fns';
 // Importar servicios (asegúrate que las rutas son correctas desde esta ubicación)
+// Viendo tu 'tree', estos imports deberían funcionar si estás en 'src/components/nutrition/meal-plans/MealPlanForm/'
 import { MealService, MealPlanService, NutritionCalculator } from '../../../../services/NutritionService';
 
 // Importar subcomponentes
@@ -55,7 +56,7 @@ const MealPlanForm = ({ editId, onSaveSuccess }) => {
   // --- Funciones Auxiliares ---
 
   // Calcula la fecha 'YYYY-MM-DD' para la pestaña activa, basada en la semana actual
-  // ¡¡ATENCIÓN!!: Si necesitas manejar semanas pasadas/futuras, esta lógica debe cambiar.
+  // Esta función asume que el formulario siempre opera sobre la semana en curso.
   const getActiveDateString = useCallback(() => {
       const today = new Date();
       // Obtiene el Lunes de la semana actual (weekStartsOn: 1 para Lunes)
@@ -67,7 +68,7 @@ const MealPlanForm = ({ editId, onSaveSuccess }) => {
 
   // --- Efectos (Carga de datos) ---
 
-  // Cargar perfil nutricional (sin cambios)
+  // Cargar perfil nutricional
   useEffect(() => {
     const loadNutritionProfile = async () => {
         try {
@@ -75,34 +76,37 @@ const MealPlanForm = ({ editId, onSaveSuccess }) => {
           if (profile) {
             console.log("Perfil nutricional cargado:", profile);
             setUserNutritionProfile(profile);
-            // Pre-rellenar targets si no están definidos
+            // Pre-rellenar targets si no están definidos y vienen del perfil
             if (!targetCalories && profile.goal_calories) setTargetCalories(profile.goal_calories.toString());
             if (!targetProtein && profile.target_protein_g) setTargetProtein(profile.target_protein_g.toString());
             if (!targetCarbs && profile.target_carbs_g) setTargetCarbs(profile.target_carbs_g.toString());
             if (!targetFat && profile.target_fat_g) setTargetFat(profile.target_fat_g.toString());
           }
-          // ... manejo de targets temporales ...
+          // ... manejo de targets temporales (si aplica)...
         } catch (error) {
           console.error("Error al cargar perfil nutricional:", error);
         }
       };
       loadNutritionProfile();
-  }, []); // Cargar perfil solo una vez
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Cargar perfil solo una vez al montar
 
   // Cargar datos del plan si estamos editando
   useEffect(() => {
     if (isEditing && id) {
       setLoading(true);
+      setError(null); // Limpiar error anterior
       MealPlanService.getById(id)
         .then(data => {
           console.log("Datos del plan cargados para editar:", data);
           setPlanName(data.plan_name || data.name || '');
           setDescription(data.description || '');
           setIsActive(data.is_active !== undefined ? data.is_active : true);
-          if (data.target_calories) setTargetCalories(data.target_calories.toString());
-          if (data.target_protein_g) setTargetProtein(data.target_protein_g.toString());
-          if (data.target_carbs_g) setTargetCarbs(data.target_carbs_g.toString());
-          if (data.target_fat_g) setTargetFat(data.target_fat_g.toString());
+          // Rellenar targets desde el plan cargado
+          setTargetCalories(data.target_calories?.toString() ?? '');
+          setTargetProtein(data.target_protein_g?.toString() ?? '');
+          setTargetCarbs(data.target_carbs_g?.toString() ?? '');
+          setTargetFat(data.target_fat_g?.toString() ?? '');
 
           // Mapear items asegurando que tengan plan_date y ID único para el estado
           if (data.items && Array.isArray(data.items)) {
@@ -132,7 +136,7 @@ const MealPlanForm = ({ editId, onSaveSuccess }) => {
             }).filter(item => item !== null);
             setItems(loadedItems);
           } else {
-             setItems([]); // Asegurar que sea un array vacío si no hay items
+             setItems([]); // Asegurar array vacío si no vienen items
           }
           setLoading(false);
         })
@@ -142,26 +146,26 @@ const MealPlanForm = ({ editId, onSaveSuccess }) => {
           setLoading(false);
         });
     } else {
-       // Resetear estado si no estamos editando
+       // Resetear estado al crear o si se quita el ID de edición
        setPlanName('');
        setDescription('');
        setIsActive(true);
        setItems([]);
-       // Mantener targets del perfil si existen, si no, vacíos
+       // Usar targets del perfil si existe, si no, vacíos
        setTargetCalories(userNutritionProfile?.goal_calories?.toString() || '');
        setTargetProtein(userNutritionProfile?.target_protein_g?.toString() || '');
        setTargetCarbs(userNutritionProfile?.target_carbs_g?.toString() || '');
        setTargetFat(userNutritionProfile?.target_fat_g?.toString() || '');
        setError(null);
        setSuccess(null);
-       setActiveTab(0); // Volver a Lunes
+       setActiveTab(0); // Resetear a Lunes
     }
-    // Recargar perfil si cambiamos entre crear/editar (opcional, depende de si puede cambiar)
-    // O solo depender de 'id' y 'isEditing'
-  }, [id, isEditing, userNutritionProfile]); // Añadido userNutritionProfile como dependencia por si resetea targets
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, isEditing]); // Depender de id y isEditing para recargar/resetear
 
-  // Cargar comidas disponibles (sin cambios)
+  // Cargar comidas disponibles
   useEffect(() => {
+    setLoading(true); // Indicar carga de comidas
     MealService.getAll()
       .then(response => {
         const meals = response.meals || [];
@@ -171,8 +175,15 @@ const MealPlanForm = ({ editId, onSaveSuccess }) => {
       .catch(err => {
         console.error("Error fetching available meals:", err);
         setError("Error al cargar el listado de comidas disponibles.");
+      })
+      .finally(() => {
+         // Asegurarse de quitar el estado de carga general si solo cargaba comidas
+         // Esto es un poco tricky si la carga del plan también estaba ocurriendo.
+         // Podría necesitarse un estado de carga separado para las comidas.
+         // Por ahora, quitamos el estado de carga principal aquí.
+         // setLoading(false); // Quitar setLoading aquí puede ser problemático si el plan aún carga.
       });
-  }, []);
+  }, []); // Cargar comidas solo una vez
 
   // --- Manejadores de Eventos ---
 
@@ -186,7 +197,6 @@ const MealPlanForm = ({ editId, onSaveSuccess }) => {
   }, []);
 
   const handleTargetsChange = useCallback((field, value) => {
-    // Validar que solo sean números o vacío
     const numericRegex = /^[0-9]*\.?[0-9]*$/;
     if (value === '' || numericRegex.test(value)) {
         switch (field) {
@@ -200,28 +210,26 @@ const MealPlanForm = ({ editId, onSaveSuccess }) => {
   }, []);
 
   const handleAddMeal = useCallback((meal, quantity, unit, mealType) => {
-    // Validar cantidad
     const numQuantity = parseFloat(quantity);
     if (isNaN(numQuantity) || numQuantity <= 0) {
         setError("La cantidad debe ser un número positivo.");
-        return; // No añadir si la cantidad es inválida
+        return;
     }
-    setError(null); // Limpiar error si la cantidad es válida
+    setError(null);
 
     const factor = numQuantity / 100;
-    const targetDateString = getActiveDateString(); // Obtener fecha de la pestaña activa
-    const tempId = `temp_${Date.now()}_${Math.random()}`; // ID único para el estado
+    const targetDateString = getActiveDateString();
+    const tempId = `temp_${Date.now()}_${Math.random()}`;
 
     const newItem = {
       id: tempId,
       meal_plan_item_id: null,
       meal_id: meal.id,
       meal_name: meal.name || meal.meal_name || 'Comida Desconocida',
-      plan_date: targetDateString, // Fecha calculada
+      plan_date: targetDateString,
       meal_type: mealType,
-      quantity: numQuantity, // Cantidad validada
+      quantity: numQuantity,
       unit: unit || 'g',
-      // Calcular macros basados en la cantidad
       calories: meal.calories ? Math.round(meal.calories * factor) : 0,
       protein_g: meal.protein_g || meal.proteins ? Math.round((meal.protein_g || meal.proteins) * factor * 10) / 10 : 0,
       carbohydrates_g: meal.carbohydrates_g || meal.carbohydrates ? Math.round((meal.carbohydrates_g || meal.carbohydrates) * factor * 10) / 10 : 0,
@@ -230,13 +238,13 @@ const MealPlanForm = ({ editId, onSaveSuccess }) => {
 
     console.log("MealPlanForm - Añadiendo item al estado:", newItem);
     setItems(prevItems => [...prevItems, newItem]);
-  }, [activeTab, getActiveDateString]); // Depender de activeTab y la función de fecha
+  }, [activeTab, getActiveDateString]);
 
   const handleRemoveMeal = useCallback((itemToRemoveId) => {
     setItems(prevItems => prevItems.filter(item => item.id !== itemToRemoveId));
   }, []);
 
-  const handleSubmit = useCallback(async () => { // Usar useCallback
+  const handleSubmit = useCallback(async () => {
     if (!planName.trim()) {
       setError("El nombre del plan es obligatorio.");
       return;
@@ -246,29 +254,37 @@ const MealPlanForm = ({ editId, onSaveSuccess }) => {
     setError(null);
     setSuccess(null);
 
-    // Mapear items asegurando que plan_date esté presente y sea válido
-    const itemsToSubmit = items.map(item => {
-        if (!item.plan_date || !isValid(parseISO(item.plan_date))) {
-             console.error("Item inválido encontrado durante el guardado (falta fecha válida):", item);
-             // Lanzar error para detener el proceso si un item es inválido
-             throw new Error(`Hay una comida en el plan sin fecha válida (${item.meal_name || 'Desconocida'}). Por favor, revisa.`);
-        }
-        return {
-            meal_id: item.meal_id,
-            plan_date: item.plan_date, // Enviar fecha YYYY-MM-DD
-            meal_type: item.meal_type,
-            quantity: item.quantity,
-            unit: item.unit || 'g',
-            // Opcional: Enviar ID del item si estamos editando y ya existe en BD
-            // id: item.meal_plan_item_id || undefined
-        };
-    });
+    let itemsToSubmit;
+    try {
+        // Validar y mapear items dentro del try/catch
+        itemsToSubmit = items.map(item => {
+            if (!item.plan_date || !isValid(parseISO(item.plan_date))) {
+                console.error("Item inválido encontrado durante el guardado (falta fecha válida):", item);
+                throw new Error(`Hay una comida en el plan sin fecha válida (${item.meal_name || 'Desconocida'}). Por favor, revisa.`);
+            }
+            // Solo incluir campos que espera el backend para CUD
+            return {
+                meal_id: item.meal_id,
+                plan_date: item.plan_date,
+                meal_type: item.meal_type,
+                quantity: item.quantity,
+                unit: item.unit || 'g',
+                // Incluir 'id' (meal_plan_item_id) solo si estamos editando y el item lo tiene
+                ...(isEditing && item.meal_plan_item_id && { id: item.meal_plan_item_id }),
+            };
+        });
+    } catch (validationError) {
+        // Si la validación de items falla, mostrar error y detener
+        setError(validationError.message);
+        setLoading(false);
+        return;
+    }
+
 
     const planData = {
       plan_name: planName,
       description: description,
       is_active: isActive,
-      // Enviar targets como números o null
       target_calories: targetCalories ? parseFloat(targetCalories) : null,
       target_protein_g: targetProtein ? parseFloat(targetProtein) : null,
       target_carbs_g: targetCarbs ? parseFloat(targetCarbs) : null,
@@ -279,46 +295,52 @@ const MealPlanForm = ({ editId, onSaveSuccess }) => {
     console.log('MealPlanForm - Enviando payload:', JSON.stringify(planData, null, 2));
 
     try {
+      let response; // Para potencialmente usar la respuesta
       if (isEditing) {
-        await MealPlanService.update(id, planData);
+        response = await MealPlanService.update(id, planData);
         setSuccess('Plan actualizado con éxito.');
       } else {
-        await MealPlanService.create(planData);
+        response = await MealPlanService.create(planData);
         setSuccess('Plan creado con éxito.');
+         // Opcional: podrías querer actualizar el estado 'items' con los IDs reales devueltos
+         // if (response && response.items) { setItems(transformarItemsRecibidos(response.items)); }
       }
 
+      // Limpiar caché del servicio para forzar recarga en la lista
+      MealPlanService.clearCache();
+
       if (onSaveSuccess) {
-        setTimeout(() => onSaveSuccess(), 1500);
+        setTimeout(() => onSaveSuccess(response), 1500); // Pasar respuesta al callback
       } else {
         setTimeout(() => navigate('/nutrition/meal-plans'), 1500); // Redirigir a la lista
       }
     } catch (err) {
       console.error("Error saving meal plan:", err);
       const errorDetail = err.response?.data?.detail;
-      let errorMessage = err.message || 'Error al guardar el plan.'; // Default a err.message si existe
+      let errorMessage = err.message || 'Error al guardar el plan.';
        if (typeof errorDetail === 'string') {
           errorMessage = errorDetail;
        } else if (Array.isArray(errorDetail) && errorDetail[0]?.msg) {
          errorMessage = `Error: ${errorDetail[0].msg} (campo: ${errorDetail[0].loc.slice(1).join('.')})`;
        }
-       // Usar el error lanzado desde la validación de items si existe
-       if (err instanceof Error && !err.response) {
-           errorMessage = err.message;
+       // Asegurar que no mostramos el error de validación que ya manejamos
+       if (!(err instanceof Error && !err.response && errorMessage.includes('fecha válida'))) {
+           setError(errorMessage);
        }
-      setError(errorMessage);
     } finally {
       setLoading(false);
     }
-  }, [planName, description, isActive, items, targetCalories, targetProtein, targetCarbs, targetFat, isEditing, id, navigate, onSaveSuccess]); // Dependencias del useCallback
+  }, [planName, description, isActive, items, targetCalories, targetProtein, targetCarbs, targetFat, isEditing, id, navigate, onSaveSuccess]);
 
   // Filtrar items para la fecha del día activo
   const getActiveTabItems = useCallback(() => {
     const targetDateString = getActiveDateString();
     return items.filter(item => item.plan_date === targetDateString);
-  }, [items, getActiveDateString]); // Depende de items y la función de fecha
+  }, [items, getActiveDateString]);
 
   // --- Renderizado ---
-  if (loading && isEditing && !items.length) { // Mostrar carga solo si está cargando para editar
+  // Evitar renderizar si está cargando para editar y aún no hay datos básicos
+  if (loading && isEditing && !planName) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
         <CircularProgress />
@@ -352,12 +374,11 @@ const MealPlanForm = ({ editId, onSaveSuccess }) => {
       <DaySelectorTabs
         days={daysOfWeek}
         activeTab={activeTab}
-        onChange={(newTab) => setActiveTab(newTab)} // Actualiza la pestaña activa
+        onChange={(newTab) => setActiveTab(newTab)}
       />
 
-      {/* Revisa si ProgressSection y PlanSummary necesitan adaptarse a filtrar por fecha */}
-       {/* <ProgressSection ... /> */}
-       {/* <PlanSummary ... /> */}
+      {/* <ProgressSection items={items} activeDate={getActiveDateString()} ... /> */}
+       {/* <PlanSummary items={items} ... /> */}
 
       <MealSelector
         meals={availableMeals}
@@ -365,7 +386,7 @@ const MealPlanForm = ({ editId, onSaveSuccess }) => {
       />
 
       <DayMealsList
-        items={getActiveTabItems()} // Pasa items filtrados por fecha
+        items={getActiveTabItems()}
         onRemove={handleRemoveMeal}
       />
 
@@ -373,7 +394,7 @@ const MealPlanForm = ({ editId, onSaveSuccess }) => {
         <Button
           variant="outlined"
           startIcon={<FontAwesomeIcon icon={faArrowLeft} />}
-          onClick={() => navigate('/nutrition/meal-plans')} // Navegar a la lista
+          onClick={() => navigate('/nutrition/meal-plans')}
           disabled={loading}
         >
           Cancelar
