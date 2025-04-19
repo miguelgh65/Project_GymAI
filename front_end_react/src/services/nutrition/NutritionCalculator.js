@@ -5,9 +5,17 @@ import axios from 'axios';
 import { API_BASE } from './constants';
 
 /**
- * Service for calculating nutritional values
+ * Service for calculating nutritional values and managing nutrition profiles
  */
 class NutritionCalculatorService {
+  constructor() {
+    // Añadir soporte para almacenamiento local como fallback
+    this.LOCAL_STORAGE_KEY = 'nutrition_profile';
+    
+    // Debugging para ver si las rutas son correctas
+    console.log("NutritionCalculator iniciado con API_BASE:", API_BASE);
+  }
+
   /**
    * Calculate macros based on user inputs
    * @param {Object} data - User biometric and goal data
@@ -15,22 +23,39 @@ class NutritionCalculatorService {
    */
   async calculateMacros(data) {
     try {
-      const response = await axios.post(`${API_BASE}/calculate-macros`, data);
+      console.log("NutritionCalculator: Calculando macros con datos:", data);
+      
+      // Comprobar si tenemos una API configurada
+      if (!API_BASE) {
+        console.warn("API_BASE no está definido, usando cálculo local");
+        throw new Error("API_BASE no definido");
+      }
+      
+      // Intentar usar la API primero
+      const response = await axios.post(`${API_BASE}/calculate-macros`, data, {
+        timeout: 5000 // 5 segundos de timeout
+      });
+      
+      console.log("Respuesta de API:", response.data);
       return response.data;
     } catch (error) {
-      console.error('Error calculating macros:', error);
+      console.error('Error en API de cálculo de macros:', error);
+      console.log("Usando cálculo local como fallback");
       
-      // Provide local calculation as fallback
+      // Proporcionar cálculo local como fallback
       const bmr = this.calculateBMR(data);
       const tdee = this.calculateTDEE(bmr, data.activity_level);
       const goalCalories = this.calculateGoalCalories(tdee, data.goal, data.goal_intensity);
+      const bmi = this.calculateBMI(data);
+      const macros = this.calculateMacroRatio(goalCalories, data.goal);
       
+      // Preparar respuesta en formato similar a la API
       return {
         bmr: Math.round(bmr),
         tdee: Math.round(tdee),
-        bmi: this.calculateBMI(data),
+        bmi: bmi,
         goal_calories: Math.round(goalCalories),
-        macros: this.calculateMacroRatio(goalCalories, data.goal)
+        macros: macros
       };
     }
   }
@@ -41,15 +66,111 @@ class NutritionCalculatorService {
    */
   async getProfile() {
     try {
-      const response = await axios.get(`${API_BASE}/profile`);
-      return response.data?.profile || null;
+      console.log("NutritionCalculator: Obteniendo perfil nutricional");
+      
+      // Comprobar si tenemos una API configurada
+      if (!API_BASE) {
+        console.warn("API_BASE no está definido, usando datos locales");
+        throw new Error("API_BASE no definido");
+      }
+      
+      // Intentar obtener de la API primero
+      const response = await axios.get(`${API_BASE}/profile`, {
+        timeout: 5000 // 5 segundos de timeout
+      });
+      
+      console.log("Perfil de API:", response.data);
+      
+      if (response.data?.profile) {
+        // Guardar en localStorage como respaldo
+        localStorage.setItem(this.LOCAL_STORAGE_KEY, JSON.stringify(response.data.profile));
+        return response.data.profile;
+      }
+      
+      throw new Error("Formato de respuesta inválido o perfil no encontrado");
     } catch (error) {
-      console.error('Error fetching nutrition profile:', error);
+      console.error('Error al obtener perfil nutricional de API:', error);
+      
+      // Intentar obtener de localStorage como fallback
+      try {
+        const localProfile = localStorage.getItem(this.LOCAL_STORAGE_KEY);
+        if (localProfile) {
+          console.log("Usando perfil de localStorage:", localProfile);
+          const profile = JSON.parse(localProfile);
+          return profile;
+        }
+      } catch (localError) {
+        console.error('Error al leer perfil de localStorage:', localError);
+      }
+      
       return null;
     }
   }
   
-  // Helper methods for local calculations
+  /**
+   * Save user's nutrition profile
+   * @param {Object} profileData - User profile data
+   * @returns {Object|null} Saved profile or null if error
+   */
+  async saveProfile(profileData) {
+    try {
+      console.log("NutritionCalculator: Guardando perfil:", profileData);
+      
+      // Asegurarse de que tenemos todos los campos requeridos para el dashboard
+      const completeProfileData = {
+        ...profileData,
+        // Asegurarnos de que estos campos existen para el dashboard
+        target_protein_g: profileData.target_protein_g || profileData.macros?.protein?.grams || 0,
+        target_carbs_g: profileData.target_carbs_g || profileData.macros?.carbs?.grams || 0,
+        target_fat_g: profileData.target_fat_g || profileData.macros?.fat?.grams || 0,
+        updated_at: new Date().toISOString()
+      };
+      
+      // Guardar en localStorage primero como respaldo
+      localStorage.setItem(this.LOCAL_STORAGE_KEY, JSON.stringify(completeProfileData));
+      console.log("Perfil guardado en localStorage:", completeProfileData);
+      
+      // Comprobar si tenemos una API configurada
+      if (!API_BASE) {
+        console.warn("API_BASE no está definido, guardando solo localmente");
+        return completeProfileData;
+      }
+      
+      // Intentar guardar en la API
+      const response = await axios.post(`${API_BASE}/profile`, completeProfileData, {
+        timeout: 5000 // 5 segundos de timeout
+      });
+      
+      console.log("Respuesta de API al guardar perfil:", response.data);
+      
+      if (response.data?.profile || response.data?.success) {
+        const savedProfile = response.data.profile || completeProfileData;
+        // Actualizar localStorage con datos del servidor
+        localStorage.setItem(this.LOCAL_STORAGE_KEY, JSON.stringify(savedProfile));
+        return savedProfile;
+      }
+      
+      // Si la API responde pero no proporciona datos válidos, usar los datos locales
+      return completeProfileData;
+    } catch (error) {
+      console.error('Error al guardar perfil en API:', error);
+      console.log("Usando perfil guardado localmente como respuesta");
+      
+      // Ya hemos guardado en localStorage antes, así que simplemente devolvemos esos datos
+      try {
+        const localProfile = localStorage.getItem(this.LOCAL_STORAGE_KEY);
+        if (localProfile) {
+          return JSON.parse(localProfile);
+        }
+      } catch (localError) {
+        console.error('Error al leer perfil de localStorage después de guardar:', localError);
+      }
+      
+      throw new Error("No se pudo guardar el perfil nutricional ni localmente ni en el servidor");
+    }
+  }
+  
+  // ========== MÉTODOS AUXILIARES PARA CÁLCULOS LOCALES ==========
   
   /**
    * Calculate Basal Metabolic Rate (BMR)
@@ -68,8 +189,16 @@ class NutritionCalculatorService {
       // Katch-McArdle Formula - requires body fat percentage
       const leanBodyMass = data.weight * (1 - (data.body_fat_percentage / 100));
       return 370 + (21.6 * leanBodyMass);
+    } else if (data.formula === 'harris_benedict') {
+      // Harris-Benedict
+      if (data.gender === 'male') {
+        return 88.362 + (13.397 * data.weight) + (4.799 * data.height) - (5.677 * data.age);
+      } else {
+        return 447.593 + (9.247 * data.weight) + (3.098 * data.height) - (4.330 * data.age);
+      }
     } else {
-      // Default to Harris-Benedict
+      // WHO formula
+      // Implementación simplificada usando Harris-Benedict como fallback
       if (data.gender === 'male') {
         return 88.362 + (13.397 * data.weight) + (4.799 * data.height) - (5.677 * data.age);
       } else {
@@ -93,7 +222,8 @@ class NutritionCalculatorService {
       very_active: 1.9
     };
     
-    return bmr * (activityMultipliers[activityLevel] || 1.2);
+    const multiplier = activityMultipliers[activityLevel] || 1.2;
+    return bmr * multiplier;
   }
   
   /**
@@ -108,16 +238,25 @@ class NutritionCalculatorService {
     
     const adjustments = {
       lose: {
+        light: -250,
         normal: -500,
-        aggressive: -1000
+        aggressive: -750,
+        very_aggressive: -1000
       },
       gain: {
+        light: 250,
         normal: 500,
-        aggressive: 1000
+        aggressive: 750,
+        very_aggressive: 1000
       }
     };
     
-    return tdee + (adjustments[goal]?.[intensity] || 0);
+    // Asegurarse de que adjustments[goal] existe
+    if (!adjustments[goal]) return tdee;
+    
+    // Asegurarse de que adjustments[goal][intensity] existe
+    const adjustment = adjustments[goal][intensity] || 0;
+    return tdee + adjustment;
   }
   
   /**
@@ -164,7 +303,7 @@ class NutritionCalculatorService {
     const fatGrams = Math.round(fatCalories / 9);
     
     return {
-      proteins: {
+      protein: {
         grams: proteinGrams,
         calories: Math.round(proteinCalories),
         percentage: Math.round(proteinPct * 100)
@@ -174,7 +313,7 @@ class NutritionCalculatorService {
         calories: Math.round(carbsCalories),
         percentage: Math.round(carbsPct * 100)
       },
-      fats: {
+      fat: {
         grams: fatGrams,
         calories: Math.round(fatCalories),
         percentage: Math.round(fatPct * 100)

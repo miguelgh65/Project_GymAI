@@ -29,11 +29,15 @@ const NutritionDashboard = ({ user }) => {
       setLoading(true);
       try {
         // Cargar perfil
+        console.log("Dashboard: Cargando perfil nutricional...");
         const profileData = await NutritionCalculator.getProfile();
+        console.log("Dashboard: Perfil recibido:", profileData);
         setProfile(profileData);
         
         // Cargar planes activos
+        console.log("Dashboard: Cargando planes activos...");
         const plansResponse = await MealPlanService.getAll(true);
+        console.log("Dashboard: Planes activos recibidos:", plansResponse);
         setActivePlans(plansResponse.meal_plans || []);
       } catch (err) {
         console.error("Error cargando datos:", err);
@@ -48,12 +52,22 @@ const NutritionDashboard = ({ user }) => {
   
   // Aplicar los objetivos del perfil a un plan seleccionado
   const applyProfileToPlan = async () => {
-    if (!selectedPlanId || !profile) return;
+    if (!selectedPlanId || !profile) {
+      console.error("No hay plan seleccionado o perfil para aplicar");
+      return;
+    }
     
     setApplyingToPlans(true);
     try {
       // Primero, obtener el plan completo
+      console.log(`Dashboard: Aplicando objetivos al plan ${selectedPlanId}...`);
       const plan = await MealPlanService.getById(selectedPlanId);
+      
+      // Verificar que tenemos los datos necesarios en el perfil
+      if (!profile.goal_calories || !profile.target_protein_g || 
+          !profile.target_carbs_g || !profile.target_fat_g) {
+        throw new Error("El perfil nutricional no tiene objetivos completos");
+      }
       
       // Actualizar con los objetivos del perfil
       const updatedPlan = {
@@ -65,6 +79,7 @@ const NutritionDashboard = ({ user }) => {
       };
       
       // Enviar actualización
+      console.log("Dashboard: Actualizando plan con objetivos:", updatedPlan);
       await MealPlanService.update(selectedPlanId, updatedPlan);
       
       // Recargar planes activos para reflejar cambios
@@ -74,7 +89,8 @@ const NutritionDashboard = ({ user }) => {
       alert("¡Objetivos aplicados correctamente al plan!");
     } catch (err) {
       console.error("Error al aplicar objetivos:", err);
-      setError("No se pudieron aplicar los objetivos al plan seleccionado");
+      setError("No se pudieron aplicar los objetivos al plan seleccionado: " + 
+               (err.message || "Error desconocido"));
     } finally {
       setApplyingToPlans(false);
       setSelectedPlanId(null);
@@ -83,9 +99,26 @@ const NutritionDashboard = ({ user }) => {
   
   // Crear un nuevo plan con los objetivos del perfil
   const createPlanWithProfile = () => {
-    if (!profile) return;
+    if (!profile) {
+      console.error("No hay perfil para crear plan");
+      return;
+    }
+    
+    // Verificar que tenemos los datos necesarios en el perfil
+    if (!profile.goal_calories || !profile.target_protein_g || 
+        !profile.target_carbs_g || !profile.target_fat_g) {
+      setError("El perfil nutricional no tiene objetivos completos");
+      return;
+    }
     
     // Guardar objetivos temporalmente
+    console.log("Dashboard: Guardando objetivos para nuevo plan:", {
+      target_calories: profile.goal_calories,
+      target_protein_g: profile.target_protein_g,
+      target_carbs_g: profile.target_carbs_g,
+      target_fat_g: profile.target_fat_g
+    });
+    
     localStorage.setItem('temp_nutrition_targets', JSON.stringify({
       target_calories: profile.goal_calories,
       target_protein_g: profile.target_protein_g,
@@ -110,10 +143,23 @@ const NutritionDashboard = ({ user }) => {
   const calculateMacroPercentages = () => {
     if (!profile) return { protein: 0, carbs: 0, fat: 0 };
     
+    // Verifica si existen los campos necesarios
+    const hasRequiredFields = 
+      profile.target_protein_g != null && 
+      profile.target_carbs_g != null && 
+      profile.target_fat_g != null;
+    
+    if (!hasRequiredFields) {
+      console.warn("El perfil no tiene todos los campos de macros necesarios:", profile);
+      return { protein: 0, carbs: 0, fat: 0 };
+    }
+    
     const proteinCals = profile.target_protein_g * 4;
     const carbsCals = profile.target_carbs_g * 4;
     const fatCals = profile.target_fat_g * 9;
     const totalCals = proteinCals + carbsCals + fatCals;
+    
+    if (totalCals === 0) return { protein: 0, carbs: 0, fat: 0 };
     
     return {
       protein: Math.round((proteinCals / totalCals) * 100) || 0,
@@ -123,6 +169,14 @@ const NutritionDashboard = ({ user }) => {
   };
   
   const macroPercentages = calculateMacroPercentages();
+  
+  // Estados para renderizado condicional
+  const hasProfile = profile !== null;
+  const hasTargets = hasProfile && 
+                     profile.goal_calories != null && 
+                     profile.target_protein_g != null && 
+                     profile.target_carbs_g != null && 
+                     profile.target_fat_g != null;
   
   if (loading) {
     return (
@@ -138,7 +192,7 @@ const NutritionDashboard = ({ user }) => {
       
       {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
       
-      {!profile ? (
+      {!hasProfile ? (
         <Alert severity="info" sx={{ mb: 3 }}>
           No tienes un perfil nutricional configurado. 
           Usa la calculadora de macros para establecer tus objetivos.
@@ -169,7 +223,7 @@ const NutritionDashboard = ({ user }) => {
                     <Grid item xs={12}>
                       <Box sx={{ mb: 2 }}>
                         <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                          Objetivo Diario: {profile.goal_calories} kcal
+                          Objetivo Diario: {profile.goal_calories || 0} kcal
                         </Typography>
                         <Typography variant="body2" gutterBottom>
                           Basado en tus características físicas, nivel de actividad y meta de {profile.goal || 'mantenimiento'}.
@@ -182,14 +236,14 @@ const NutritionDashboard = ({ user }) => {
                     <Grid item xs={12} sm={4}>
                       <Paper elevation={1} sx={{ p: 2, textAlign: 'center', bgcolor: '#e8f5e9' }}>
                         <Typography variant="h5" color="#2e7d32">
-                          {profile.target_protein_g}g
+                          {profile.target_protein_g || 0}g
                         </Typography>
                         <Typography variant="body2">Proteínas</Typography>
                         <Typography variant="caption" display="block">
                           {macroPercentages.protein}% de calorías
                         </Typography>
                         <Chip 
-                          label={`${Math.round(profile.target_protein_g / 7)}g/día`}
+                          label={`${Math.round((profile.target_protein_g || 0) / 7)}g/día`}
                           size="small"
                           color="success"
                           sx={{ mt: 1 }}
@@ -200,14 +254,14 @@ const NutritionDashboard = ({ user }) => {
                     <Grid item xs={12} sm={4}>
                       <Paper elevation={1} sx={{ p: 2, textAlign: 'center', bgcolor: '#e3f2fd' }}>
                         <Typography variant="h5" color="#1565c0">
-                          {profile.target_carbs_g}g
+                          {profile.target_carbs_g || 0}g
                         </Typography>
                         <Typography variant="body2">Carbohidratos</Typography>
                         <Typography variant="caption" display="block">
                           {macroPercentages.carbs}% de calorías
                         </Typography>
                         <Chip 
-                          label={`${Math.round(profile.target_carbs_g / 7)}g/día`}
+                          label={`${Math.round((profile.target_carbs_g || 0) / 7)}g/día`}
                           size="small"
                           color="primary"
                           sx={{ mt: 1 }}
@@ -218,14 +272,14 @@ const NutritionDashboard = ({ user }) => {
                     <Grid item xs={12} sm={4}>
                       <Paper elevation={1} sx={{ p: 2, textAlign: 'center', bgcolor: '#fff3e0' }}>
                         <Typography variant="h5" color="#e65100">
-                          {profile.target_fat_g}g
+                          {profile.target_fat_g || 0}g
                         </Typography>
                         <Typography variant="body2">Grasas</Typography>
                         <Typography variant="caption" display="block">
                           {macroPercentages.fat}% de calorías
                         </Typography>
                         <Chip 
-                          label={`${Math.round(profile.target_fat_g / 7)}g/día`}
+                          label={`${Math.round((profile.target_fat_g || 0) / 7)}g/día`}
                           size="small"
                           color="warning"
                           sx={{ mt: 1 }}
@@ -250,6 +304,7 @@ const NutritionDashboard = ({ user }) => {
                     color="primary"
                     startIcon={<FontAwesomeIcon icon={faPlus} />}
                     onClick={createPlanWithProfile}
+                    disabled={!hasTargets}
                   >
                     Crear Plan con Estos Objetivos
                   </Button>
@@ -267,7 +322,11 @@ const NutritionDashboard = ({ user }) => {
                   Aplicar a Planes de Comida
                 </Typography>
                 
-                {activePlans.length === 0 ? (
+                {!hasTargets ? (
+                  <Alert severity="warning" sx={{ mt: 2 }}>
+                    Tu perfil nutricional no tiene objetivos completos. Usa la calculadora de macros para establecerlos.
+                  </Alert>
+                ) : activePlans.length === 0 ? (
                   <Alert severity="info" sx={{ mt: 2 }}>
                     No tienes planes de comida activos. Crea un plan primero para aplicarle tus objetivos nutricionales.
                   </Alert>
@@ -311,7 +370,7 @@ const NutritionDashboard = ({ user }) => {
                     <Button
                       variant="contained"
                       color="primary"
-                      disabled={!selectedPlanId || applyingToPlans}
+                      disabled={!selectedPlanId || applyingToPlans || !hasTargets}
                       startIcon={applyingToPlans ? <CircularProgress size={20} /> : <FontAwesomeIcon icon={faEdit} />}
                       onClick={applyProfileToPlan}
                       sx={{ mt: 3 }}

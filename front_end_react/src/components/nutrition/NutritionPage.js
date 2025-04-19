@@ -8,7 +8,7 @@ import IngredientForm from './ingredients/IngredientForm';
 import MealList from './meals/MealList';
 import MealForm from './meals/MealForm';
 import MealPlanList from './meal-plans/MealPlanList';
-import MealPlanForm from './meal-plans/MealPlanForm'; // Cambiado a MealPlanForm (refactorizado)
+import MealPlanForm from './meal-plans/MealPlanForm'; // Nueva versión refactorizada
 import MealPlanCalendar from './meal-plans/MealPlanCalendar';
 import MacroCalculator from './calculator/MacroCalculator';
 import NutritionDashboard from './dashboard/NutritionDashboard'; // Nuevo componente de dashboard

@@ -2,112 +2,121 @@
 // Service for managing meal plans
 
 import axios from 'axios';
-import { API_BASE, logDebug } from './constants';
-import { LocalStorageHelper } from './utils';
+import { API_BASE } from './constants';
 
 /**
- * Service for managing meal plans with improved error handling and caching
+ * Servicio para manejar planes de comida con almacenamiento local robusto
  */
 class MealPlanServiceClass {
   constructor() {
-    // Reduce cache timeout for testing (30 seconds)
-    this.CACHE_TIMEOUT = 30 * 1000;
-    this.lastFetch = 0;
+    this.LOCAL_STORAGE_KEY = 'local_meal_plans';
     this.cachedPlans = null;
+    this.lastFetch = 0;
   }
 
   /**
-   * Helper to get plans directly from local storage
-   * @param {boolean|null} isActive - Optional filter by active status
-   * @returns {Array} Array of meal plans
+   * Obtener planes directamente de localStorage
+   * @param {boolean|null} isActive - Filtrar por estado activo (opcional)
+   * @returns {Array} Array de planes de comida
    */
   getLocalPlansOnly(isActive = null) {
     try {
-      const localData = localStorage.getItem('local_meal_plans');
-      const plans = localData ? JSON.parse(localData) : [];
+      const localData = localStorage.getItem(this.LOCAL_STORAGE_KEY);
+      let plans = [];
       
+      if (localData) {
+        try {
+          plans = JSON.parse(localData);
+          if (!Array.isArray(plans)) {
+            console.error("Los datos de planes en localStorage no son un array:", plans);
+            plans = [];
+          }
+        } catch (parseError) {
+          console.error("Error al analizar datos de localStorage:", parseError);
+          plans = [];
+        }
+      }
+      
+      // Filtrar por isActive si se proporciona
       if (isActive !== null) {
         return plans.filter(p => p.is_active === isActive);
       }
+      
       return plans;
     } catch (err) {
-      console.error("[MealPlanService] Error reading local plans:", err);
+      console.error("[MealPlanService] Error al leer planes locales:", err);
       return [];
     }
   }
 
   /**
-   * Get all meal plans with improved error handling and local storage fallback
-   * @param {boolean|null} isActive - Filter by active status, or null for all
-   * @returns {Object} Object with meal_plans array
+   * Obtener todos los planes de comida
+   * @param {boolean|null} isActive - Filtrar por estado activo
+   * @returns {Object} Objeto con array meal_plans
    */
   async getAll(isActive = null) {
     try {
-      // Always clear cache for testing
+      // Limpiar caché para pruebas
       this.clearCache();
       
-      const now = Date.now();
-      logDebug(`Fetching meal plans, active filter: ${isActive}`);
+      console.log(`Obteniendo planes de comida, filtro activo: ${isActive}`);
       
       const params = {};
       if (isActive !== null) {
         params.is_active = isActive;
       }
       
-      // Try the API first every time
+      // Intentar primero la API
       try {
-        console.log("Fetching meal plans from API...");
+        console.log("Obteniendo planes de comida desde la API...");
         const response = await axios.get(`${API_BASE}/meal-plans`, { 
           params,
-          timeout: 10000 // 10 second timeout
+          timeout: 10000 // 10 segundos de timeout
         });
         
-        console.log("API response received:", response.data);
+        console.log("Respuesta de API recibida:", response.data);
         
-        // Handle different API response formats
+        // Procesar diferentes formatos de respuesta
         let apiPlans = [];
         
-        // Handle array response
         if (Array.isArray(response.data)) {
           apiPlans = response.data;
-          console.log("Data is an array, using directly");
         } 
-        // Handle object with meal_plans property
         else if (response.data && Array.isArray(response.data.meal_plans)) {
           apiPlans = response.data.meal_plans;
-          console.log("Data has meal_plans array, using it");
         }
-        // Handle object with success and data properties 
         else if (response.data && response.data.success && Array.isArray(response.data.data)) {
           apiPlans = response.data.data;
-          console.log("Data has success and data array, using it");
         }
-        // If data is just a single plan, wrap in array
         else if (response.data && response.data.id) {
           apiPlans = [response.data];
-          console.log("Data is a single plan, wrapping in array");
         }
-        // Empty response with no recognizable structure
         else {
-          console.warn("Unknown response format:", response.data);
+          console.warn("Formato de respuesta desconocido:", response.data);
           apiPlans = [];
         }
         
-        // Update cache and local storage
+        // Actualizar caché y localStorage
         this.cachedPlans = apiPlans;
-        this.lastFetch = now;
+        this.lastFetch = Date.now();
         
-        // Store in local storage for backup
+        // Guardar en localStorage como respaldo
         try {
-          LocalStorageHelper.saveLocalMealPlans(apiPlans);
-          console.log(`Saved ${apiPlans.length} plans to local storage`);
+          // Combinar con planes locales para no perder datos
+          const localPlans = this.getLocalPlansOnly();
+          const localOnlyPlans = localPlans.filter(localPlan => 
+            !apiPlans.some(apiPlan => apiPlan.id === localPlan.id)
+          );
+          
+          const combinedPlans = [...apiPlans, ...localOnlyPlans];
+          localStorage.setItem(this.LOCAL_STORAGE_KEY, JSON.stringify(combinedPlans));
+          console.log(`Guardados ${combinedPlans.length} planes en localStorage`);
         } catch (storageErr) {
-          console.error("Error saving to local storage:", storageErr);
+          console.error("Error al guardar en localStorage:", storageErr);
         }
         
-        // If filtering by active status, apply filter
+        // Filtrar por estado activo si se solicita
         if (isActive !== null) {
-          console.log(`Filtering ${apiPlans.length} plans by is_active=${isActive}`);
           return { 
             meal_plans: apiPlans.filter(p => p.is_active === isActive) 
           };
@@ -115,11 +124,11 @@ class MealPlanServiceClass {
         
         return { meal_plans: apiPlans };
       } catch (apiErr) {
-        console.error("API error:", apiErr);
+        console.error("Error de API:", apiErr);
         
-        // Fallback to local storage
+        // Usar localStorage como fallback
         const localPlans = this.getLocalPlansOnly();
-        console.log(`API failed, using ${localPlans.length} local plans`);
+        console.log(`Error de API, usando ${localPlans.length} planes locales`);
         
         if (isActive !== null) {
           return { 
@@ -127,233 +136,280 @@ class MealPlanServiceClass {
             fromLocalStorage: true
           };
         }
+        
         return { meal_plans: localPlans, fromLocalStorage: true };
       }
     } catch (error) {
-      console.error("General error in getAll:", error);
+      console.error("Error general en getAll:", error);
       return { meal_plans: [], error: error.message };
     }
   }
 
   /**
-   * Get a single meal plan by ID
-   * @param {number|string} id - Meal plan ID
-   * @param {boolean} withItems - Whether to include items in the response
-   * @returns {Object} Meal plan data
+   * Obtener un plan de comida por ID
+   * @param {number|string} id - ID del plan
+   * @param {boolean} withItems - Incluir elementos en la respuesta
+   * @returns {Object} Datos del plan
    */
   async getById(id, withItems = true) {
     try {
-      console.log(`Fetching meal plan ${id} with items=${withItems}`);
+      if (!id) {
+        throw new Error("ID de plan no proporcionado");
+      }
       
-      // If ID starts with "local-", it's a locally stored plan
+      console.log(`Obteniendo plan ${id} con items=${withItems}`);
+      
+      // Si el ID comienza con "local-", es un plan guardado localmente
       if (id.toString().startsWith('local-')) {
-        const localPlans = LocalStorageHelper.getLocalMealPlans() || [];
+        const localPlans = this.getLocalPlansOnly();
         const localPlan = localPlans.find(p => p.id.toString() === id.toString());
         
         if (!localPlan) {
-          throw new Error(`Local plan ${id} not found`);
+          throw new Error(`Plan local ${id} no encontrado`);
         }
+        
         return localPlan;
       }
       
-      // Otherwise, try to get from API
-      const response = await axios.get(`${API_BASE}/meal-plans/${id}`, {
-        params: { with_items: withItems },
-        timeout: 10000
-      });
-      
-      console.log(`Plan ${id} response:`, response.data);
-      
-      // Extract plan from response
-      let plan = null;
-      
-      // Single plan object
-      if (response.data && response.data.id) {
-        plan = response.data;
+      // Intentar obtener desde la API
+      try {
+        const response = await axios.get(`${API_BASE}/meal-plans/${id}`, {
+          params: { with_items: withItems },
+          timeout: 10000
+        });
+        
+        console.log(`Respuesta para plan ${id}:`, response.data);
+        
+        // Extraer plan de la respuesta
+        let plan = null;
+        
+        if (response.data && response.data.id) {
+          plan = response.data;
+        }
+        else if (response.data && response.data.plan && response.data.plan.id) {
+          plan = response.data.plan;
+        }
+        else if (response.data && response.data.success && response.data.data && response.data.data.id) {
+          plan = response.data.data;
+        }
+        
+        if (!plan) {
+          throw new Error(`Plan ${id} no encontrado o formato de respuesta inválido`);
+        }
+        
+        // Asegurar que haya items si no están presentes
+        if (!plan.items) {
+          plan.items = [];
+        }
+        
+        return plan;
+      } catch (apiErr) {
+        console.error(`Error de API al obtener plan ${id}:`, apiErr);
+        
+        // Intentar obtener del localStorage como fallback
+        const localPlans = this.getLocalPlansOnly();
+        const localPlan = localPlans.find(p => p.id.toString() === id.toString());
+        
+        if (localPlan) {
+          console.log(`Usando plan ${id} desde localStorage`);
+          return localPlan;
+        } 
+        
+        throw apiErr; // No se encontró el plan localmente, reenviar error de API
       }
-      // Object with plan property
-      else if (response.data && response.data.plan && response.data.plan.id) {
-        plan = response.data.plan;
-      }
-      // Object with success and plan property
-      else if (response.data && response.data.success && response.data.data && response.data.data.id) {
-        plan = response.data.data;
-      }
-      
-      if (!plan) {
-        throw new Error(`Plan ${id} not found or invalid response format`);
-      }
-      
-      // Clean up items if they're not present
-      if (!plan.items) {
-        plan.items = [];
-      }
-      
-      return plan;
     } catch (error) {
-      console.error(`Error fetching meal plan ${id}:`, error);
+      console.error(`Error al obtener plan ${id}:`, error);
       throw error;
     }
   }
 
   /**
-   * Create a new meal plan with improved error handling
-   * @param {Object} data - Meal plan data
-   * @returns {Object} Created meal plan
+   * Crear un nuevo plan de comida
+   * @param {Object} data - Datos del plan
+   * @returns {Object} Plan creado
    */
   async create(data) {
     try {
-      console.log("Creating meal plan:", data);
+      if (!data) {
+        throw new Error("No se proporcionaron datos para crear el plan");
+      }
       
-      // Prepare data for API
-      const apiData = {
+      console.log("Creando plan de comida:", data);
+      
+      // Preparar datos para API
+      const planData = {
         plan_name: data.plan_name || data.name || "Nuevo plan",
+        name: data.plan_name || data.name || "Nuevo plan",
         is_active: data.is_active !== undefined ? data.is_active : true,
         items: Array.isArray(data.items) ? data.items : [],
         description: data.description || '',
-        user_id: data.user_id || '1' // Default to user 1 if not specified
+        user_id: data.user_id || '1', // Default a usuario 1 si no se especifica
+        // Incluir objetivos nutricionales si existen
+        target_calories: data.target_calories,
+        target_protein_g: data.target_protein_g,
+        target_carbs_g: data.target_carbs_g,
+        target_fat_g: data.target_fat_g
       };
       
-      // Send to API first
+      // Intentar enviar a la API primero
       try {
-        console.log("Sending to API:", apiData);
-        const response = await axios.post(`${API_BASE}/meal-plans`, apiData, {
+        console.log("Enviando a API:", planData);
+        const response = await axios.post(`${API_BASE}/meal-plans`, planData, {
           timeout: 10000
         });
         
-        console.log("API response:", response.data);
+        console.log("Respuesta de API:", response.data);
         
-        // Extract plan from response
+        // Extraer plan de la respuesta
         let createdPlan = null;
         
         if (response.data && response.data.id) {
           createdPlan = response.data;
         } else if (response.data && response.data.meal_plan && response.data.meal_plan.id) {
           createdPlan = response.data.meal_plan;
+        } else if (response.data && response.data.success && response.data.data && response.data.data.id) {
+          createdPlan = response.data.data;
         }
         
         if (!createdPlan) {
-          throw new Error("API returned success but no plan data");
+          throw new Error("API devolvió éxito pero sin datos del plan");
         }
         
-        // Clear cache
+        // Limpiar caché
         this.clearCache();
         
-        // Merge with local plans
+        // Fusionar con planes locales
         const localPlans = this.getLocalPlansOnly();
         localPlans.push(createdPlan);
-        localStorage.setItem('local_meal_plans', JSON.stringify(localPlans));
+        localStorage.setItem(this.LOCAL_STORAGE_KEY, JSON.stringify(localPlans));
         
         return createdPlan;
       } catch (apiErr) {
-        console.error("API error:", apiErr);
+        console.error("Error de API:", apiErr);
         
-        // Fallback to local storage
+        // Usar localStorage como fallback
+        const timestamp = Date.now();
         const localPlan = {
-          ...apiData,
-          id: `local-${Date.now()}`,
+          ...planData,
+          id: `local-${timestamp}`,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           _localOnly: true
         };
         
-        // Save to local storage
+        // Guardar en localStorage
         const localPlans = this.getLocalPlansOnly();
         localPlans.push(localPlan);
-        localStorage.setItem('local_meal_plans', JSON.stringify(localPlans));
+        localStorage.setItem(this.LOCAL_STORAGE_KEY, JSON.stringify(localPlans));
         
-        // Clear cache
+        // Limpiar caché
         this.clearCache();
         
+        console.log("Plan guardado localmente:", localPlan);
         return localPlan;
       }
     } catch (error) {
-      console.error("General error in create:", error);
+      console.error("Error general al crear:", error);
       throw error;
     }
   }
 
   /**
-   * Update an existing meal plan
-   * @param {number|string} id - Meal plan ID
-   * @param {Object} data - Updated meal plan data
-   * @returns {Object} Updated meal plan
+   * Actualizar un plan existente
+   * @param {number|string} id - ID del plan
+   * @param {Object} data - Datos actualizados
+   * @returns {Object} Plan actualizado
    */
   async update(id, data) {
     try {
-      console.log(`Updating meal plan ${id}:`, data);
+      if (!id) {
+        throw new Error("ID de plan no proporcionado para actualizar");
+      }
       
-      // If ID starts with "local-", it's a locally stored plan
+      console.log(`Actualizando plan ${id}:`, data);
+      
+      // Si el ID comienza con "local-", es un plan local
       if (id.toString().startsWith('local-')) {
-        console.log(`Updating local plan ${id}`);
+        console.log(`Actualizando plan local ${id}`);
         const localPlans = this.getLocalPlansOnly();
         const index = localPlans.findIndex(p => p.id.toString() === id.toString());
         
         if (index === -1) {
-          throw new Error(`Local plan ${id} not found`);
+          throw new Error(`Plan local ${id} no encontrado`);
         }
         
-        // Update plan
+        // Actualizar plan
         const updatedPlan = {
           ...localPlans[index],
           ...data,
-          id: id, // Ensure ID doesn't change
+          id: id, // Asegurar que ID no cambie
           updated_at: new Date().toISOString(),
           _localOnly: true
         };
         
         localPlans[index] = updatedPlan;
-        localStorage.setItem('local_meal_plans', JSON.stringify(localPlans));
+        localStorage.setItem(this.LOCAL_STORAGE_KEY, JSON.stringify(localPlans));
         
-        // Clear cache
+        // Limpiar caché
         this.clearCache();
         
+        console.log(`Plan local ${id} actualizado:`, updatedPlan);
         return updatedPlan;
       }
       
-      // Otherwise, try to update through API
+      // Intentar actualizar en API
       try {
-        console.log(`Sending PUT request to API for plan ${id}`);
-        const response = await axios.put(`${API_BASE}/meal-plans/${id}`, data, {
+        // Preparar datos para enviar a la API
+        const planData = { ...data };
+        
+        // Asegurar que items es un array
+        if (planData.items && !Array.isArray(planData.items)) {
+          planData.items = [];
+        }
+        
+        console.log(`Enviando petición PUT a API para plan ${id}`);
+        const response = await axios.put(`${API_BASE}/meal-plans/${id}`, planData, {
           timeout: 10000
         });
         
-        console.log("API response:", response.data);
+        console.log("Respuesta de API:", response.data);
         
-        // Extract plan from response
+        // Extraer plan de la respuesta
         let updatedPlan = null;
         
         if (response.data && response.data.id) {
           updatedPlan = response.data;
         } else if (response.data && response.data.meal_plan && response.data.meal_plan.id) {
           updatedPlan = response.data.meal_plan;
+        } else if (response.data && response.data.success && response.data.data && response.data.data.id) {
+          updatedPlan = response.data.data;
         }
         
         if (!updatedPlan) {
-          throw new Error("API returned success but no plan data");
+          throw new Error("API devolvió éxito pero sin datos del plan");
         }
         
-        // Update in local storage if exists
+        // Actualizar en localStorage si existe
         try {
           const localPlans = this.getLocalPlansOnly();
           const index = localPlans.findIndex(p => p.id.toString() === id.toString());
           
           if (index !== -1) {
             localPlans[index] = updatedPlan;
-            localStorage.setItem('local_meal_plans', JSON.stringify(localPlans));
+            localStorage.setItem(this.LOCAL_STORAGE_KEY, JSON.stringify(localPlans));
           }
         } catch (storageErr) {
-          console.warn(`Could not update local storage: ${storageErr.message}`);
+          console.warn(`No se pudo actualizar localStorage: ${storageErr.message}`);
         }
         
-        // Clear cache
+        // Limpiar caché
         this.clearCache();
         
         return updatedPlan;
       } catch (apiErr) {
-        console.error(`API error updating plan ${id}:`, apiErr);
+        console.error(`Error de API al actualizar plan ${id}:`, apiErr);
         
-        // If API fails but still needs updating locally
+        // Si falla API pero aún necesitamos actualizar localmente
         try {
           const localPlans = this.getLocalPlansOnly();
           const index = localPlans.findIndex(p => p.id.toString() === id.toString());
@@ -368,94 +424,98 @@ class MealPlanServiceClass {
             };
             
             localPlans[index] = updatedPlan;
-            localStorage.setItem('local_meal_plans', JSON.stringify(localPlans));
+            localStorage.setItem(this.LOCAL_STORAGE_KEY, JSON.stringify(localPlans));
             
             this.clearCache();
-            console.log(`Updated plan ${id} in local storage only due to API error`);
+            console.log(`Plan ${id} actualizado en localStorage debido a error de API`);
             
             return updatedPlan;
           }
         } catch (localErr) {
-          console.error(`Local storage error:`, localErr);
+          console.error(`Error de localStorage:`, localErr);
         }
         
-        throw apiErr; // Re-throw API error
+        throw apiErr; // Reenviar error de API
       }
     } catch (error) {
-      console.error(`General error updating plan ${id}:`, error);
+      console.error(`Error general al actualizar plan ${id}:`, error);
       throw error;
     }
   }
 
   /**
-   * Delete a meal plan
-   * @param {number|string} id - Meal plan ID
-   * @returns {boolean} Success status
+   * Eliminar un plan de comida
+   * @param {number|string} id - ID del plan
+   * @returns {boolean} Estado de éxito
    */
   async delete(id) {
     try {
-      console.log(`Deleting meal plan with ID: ${id}`);
+      if (!id) {
+        throw new Error("ID de plan no proporcionado para eliminar");
+      }
       
-      // If it's a local plan (ID starts with "local-"), just remove from localStorage
+      console.log(`Eliminando plan con ID: ${id}`);
+      
+      // Si es un plan local (ID comienza con "local-"), solo eliminar de localStorage
       if (id.toString().startsWith('local-')) {
-        console.log(`Deleting local plan ${id} from localStorage`);
+        console.log(`Eliminando plan local ${id} de localStorage`);
         const localPlans = this.getLocalPlansOnly();
         const filteredPlans = localPlans.filter(p => p.id.toString() !== id.toString());
-        localStorage.setItem('local_meal_plans', JSON.stringify(filteredPlans));
+        localStorage.setItem(this.LOCAL_STORAGE_KEY, JSON.stringify(filteredPlans));
         this.clearCache();
         return true;
       }
       
-      // Otherwise, try to delete from API
+      // Intentar eliminar desde API
       try {
-        console.log(`Sending DELETE request to API for plan ${id}`);
+        console.log(`Enviando petición DELETE a API para plan ${id}`);
         await axios.delete(`${API_BASE}/meal-plans/${id}`, {
-          timeout: 30000 // Longer timeout
+          timeout: 15000 // Timeout más largo para eliminación
         });
         
-        // Also remove from local storage if exists
+        // También eliminar de localStorage si existe
         try {
           const localPlans = this.getLocalPlansOnly();
           const filteredPlans = localPlans.filter(p => p.id.toString() !== id.toString());
-          localStorage.setItem('local_meal_plans', JSON.stringify(filteredPlans));
+          localStorage.setItem(this.LOCAL_STORAGE_KEY, JSON.stringify(filteredPlans));
         } catch (err) {
-          console.warn(`Could not update local storage after API delete: ${err.message}`);
+          console.warn(`No se pudo actualizar localStorage después de eliminación: ${err.message}`);
         }
         
         this.clearCache();
         return true;
       } catch (apiErr) {
-        console.error(`API error deleting plan ${id}:`, apiErr);
+        console.error(`Error de API al eliminar plan ${id}:`, apiErr);
         
-        // If API fails but it's a valid plan ID (not a local one), 
-        // we still try to remove it from local storage
+        // Si falla API pero es un ID de plan válido (no uno local),
+        // intentar eliminar de localStorage
         try {
           const localPlans = this.getLocalPlansOnly();
           const filteredPlans = localPlans.filter(p => p.id.toString() !== id.toString());
-          localStorage.setItem('local_meal_plans', JSON.stringify(filteredPlans));
+          localStorage.setItem(this.LOCAL_STORAGE_KEY, JSON.stringify(filteredPlans));
           this.clearCache();
-          console.log(`Removed plan ${id} from local storage only due to API error`);
+          console.log(`Plan ${id} eliminado de localStorage debido a error de API`);
           return true;
         } catch (localErr) {
-          console.error(`Local storage error:`, localErr);
-          throw apiErr; // Re-throw API error
+          console.error(`Error de localStorage:`, localErr);
+          throw apiErr; // Reenviar error de API
         }
       }
     } catch (error) {
-      console.error(`General error deleting plan ${id}:`, error);
+      console.error(`Error general al eliminar plan ${id}:`, error);
       throw error;
     }
   }
 
   /**
-   * Clear cached data - useful when debugging
+   * Limpiar caché - útil para depuración
    */
   clearCache() {
     this.cachedPlans = null;
     this.lastFetch = 0;
-    console.log("Cache cleared");
+    console.log("Caché limpiada");
   }
 }
 
-// Create and export the singleton instance
+// Crear y exportar la instancia singleton
 export const MealPlanService = new MealPlanServiceClass();
