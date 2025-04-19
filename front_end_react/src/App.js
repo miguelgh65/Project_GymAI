@@ -1,4 +1,4 @@
-// src/App.js - Add Fitbit callback route
+// src/App.js - Añadir ruta para el detalle del plan de comida
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
@@ -15,7 +15,8 @@ import TodayRoutine from './components/TodayRoutine';
 import Chatbot from './components/Chatbot';
 import ExerciseForm from './components/ExerciseForm';
 import NutritionPage from './components/nutrition/NutritionPage';
-import FitbitCallback from './components/profile/FitbitCallback'; // Import the new component
+import FitbitCallback from './components/profile/FitbitCallback';
+import MealPlanDetail from './components/nutrition/meal-plans/MealPlanDetail'; // Importar el componente
 
 // Services
 import AuthService from './services/AuthService';
@@ -91,6 +92,12 @@ function App() {
               <Route path="/chatbot" element={user ? <Chatbot user={user} /> : <Navigate to="/login" />} />
               
               <Route path="/nutrition" element={user ? <NutritionPage user={user} /> : <Navigate to="/login" />} />
+              
+              {/* Añadir ruta para el detalle del plan de comida */}
+              <Route 
+                path="/nutrition/meal-plans/:planId" 
+                element={user ? <MealPlanDetail /> : <Navigate to="/login" />} 
+              />
               
               {/* Add the Fitbit callback route - this needs to be public */}
               <Route path="/fitbit-callback" element={<FitbitCallback />} />
