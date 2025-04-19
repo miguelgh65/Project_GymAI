@@ -1,72 +1,30 @@
 # back_end/gym/routes/nutrition/calculator.py
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel
-from enum import Enum
-from typing import Optional, List, Dict, Union
 import math
 import logging
 
 # Importaciones
 from back_end.gym.middlewares import get_current_user
 from back_end.gym.config import DB_CONFIG
+from back_end.gym.utils.json_utils import CustomJSONResponse
 import psycopg2
+
+# Importar esquemas desde el nuevo archivo de modelos
+from back_end.gym.models.calculator_schemas import (
+    MacroCalculatorInput,
+    MacroCalculatorResult,
+    Units,
+    Formula,
+    ActivityLevel,
+    Gender,
+    Goal,
+    GoalIntensity
+)
 
 # Configurar logger específico para este módulo
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/nutrition", tags=["nutrition"])
-
-# Enums para las diferentes opciones
-class Units(str, Enum):
-    METRIC = "metric"
-    IMPERIAL = "imperial"
-
-class Formula(str, Enum):
-    MIFFLIN_ST_JEOR = "mifflin_st_jeor"
-    HARRIS_BENEDICT = "harris_benedict"
-    WHO = "who"
-    KATCH_MCARDLE = "katch_mcardle"
-
-class ActivityLevel(str, Enum):
-    SEDENTARY = "sedentary"  # 1.2
-    LIGHT = "light"          # 1.375
-    MODERATE = "moderate"    # 1.55
-    ACTIVE = "active"        # 1.725
-    VERY_ACTIVE = "very_active"  # 1.9
-
-class Gender(str, Enum):
-    MALE = "male"
-    FEMALE = "female"
-
-class Goal(str, Enum):
-    MAINTAIN = "maintain"
-    LOSE = "lose"
-    GAIN = "gain"
-
-class GoalIntensity(str, Enum):
-    NORMAL = "normal"    # ±300-500 kcal
-    AGGRESSIVE = "aggressive"  # ±500-1000 kcal
-
-# Modelos de datos
-class MacroCalculatorInput(BaseModel):
-    units: Units
-    formula: Formula
-    gender: Gender
-    age: int
-    height: float  # cm or inches
-    weight: float  # kg or pounds
-    body_fat_percentage: Optional[float] = None
-    activity_level: ActivityLevel
-    goal: Goal
-    goal_intensity: GoalIntensity
-
-class MacroCalculatorResult(BaseModel):
-    bmr: float
-    tdee: float
-    bmi: float
-    goal_calories: int
-    macros: Dict[str, Dict[str, Union[float, int]]]
 
 # Función de cálculo de BMR según diferentes fórmulas
 def calculate_bmr(data: MacroCalculatorInput) -> float:
@@ -315,7 +273,7 @@ async def save_nutrition_profile(user_id, input_data, result_data):
             conn.close()
 
 # Endpoint para obtener el perfil nutricional del usuario
-@router.get("/profile", response_class=JSONResponse)
+@router.get("/profile", response_class=CustomJSONResponse)
 async def get_nutrition_profile(request: Request, user = Depends(get_current_user)):
     if not user:
         raise HTTPException(status_code=401, detail="Usuario no autenticado")
@@ -336,7 +294,7 @@ async def get_nutrition_profile(request: Request, user = Depends(get_current_use
         profile_data = cur.fetchone()
         
         if not profile_data:
-            return JSONResponse(content={"success": True, "profile": None})
+            return CustomJSONResponse(content={"success": True, "profile": None})
         
         # Obtener los nombres de las columnas
         column_names = [desc[0] for desc in cur.description]
@@ -345,6 +303,7 @@ async def get_nutrition_profile(request: Request, user = Depends(get_current_use
         profile = dict(zip(column_names, profile_data))
         
         # Reconstruir el objeto de macros para mantener consistencia con el endpoint de cálculo
+        # CustomJSONResponse se encargará de convertir los decimales a flotantes
         macros = {
             "protein": {
                 "grams": profile['proteins_grams'],  # Ajustado a los nombres reales de columnas
@@ -386,7 +345,8 @@ async def get_nutrition_profile(request: Request, user = Depends(get_current_use
             "updated_at": profile['updated_at']
         }
         
-        return JSONResponse(content={"success": True, "profile": response_data})
+        # CustomJSONResponse se encargará de transformar los tipos problemáticos automáticamente
+        return CustomJSONResponse(content={"success": True, "profile": response_data})
         
     except Exception as e:
         logger.error(f"Error al obtener el perfil nutricional: {str(e)}", exc_info=True)
