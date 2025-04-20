@@ -58,14 +58,14 @@ const ProgressSection = ({
   // Cálculos
   const dayTotals = calculateDayTotals();
   
-  // Calcular el objetivo diario (dividiendo entre 7)
+  // Calcular el objetivo diario (usar valores directamente, sin dividir)
   const getDailyTarget = (value) => {
     // Si no hay valor objetivo, devolver 0
     if (!value) return 0;
     
-    // Convertir a número y dividir entre 7 para obtener objetivo diario
+    // Convertir a número
     const numValue = parseFloat(value) || 0;
-    return Math.round(numValue / 7);
+    return numValue;
   };
   
   // Calcular el porcentaje de progreso

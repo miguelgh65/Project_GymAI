@@ -227,11 +227,7 @@ const NutritionTargets = ({ calories, protein, carbs, fat, profile, onChange }) 
             Grasas {calculatePercentage(fat, protein, carbs, 9, 4, 4)}%
           </Typography>
           <Typography variant="body2" color="text.secondary" mt={1}>
-            Los objetivos se reparten entre los 7 días de la semana. 
-            Objetivo diario: {Math.round(Number(calories) / 7)} kcal, 
-            {Math.round(Number(protein) / 7)}g proteína, 
-            {Math.round(Number(carbs) / 7)}g carbohidratos, 
-            {Math.round(Number(fat) / 7)}g grasas
+            <strong>Estos son valores diarios de objetivo nutricional.</strong>
           </Typography>
         </Box>
       )}

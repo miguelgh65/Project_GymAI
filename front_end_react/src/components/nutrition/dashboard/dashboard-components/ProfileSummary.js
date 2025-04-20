@@ -80,7 +80,7 @@ const ProfileSummary = ({ profile, onRecalculate, onCreatePlan, hasTargets }) =>
                   {macroPercentages.protein}% de calorías
                 </Typography>
                 <Chip 
-                  label={`${Math.round((profile.target_protein_g || 0) / 7)}g/día`}
+                  label={`Diario`}
                   size="small"
                   color="success"
                   sx={{ mt: 1 }}
@@ -98,7 +98,7 @@ const ProfileSummary = ({ profile, onRecalculate, onCreatePlan, hasTargets }) =>
                   {macroPercentages.carbs}% de calorías
                 </Typography>
                 <Chip 
-                  label={`${Math.round((profile.target_carbs_g || 0) / 7)}g/día`}
+                  label={`Diario`}
                   size="small"
                   color="primary"
                   sx={{ mt: 1 }}
@@ -116,7 +116,7 @@ const ProfileSummary = ({ profile, onRecalculate, onCreatePlan, hasTargets }) =>
                   {macroPercentages.fat}% de calorías
                 </Typography>
                 <Chip 
-                  label={`${Math.round((profile.target_fat_g || 0) / 7)}g/día`}
+                  label={`Diario`}
                   size="small"
                   color="warning"
                   sx={{ mt: 1 }}
