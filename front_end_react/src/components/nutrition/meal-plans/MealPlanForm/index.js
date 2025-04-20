@@ -1,17 +1,14 @@
 // src/components/nutrition/meal-plans/MealPlanForm/index.js
-// ****** ARCHIVO CORREGIDO (Añadida importación de Typography) ******
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-// *** CORRECCIÓN: Añadido Typography a la importación de @mui/material ***
 import { Box, Alert, CircularProgress, Button, Typography } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft, faSave } from '@fortawesome/free-solid-svg-icons';
 // Importar date-fns para manejo de fechas
 import { format, parseISO, startOfWeek, addDays, isValid } from 'date-fns';
-// Importar servicios (asegúrate que las rutas son correctas)
-// Verifica que NutritionService exporte estos módulos o impórtalos directamente
-import { MealService, MealPlanService, NutritionCalculator } from '../../../../services/NutritionService'; // Asumiendo que NutritionService agrupa estos
+// Importar servicios
+import { MealService, MealPlanService, NutritionCalculator } from '../../../../services/NutritionService';
 
 // Importar subcomponentes
 import PlanBasicInfo from './PlanBasicInfo';
@@ -19,9 +16,8 @@ import NutritionTargets from './NutritionTargets';
 import DaySelectorTabs from './DaySelectorTabs';
 import MealSelector from './MealSelector';
 import DayMealsList from './DayMealsList';
-// import ProgressSection from './ProgressSection'; // Comentado si no se usa
-// import PlanSummary from './PlanSummary'; // Comentado si no se usa
-import axios from 'axios'; // Importar axios si necesitas verificar el tipo de error
+import ProgressSection from './ProgressSection'; // Importar componente de progreso
+import axios from 'axios';
 
 const MealPlanForm = ({ editId, onSaveSuccess }) => {
   const { planId } = useParams();
@@ -173,6 +169,8 @@ const MealPlanForm = ({ editId, onSaveSuccess }) => {
                 meal_id: item.meal_id,
                 meal_name: item.meal_name || item.meal?.name || 'Comida Desconocida', // Intentar obtener nombre del meal anidado si existe
                 plan_date: plan_date,
+                // IMPORTANTE: Añadir día de la semana para ProgressSection
+                day_of_week: item.day_of_week || 'Lunes', // Valor por defecto si no viene
                 meal_type: item.meal_type?.replace('MealTime.', '') || 'Comida',
                 quantity: item.quantity || 100,
                 unit: item.unit || 'g',
@@ -272,6 +270,7 @@ const MealPlanForm = ({ editId, onSaveSuccess }) => {
       meal_id: meal.id,
       meal_name: meal.name || meal.meal_name || 'Comida Desconocida', // Ser robustos con el nombre
       plan_date: targetDateString,
+      day_of_week: daysOfWeek[activeTab], // IMPORTANTE: Día de la semana para ProgressSection
       meal_type: mealType || 'Comida', // Tipo de comida (Desayuno, Almuerzo...)
       quantity: numQuantity,
       unit: unit || baseUnit, // Usar unidad seleccionada o la base de la comida
@@ -285,7 +284,7 @@ const MealPlanForm = ({ editId, onSaveSuccess }) => {
 
     console.log("[MealPlanForm] Añadiendo item al estado:", newItem);
     setItems(prevItems => [...prevItems, newItem]);
-  }, [activeTab, getActiveDateString]); // Recalcular si cambia la pestaña activa
+  }, [activeTab, getActiveDateString, daysOfWeek]); // Recalcular si cambia la pestaña activa
 
   const handleRemoveMeal = useCallback((itemToRemoveId) => {
       console.log("[MealPlanForm] Eliminando item con ID de estado:", itemToRemoveId);
@@ -327,6 +326,7 @@ const MealPlanForm = ({ editId, onSaveSuccess }) => {
                 meal_type: item.meal_type || 'Comida',
                 quantity: parseFloat(item.quantity) || 0,
                 unit: item.unit || 'g',
+                day_of_week: item.day_of_week, // Importante enviar también el día de la semana
             };
         });
     } catch (validationError) {
@@ -450,7 +450,6 @@ const MealPlanForm = ({ editId, onSaveSuccess }) => {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '300px', p: 5 }}>
         <CircularProgress />
-        {/* *** CORRECCIÓN: Typography estaba indefinido aquí *** */}
         <Typography sx={{ ml: 2 }}>Cargando datos del plan...</Typography>
       </Box>
     );
@@ -487,9 +486,20 @@ const MealPlanForm = ({ editId, onSaveSuccess }) => {
         onChange={(newTab) => setActiveTab(newTab)} // Cambiar la pestaña activa
       />
 
+      {/* Añadir el componente de progreso */}
+      {(targetCalories || targetProtein || targetCarbs || targetFat) && (
+        <ProgressSection
+          targetCalories={targetCalories}
+          targetProtein={targetProtein}
+          targetCarbs={targetCarbs}
+          targetFat={targetFat}
+          items={items}
+          activeDay={daysOfWeek[activeTab]}
+        />
+      )}
+
       {/* Sección de Selección y Lista de Comidas para el día activo */}
       <Box sx={{ mt: 2, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
-          {/* *** CORRECCIÓN: Typography estaba indefinido aquí *** */}
           <Typography variant="h6" gutterBottom>Comidas para {daysOfWeek[activeTab]} ({getActiveDateString()})</Typography>
           <MealSelector
             meals={availableMeals} // Lista de comidas disponibles para añadir
@@ -501,15 +511,7 @@ const MealPlanForm = ({ editId, onSaveSuccess }) => {
             items={getActiveTabItems()} // Mostrar solo las comidas del día activo
             onRemove={handleRemoveMeal}
           />
-          {/* Podrías añadir un resumen de macros para el día activo aquí */}
-          {/* <NutritionSummary items={getActiveTabItems()} /> */}
       </Box>
-
-
-        {/* Componentes comentados si no están listos o no se usan */}
-        {/* <ProgressSection items={items} activeDate={getActiveDateString()} ... /> */}
-        {/* <PlanSummary items={items} ... /> */}
-
 
       {/* Botones de Acción */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
