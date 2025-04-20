@@ -1,106 +1,139 @@
--- ./back_end/gym/init-db.sql (Versión FINAL corregida - 2025-04-20)
+-- PostgreSQL Database Initialization Script
+-- Version: 2025-04-20
 
--- Crear esquemas si no existen
+-- Set configurations
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+-- Create schemas
 CREATE SCHEMA IF NOT EXISTS gym;
-CREATE SCHEMA IF NOT EXISTS nutrition; -- Añadido schema nutrition
+CREATE SCHEMA IF NOT EXISTS nutrition;
 
--- Establecer la ruta de búsqueda para encontrar las tablas
--- Añadido nutrition al search_path, priorizado
-SET search_path TO nutrition, gym, public;
+-- Set ownership (if running as postgres user)
+ALTER SCHEMA gym OWNER TO postgres;
+ALTER SCHEMA nutrition OWNER TO postgres;
 
--- -------------------------------------
--- TABLAS PRINCIPALES (Schema 'gym' o 'public' por defecto)
--- -------------------------------------
+-- Set search path to prioritize our schemas
+SET search_path TO gym, nutrition, public;
 
--- Crear tabla para gestionar usuarios
-CREATE TABLE IF NOT EXISTS users ( -- Asumiendo schema 'gym' o 'public'
+-- GYM SCHEMA TABLES
+
+-- Users table (in gym schema as per actual database)
+CREATE TABLE IF NOT EXISTS gym.users (
     id SERIAL PRIMARY KEY,
     telegram_id VARCHAR(255) UNIQUE,
-    google_id VARCHAR(255) UNIQUE NOT NULL,
+    google_id VARCHAR(255) UNIQUE,
     email VARCHAR(255),
     display_name VARCHAR(255),
     profile_picture VARCHAR(512),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Crear tabla de códigos de vinculación
-CREATE TABLE IF NOT EXISTS link_codes ( -- Asumiendo schema 'gym' o 'public'
-    code VARCHAR(10) PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP WITH TIME ZONE,
-    used BOOLEAN DEFAULT FALSE
-);
-
--- Crear tabla ejercicios
-CREATE TABLE IF NOT EXISTS ejercicios ( -- Asumiendo schema 'gym' o 'public'
+-- Ejercicios table
+CREATE TABLE IF NOT EXISTS gym.ejercicios (
     id SERIAL PRIMARY KEY,
-    fecha TIMESTAMP WITH TIME ZONE,
+    fecha TIMESTAMP WITHOUT TIME ZONE,
     ejercicio VARCHAR(255),
     repeticiones JSONB,
     duracion INTEGER,
-    user_id VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    user_id VARCHAR(255),
+    user_uuid INTEGER REFERENCES gym.users(id)
 );
 
--- Crear tabla de rutinas
-CREATE TABLE IF NOT EXISTS rutinas ( -- Asumiendo schema 'gym' o 'public'
+-- Rutinas table
+CREATE TABLE IF NOT EXISTS gym.rutinas (
     id SERIAL PRIMARY KEY,
     user_id VARCHAR(255) NOT NULL,
+    user_uuid INTEGER REFERENCES gym.users(id),
     dia_semana INTEGER NOT NULL CHECK (dia_semana BETWEEN 1 AND 7),
     ejercicios JSONB,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (user_id, dia_semana)
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (user_id, dia_semana),
+    UNIQUE (user_uuid, dia_semana)
 );
 
--- Tabla para tokens de Fitbit
-CREATE TABLE IF NOT EXISTS fitbit_tokens ( -- Asumiendo schema 'gym' o 'public'
+-- Link codes table
+CREATE TABLE IF NOT EXISTS gym.link_codes (
+    code VARCHAR(10) PRIMARY KEY,
+    user_id INTEGER REFERENCES gym.users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP WITHOUT TIME ZONE,
+    used BOOLEAN DEFAULT FALSE
+);
+
+-- Fitbit tokens table
+CREATE TABLE IF NOT EXISTS gym.fitbit_tokens (
     id SERIAL PRIMARY KEY,
     user_id VARCHAR(255) NOT NULL UNIQUE,
+    user_uuid INTEGER REFERENCES gym.users(id) UNIQUE,
     client_id VARCHAR(255) NOT NULL,
     access_token TEXT NOT NULL,
     refresh_token TEXT NOT NULL,
-    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    expires_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Tabla temporal para autenticación de Fitbit
-CREATE TABLE IF NOT EXISTS fitbit_auth_temp ( -- Asumiendo schema 'gym' o 'public'
+-- Fitbit auth temp table
+CREATE TABLE IF NOT EXISTS gym.fitbit_auth_temp (
     id SERIAL PRIMARY KEY,
-    state VARCHAR(100) UNIQUE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP WITH TIME ZONE NOT NULL
+    user_id VARCHAR(255) NOT NULL,
+    client_id VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    UNIQUE (user_id, client_id)
 );
 
--- -------------------------------------
--- TABLAS DE NUTRICIÓN (Schema 'nutrition')
--- -------------------------------------
+-- NUTRITION SCHEMA TABLES
 
--- Tabla para perfiles nutricionales de usuarios
-CREATE TABLE IF NOT EXISTS nutrition.user_nutrition_profiles (
+-- Ingredients table
+CREATE TABLE IF NOT EXISTS nutrition.ingredients (
     id SERIAL PRIMARY KEY,
-    user_id VARCHAR(255) NOT NULL UNIQUE,
-    sex VARCHAR(10) NOT NULL CHECK (sex IN ('male', 'female', 'other')),
-    age INTEGER NOT NULL CHECK (age > 0),
-    height INTEGER NOT NULL CHECK (height > 0), -- en cm
-    weight DECIMAL(5, 2) NOT NULL CHECK (weight > 0), -- en kg
-    body_fat_percentage DECIMAL(4, 2) CHECK (body_fat_percentage IS NULL OR (body_fat_percentage >= 0 AND body_fat_percentage <= 100)), -- Permitir NULL
-    activity_level VARCHAR(50) NOT NULL,
-    goal VARCHAR(50) NOT NULL,
-    bmr DECIMAL(10, 2),
-    bmi DECIMAL(5, 2),
-    daily_calories DECIMAL(10, 2),
-    proteins_grams DECIMAL(10, 2),
-    carbs_grams DECIMAL(10, 2),
-    fats_grams DECIMAL(10, 2),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    ingredient_name VARCHAR(255) NOT NULL UNIQUE,
+    calories INTEGER NOT NULL,
+    proteins NUMERIC(10,2) NOT NULL,
+    carbohydrates NUMERIC(10,2) NOT NULL,
+    fats NUMERIC(10,2) NOT NULL,
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    is_base BOOLEAN DEFAULT FALSE
 );
 
--- Tabla para planes de dieta (con columnas target/goal)
+-- Meals table
+CREATE TABLE IF NOT EXISTS nutrition.meals (
+    id SERIAL PRIMARY KEY,
+    meal_name VARCHAR(255) NOT NULL,
+    recipe TEXT,
+    ingredients TEXT,
+    calories NUMERIC(10,2) NOT NULL,
+    proteins NUMERIC(10,2) NOT NULL,
+    carbohydrates NUMERIC(10,2) NOT NULL,
+    fats NUMERIC(10,2) NOT NULL,
+    image_url VARCHAR(512),
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Meal ingredients table
+CREATE TABLE IF NOT EXISTS nutrition.meal_ingredients (
+    id SERIAL PRIMARY KEY,
+    meal_id INTEGER NOT NULL REFERENCES nutrition.meals(id) ON DELETE CASCADE,
+    ingredient_id INTEGER NOT NULL REFERENCES nutrition.ingredients(id) ON DELETE CASCADE,
+    quantity NUMERIC(10,2) DEFAULT 0 NOT NULL CHECK (quantity >= 0),
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(meal_id, ingredient_id)
+);
+
+-- Meal plans table
 CREATE TABLE IF NOT EXISTS nutrition.meal_plans (
     id SERIAL PRIMARY KEY,
     user_id VARCHAR(255) NOT NULL,
@@ -109,118 +142,88 @@ CREATE TABLE IF NOT EXISTS nutrition.meal_plans (
     end_date DATE,
     description TEXT,
     is_active BOOLEAN DEFAULT TRUE,
-    target_calories INTEGER DEFAULT NULL CHECK (target_calories IS NULL OR target_calories >= 0),
-    target_protein_g DECIMAL(10, 2) DEFAULT NULL CHECK (target_protein_g IS NULL OR target_protein_g >= 0),
-    target_carbs_g DECIMAL(10, 2) DEFAULT NULL CHECK (target_carbs_g IS NULL OR target_carbs_g >= 0),
-    target_fat_g DECIMAL(10, 2) DEFAULT NULL CHECK (target_fat_g IS NULL OR target_fat_g >= 0),
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    target_calories INTEGER,
+    target_protein_g NUMERIC(10,2) DEFAULT NULL,
+    target_carbs_g NUMERIC(10,2) DEFAULT NULL,
+    target_fat_g NUMERIC(10,2) DEFAULT NULL,
     goal VARCHAR(50) DEFAULT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    CHECK (target_calories IS NULL OR target_calories >= 0),
+    CHECK (target_protein_g IS NULL OR target_protein_g >= 0),
+    CHECK (target_carbs_g IS NULL OR target_carbs_g >= 0),
+    CHECK (target_fat_g IS NULL OR target_fat_g >= 0)
 );
 
--- Tabla de ingredientes
-CREATE TABLE IF NOT EXISTS nutrition.ingredients (
-    id SERIAL PRIMARY KEY,
-    ingredient_name VARCHAR(255) NOT NULL UNIQUE,
-    calories INTEGER DEFAULT 0 CHECK (calories >= 0),
-    proteins DECIMAL(10, 2) DEFAULT 0 CHECK (proteins >= 0),
-    carbohydrates DECIMAL(10, 2) DEFAULT 0 CHECK (carbohydrates >= 0),
-    fats DECIMAL(10, 2) DEFAULT 0 CHECK (fats >= 0),
-    preparation VARCHAR(50) DEFAULT 'raw',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- *** IMPORTAR DATOS PARA ingredients ***
-\copy nutrition.ingredients (ingredient_name, calories, proteins, carbohydrates, fats) FROM '/docker-entrypoint-initdb.d/ingredients_macros.csv' WITH (FORMAT CSV, HEADER true, DELIMITER ',');
-
-
--- Tabla de comidas
-CREATE TABLE IF NOT EXISTS nutrition.meals (
-    id SERIAL PRIMARY KEY,
-    meal_name VARCHAR(255) NOT NULL,
-    recipe TEXT,
-    ingredients TEXT,
-    calories DECIMAL(10, 2) DEFAULT 0 CHECK (calories >= 0),
-    proteins DECIMAL(10, 2) DEFAULT 0 CHECK (proteins >= 0),
-    carbohydrates DECIMAL(10, 2) DEFAULT 0 CHECK (carbohydrates >= 0),
-    fats DECIMAL(10, 2) DEFAULT 0 CHECK (fats >= 0),
-    image_url VARCHAR(512),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- *** IMPORTAR DATOS PARA meals ***
-\copy nutrition.meals (meal_name, recipe, ingredients, calories, proteins, carbohydrates, fats, image_url) FROM '/docker-entrypoint-initdb.d/list_meals.csv' WITH (FORMAT CSV, HEADER true, DELIMITER ',');
-
--- Tabla para relacionar comidas con ingredientes específicos
-CREATE TABLE IF NOT EXISTS nutrition.meal_ingredients (
-   id SERIAL PRIMARY KEY,
-   meal_id INT NOT NULL REFERENCES nutrition.meals(id) ON DELETE CASCADE,
-   ingredient_id INT NOT NULL REFERENCES nutrition.ingredients(id) ON DELETE CASCADE,
-   quantity DECIMAL(10, 2) NOT NULL DEFAULT 0 CHECK (quantity >= 0),
-   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-   UNIQUE(meal_id, ingredient_id)
-);
-
-
--- Tabla para elementos específicos del plan (comidas asignadas)
--- >>> VERSIÓN FINALMENTE CORREGIDA <<<
+-- Meal plan items table
 CREATE TABLE IF NOT EXISTS nutrition.meal_plan_items (
     id SERIAL PRIMARY KEY,
-    meal_plan_id INTEGER REFERENCES nutrition.meal_plans(id) ON DELETE CASCADE NOT NULL,
-    meal_id INTEGER REFERENCES nutrition.meals(id) ON DELETE SET NULL,
-    plan_date DATE, -- Columna añadida
-    day_of_week INTEGER CHECK (day_of_week BETWEEN 1 AND 7), -- Mantener si aún es útil
-    meal_type VARCHAR(50), -- Columna renombrada
-    quantity DECIMAL(10, 2) DEFAULT 100.0 CHECK (quantity > 0),
-    unit VARCHAR(20) DEFAULT 'g', -- Columna añadida
+    meal_plan_id INTEGER REFERENCES nutrition.meal_plans(id) ON DELETE CASCADE,
+    meal_id INTEGER REFERENCES nutrition.meals(id),
+    day_of_week INTEGER,
+    meal_type VARCHAR(50),
+    quantity NUMERIC(10,2) DEFAULT 1.0,
     notes TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    plan_date DATE,
+    unit VARCHAR(20) DEFAULT 'g'
 );
--- >>> Fin Definición Corregida <<<
 
--- Tabla para seguimiento diario de nutrición (new)
--- >>> TABLA AÑADIDA PARA SEGUIMIENTO DIARIO 2025-04-20 <<<
+-- Daily tracking table
 CREATE TABLE IF NOT EXISTS nutrition.daily_tracking (
     id SERIAL PRIMARY KEY,
     user_id VARCHAR(255) NOT NULL,
     tracking_date DATE NOT NULL,
-    completed_meals JSONB, -- Store as JSON: {"Desayuno": true, "Almuerzo": true, etc.}
+    completed_meals JSONB,
     calorie_note TEXT,
-    actual_calories INTEGER, -- Can be manually entered or calculated from completed meals
-    excess_deficit INTEGER, -- Calculated as actual_calories - target_calories
+    actual_calories INTEGER,
+    excess_deficit INTEGER,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, tracking_date)
 );
--- >>> Fin Tabla Seguimiento Diario <<<
 
--- -------------------------------------
--- ÍNDICES FINALES (Adaptados)
--- -------------------------------------
--- Índices para users (asumiendo schema 'gym' o 'public')
-CREATE INDEX IF NOT EXISTS idx_users_telegram_id ON users(telegram_id);
-CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+-- User nutrition profiles table
+CREATE TABLE IF NOT EXISTS nutrition.user_nutrition_profiles (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL UNIQUE,
+    sex VARCHAR(10) NOT NULL CHECK (sex IN ('male', 'female', 'other')),
+    age INTEGER NOT NULL CHECK (age > 0),
+    height INTEGER NOT NULL CHECK (height > 0),
+    weight NUMERIC(10,2) NOT NULL CHECK (weight > 0),
+    body_fat_percentage NUMERIC(5,2) CHECK (body_fat_percentage IS NULL OR (body_fat_percentage >= 0 AND body_fat_percentage <= 100)),
+    activity_level VARCHAR(50) NOT NULL,
+    goal VARCHAR(50) NOT NULL,
+    bmr NUMERIC(10,2) NOT NULL,
+    bmi NUMERIC(5,2) NOT NULL,
+    daily_calories NUMERIC(10,2) NOT NULL,
+    proteins_grams NUMERIC(10,2) NOT NULL,
+    carbs_grams NUMERIC(10,2) NOT NULL,
+    fats_grams NUMERIC(10,2) NOT NULL,
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    formula VARCHAR(50),
+    goal_intensity VARCHAR(50),
+    units VARCHAR(10),
+    tdee NUMERIC(10,2)
+);
 
--- Índices para tablas dependientes (usando user_id VARCHAR)
--- Ajustar schema si es necesario
-CREATE INDEX IF NOT EXISTS idx_ejercicios_user_id ON ejercicios(user_id);
-CREATE INDEX IF NOT EXISTS idx_rutinas_user_id ON rutinas(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_nutrition_profiles_user_id ON nutrition.user_nutrition_profiles(user_id); -- Ya es UNIQUE
+-- Import data from CSV files
+-- NOTE: Adjust column names if necessary to match your actual CSV files
+\copy nutrition.ingredients (ingredient_name, calories, proteins, carbohydrates, fats) FROM '/docker-entrypoint-initdb.d/ingredients_macros.csv' WITH (FORMAT CSV, HEADER true, DELIMITER ',');
+\copy nutrition.meals (meal_name, recipe, ingredients, calories, proteins, carbohydrates, fats, image_url) FROM '/docker-entrypoint-initdb.d/list_meals.csv' WITH (FORMAT CSV, HEADER true, DELIMITER ',');
+
+-- Create indexes for performance
+-- Gym schema indexes
+CREATE INDEX IF NOT EXISTS idx_users_telegram_id ON gym.users(telegram_id);
+CREATE INDEX IF NOT EXISTS idx_users_google_id ON gym.users(google_id);
+CREATE INDEX IF NOT EXISTS idx_fitbit_user_id ON gym.fitbit_tokens(user_id);
+
+-- Nutrition schema indexes
 CREATE INDEX IF NOT EXISTS idx_meal_plans_user_id ON nutrition.meal_plans(user_id);
-
--- Índices para tablas de nutrición (Schema 'nutrition')
-CREATE INDEX IF NOT EXISTS idx_ingredients_name ON nutrition.ingredients(ingredient_name);
-CREATE INDEX IF NOT EXISTS idx_meals_name ON nutrition.meals(meal_name);
 CREATE INDEX IF NOT EXISTS idx_meal_plan_items_meal_plan_id ON nutrition.meal_plan_items(meal_plan_id);
-CREATE INDEX IF NOT EXISTS idx_meal_plan_items_meal_id ON nutrition.meal_plan_items(meal_id);
-CREATE INDEX IF NOT EXISTS idx_meal_plan_items_plan_date ON nutrition.meal_plan_items(plan_date);
-
--- Índices para la tabla de seguimiento diario (new)
 CREATE INDEX IF NOT EXISTS idx_daily_tracking_user_date ON nutrition.daily_tracking(user_id, tracking_date);
 CREATE INDEX IF NOT EXISTS idx_daily_tracking_date ON nutrition.daily_tracking(tracking_date DESC);
 
--- Fin del script
+-- End of initialization script

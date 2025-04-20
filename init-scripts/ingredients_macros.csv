@@ -1,4 +1,4 @@
-Ingredient,Calories,Proteins,Carbohydrates,Fats
+ingredient_name,Calories,Proteins,Carbohydrates,Fats
 Spaghetti,3,0.13,0.747,0.0151
 Pilchards,0,0.0,0.0,0.0
 Black Olives,1,0.0084,0.0604,0.109

@@ -8,7 +8,9 @@ services:
       POSTGRES_DB: ${DB_NAME}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./back_end/gym/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+      - ./init-scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+      - ./init-scripts/ingredients_macros.csv:/docker-entrypoint-initdb.d/ingredients_macros.csv
+      - ./init-scripts/list_meals.csv:/docker-entrypoint-initdb.d/list_meals.csv
     ports:
       - "5438:5432"
     restart: unless-stopped
