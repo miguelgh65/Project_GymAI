@@ -12329,3 +12329,188 @@ requests.exceptions.ConnectionError: ('Connection aborted.', RemoteDisconnected(
 2025-04-20 01:01:30,127 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getMe HTTP/1.1" 200 268
 2025-04-20 01:01:30,635 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
 2025-04-20 01:02:01,118 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 12:15:50,893 - INFO - Iniciando bot con token que comienza con 7808656374
+2025-04-20 12:15:50,895 - INFO - Iniciando bot polling
+2025-04-20 12:15:50,896 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-20 12:15:51,309 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getMe HTTP/1.1" 200 268
+2025-04-20 12:15:51,816 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-20 12:16:22,659 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 12:16:53,468 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 12:17:24,466 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 12:17:55,107 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 12:18:26,131 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 12:18:57,104 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 12:23:22,225 - INFO - Iniciando bot con token que comienza con 7808656374
+2025-04-20 12:23:22,230 - INFO - Iniciando bot polling
+2025-04-20 12:23:22,232 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-20 12:23:23,280 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getMe HTTP/1.1" 200 268
+2025-04-20 12:23:23,784 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-20 12:23:45,928 - ERROR - Error inesperado en bot polling
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 534, in _make_request
+    response = conn.getresponse()
+               ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 516, in getresponse
+    httplib_response = super().getresponse()
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/http/client.py", line 1395, in getresponse
+    response.begin()
+  File "/usr/local/lib/python3.11/http/client.py", line 325, in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/http/client.py", line 294, in _read_status
+    raise RemoteDisconnected("Remote end closed connection without"
+http.client.RemoteDisconnected: Remote end closed connection without response
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 667, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/retry.py", line 474, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/util/util.py", line 38, in reraise
+    raise value.with_traceback(tb)
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connectionpool.py", line 534, in _make_request
+    response = conn.getresponse()
+               ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/urllib3/connection.py", line 516, in getresponse
+    httplib_response = super().getresponse()
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/http/client.py", line 1395, in getresponse
+    response.begin()
+  File "/usr/local/lib/python3.11/http/client.py", line 325, in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/http/client.py", line 294, in _read_status
+    raise RemoteDisconnected("Remote end closed connection without"
+urllib3.exceptions.ProtocolError: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/telegram/gym/main.py", line 79, in start_bot
+    bot.polling(
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1198, in polling
+    self.__threaded_polling(non_stop=non_stop, interval=interval, timeout=timeout, long_polling_timeout=long_polling_timeout,
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1273, in __threaded_polling
+    raise e
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 1234, in __threaded_polling
+    polling_thread.raise_exceptions()
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 111, in raise_exceptions
+    raise self.exception_info
+  File "/usr/local/lib/python3.11/site-packages/telebot/util.py", line 93, in run
+    task(*args, **kwargs)
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 688, in __retrieve_updates
+    updates = self.get_updates(offset=(self.last_update_id + 1),
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/__init__.py", line 660, in get_updates
+    json_updates = apihelper.get_updates(
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 332, in get_updates
+    return _make_request(token, method_url, params=payload)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/telebot/apihelper.py", line 162, in _make_request
+    result = _get_req_session().request(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 682, in send
+    raise ConnectionError(err, request=request)
+requests.exceptions.ConnectionError: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+2025-04-20 12:23:45,937 - WARNING - Reintento 1/10 en 5 segundos...
+2025-04-20 12:35:47,724 - INFO - Iniciando bot polling
+2025-04-20 12:35:47,214 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-20 12:36:17,696 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 12:36:48,294 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 12:37:19,225 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 12:37:50,156 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 12:38:21,029 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 12:38:51,739 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 12:39:22,485 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 12:39:53,352 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 12:40:11,563 - INFO - Iniciando bot con token que comienza con 7808656374
+2025-04-20 12:40:11,564 - INFO - Iniciando bot polling
+2025-04-20 12:40:11,566 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-20 12:40:12,452 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getMe HTTP/1.1" 200 268
+2025-04-20 12:40:12,969 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-20 12:43:25,757 - INFO - Iniciando bot con token que comienza con 7808656374
+2025-04-20 12:43:25,759 - INFO - Iniciando bot polling
+2025-04-20 12:43:25,762 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-20 12:43:26,142 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getMe HTTP/1.1" 200 268
+2025-04-20 12:43:26,644 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-20 12:43:57,354 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 12:44:28,068 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 12:44:58,729 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 12:45:29,887 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 12:46:00,740 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 12:56:56,046 - INFO - Iniciando bot con token que comienza con 7808656374
+2025-04-20 12:56:56,048 - INFO - Iniciando bot polling
+2025-04-20 12:56:56,063 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-20 12:56:57,209 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getMe HTTP/1.1" 200 268
+2025-04-20 12:56:57,716 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-20 12:57:29,682 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 12:58:00,503 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 12:58:31,371 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 12:59:00,420 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 12:59:31,176 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 13:00:02,081 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 13:00:32,748 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 13:01:03,802 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 13:01:34,561 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 13:04:42,215 - INFO - Iniciando bot con token que comienza con 7808656374
+2025-04-20 13:04:42,217 - INFO - Iniciando bot polling
+2025-04-20 13:04:42,222 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-20 13:04:42,980 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getMe HTTP/1.1" 200 268
+2025-04-20 13:04:43,487 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-20 13:05:14,269 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 13:05:45,038 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 13:06:15,756 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 13:06:46,503 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 13:07:17,347 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 13:07:48,071 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 13:08:18,808 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 13:08:49,849 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 13:09:20,496 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 13:09:51,385 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 13:10:21,676 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 13:10:51,480 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 13:11:22,613 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 13:11:53,565 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 13:12:24,553 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 13:12:55,249 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 13:13:26,203 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 13:16:41,414 - INFO - Iniciando bot con token que comienza con 7808656374
+2025-04-20 13:16:41,415 - INFO - Iniciando bot polling
+2025-04-20 13:16:41,419 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-20 13:16:41,910 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getMe HTTP/1.1" 200 268
+2025-04-20 13:16:42,427 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-20 13:17:13,558 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 13:17:44,200 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 13:18:15,199 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 13:18:45,880 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 13:19:16,666 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 13:19:47,546 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 13:20:16,658 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 13:20:47,472 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23
+2025-04-20 13:39:56,513 - INFO - Iniciando bot con token que comienza con 7808656374
+2025-04-20 13:39:56,514 - INFO - Iniciando bot polling
+2025-04-20 13:39:56,517 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-20 13:39:56,900 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getMe HTTP/1.1" 200 268
+2025-04-20 13:39:57,404 - DEBUG - Starting new HTTPS connection (1): api.telegram.org:443
+2025-04-20 13:40:28,501 - DEBUG - https://api.telegram.org:443 "GET /bot7808656374:AAFOoyBeqCnNAamCvhZe6drlN6zJPcwtWe0/getUpdates?offset=1&timeout=30 HTTP/1.1" 200 23

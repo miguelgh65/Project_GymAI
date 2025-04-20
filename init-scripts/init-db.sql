@@ -1,4 +1,4 @@
--- ./back_end/gym/init-db.sql (Versión FINAL corregida - 2025-04-18)
+-- ./back_end/gym/init-db.sql (Versión FINAL corregida - 2025-04-20)
 
 -- Crear esquemas si no existen
 CREATE SCHEMA IF NOT EXISTS gym;
@@ -181,6 +181,22 @@ CREATE TABLE IF NOT EXISTS nutrition.meal_plan_items (
 );
 -- >>> Fin Definición Corregida <<<
 
+-- Tabla para seguimiento diario de nutrición (new)
+-- >>> TABLA AÑADIDA PARA SEGUIMIENTO DIARIO 2025-04-20 <<<
+CREATE TABLE IF NOT EXISTS nutrition.daily_tracking (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL,
+    tracking_date DATE NOT NULL,
+    completed_meals JSONB, -- Store as JSON: {"Desayuno": true, "Almuerzo": true, etc.}
+    calorie_note TEXT,
+    actual_calories INTEGER, -- Can be manually entered or calculated from completed meals
+    excess_deficit INTEGER, -- Calculated as actual_calories - target_calories
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, tracking_date)
+);
+-- >>> Fin Tabla Seguimiento Diario <<<
+
 -- -------------------------------------
 -- ÍNDICES FINALES (Adaptados)
 -- -------------------------------------
@@ -202,5 +218,9 @@ CREATE INDEX IF NOT EXISTS idx_meals_name ON nutrition.meals(meal_name);
 CREATE INDEX IF NOT EXISTS idx_meal_plan_items_meal_plan_id ON nutrition.meal_plan_items(meal_plan_id);
 CREATE INDEX IF NOT EXISTS idx_meal_plan_items_meal_id ON nutrition.meal_plan_items(meal_id);
 CREATE INDEX IF NOT EXISTS idx_meal_plan_items_plan_date ON nutrition.meal_plan_items(plan_date);
+
+-- Índices para la tabla de seguimiento diario (new)
+CREATE INDEX IF NOT EXISTS idx_daily_tracking_user_date ON nutrition.daily_tracking(user_id, tracking_date);
+CREATE INDEX IF NOT EXISTS idx_daily_tracking_date ON nutrition.daily_tracking(tracking_date DESC);
 
 -- Fin del script

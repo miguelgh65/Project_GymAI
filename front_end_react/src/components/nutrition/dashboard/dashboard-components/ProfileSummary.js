@@ -13,10 +13,10 @@ const ProfileSummary = ({ profile, onRecalculate, onCreatePlan, hasTargets }) =>
     const calculateMacroPercentages = () => {
         if (!profile) return { protein: 0, carbs: 0, fat: 0 };
         
-        // Asegurar que todos son números
-        const proteinGrams = Number(profile.target_protein_g) || 0;
-        const carbsGrams = Number(profile.target_carbs_g) || 0;
-        const fatGrams = Number(profile.target_fat_g) || 0;
+        // Asegurar que todos son números y tienen valores positivos
+        const proteinGrams = Math.max(0, Number(profile.target_protein_g) || 0);
+        const carbsGrams = Math.max(0, Number(profile.target_carbs_g) || 0);
+        const fatGrams = Math.max(0, Number(profile.target_fat_g) || 0);
         
         console.log("Valores para cálculo de porcentajes:", {
           proteinGrams,
@@ -80,7 +80,7 @@ const ProfileSummary = ({ profile, onRecalculate, onCreatePlan, hasTargets }) =>
                   {macroPercentages.protein}% de calorías
                 </Typography>
                 <Chip 
-                  label={`${Math.round((profile.target_protein_g || 0) / 7)}g/día`}
+                  label={`${Math.round((profile.target_protein_g || 0) / 7)}g/comida`}
                   size="small"
                   color="success"
                   sx={{ mt: 1 }}
@@ -98,7 +98,7 @@ const ProfileSummary = ({ profile, onRecalculate, onCreatePlan, hasTargets }) =>
                   {macroPercentages.carbs}% de calorías
                 </Typography>
                 <Chip 
-                  label={`${Math.round((profile.target_carbs_g || 0) / 7)}g/día`}
+                  label={`${Math.round((profile.target_carbs_g || 0) / 7)}g/comida`}
                   size="small"
                   color="primary"
                   sx={{ mt: 1 }}
@@ -116,7 +116,7 @@ const ProfileSummary = ({ profile, onRecalculate, onCreatePlan, hasTargets }) =>
                   {macroPercentages.fat}% de calorías
                 </Typography>
                 <Chip 
-                  label={`${Math.round((profile.target_fat_g || 0) / 7)}g/día`}
+                  label={`${Math.round((profile.target_fat_g || 0) / 7)}g/comida`}
                   size="small"
                   color="warning"
                   sx={{ mt: 1 }}

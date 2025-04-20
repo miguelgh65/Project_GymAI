@@ -23,62 +23,81 @@ const NutritionDashboard = ({ user }) => {
     loadActivePlans();
   }, []);
 
-  // En el método loadProfile del componente NutritionDashboard.js
-const loadProfile = async () => {
-  try {
-    setLoading(true);
-    console.log("Intentando cargar perfil nutricional...");
-    const profileData = await NutritionCalculator.getProfile();
-    console.log("Datos brutos del perfil:", profileData);
-    
-    if (profileData) {
-      // Extraer directamente los valores específicos de la base de datos
-      // Imprimimos todos los nombres de campo para depuración
-      console.log("Nombres de campo disponibles:", Object.keys(profileData));
+  // Función corregida para cargar correctamente los macros
+  const loadProfile = async () => {
+    try {
+      setLoading(true);
+      console.log("Intentando cargar perfil nutricional...");
+      const response = await NutritionCalculator.getProfile();
+      console.log("Respuesta completa del perfil:", response);
       
-      // Extraer con más detalle los valores que necesitamos
-      const goal_calories = profileData.daily_calories !== undefined ? 
-        Number(profileData.daily_calories) : profileData.goal_calories !== undefined ? 
-        Number(profileData.goal_calories) : 0;
+      // Verificar si tenemos la respuesta dentro de un objeto 'profile'
+      const profileData = response.profile || response;
       
-      const target_protein_g = profileData.proteins_grams !== undefined ? 
-        Number(profileData.proteins_grams) : profileData.target_protein_g !== undefined ? 
-        Number(profileData.target_protein_g) : 0;
-      
-      const target_carbs_g = profileData.carbs_grams !== undefined ? 
-        Number(profileData.carbs_grams) : profileData.target_carbs_g !== undefined ? 
-        Number(profileData.target_carbs_g) : 0;
-      
-      const target_fat_g = profileData.fats_grams !== undefined ? 
-        Number(profileData.fats_grams) : profileData.target_fat_g !== undefined ? 
-        Number(profileData.target_fat_g) : 0;
-      
-      console.log("Valores extraídos del perfil:", {
-        goal_calories,
-        target_protein_g, 
-        target_carbs_g,
-        target_fat_g
-      });
-      
-      // Normalizar nombres de campos para compatibilidad
-      const normalizedProfile = {
-        ...profileData,
-        goal_calories,
-        target_protein_g,
-        target_carbs_g, 
-        target_fat_g
-      };
-      
-      console.log("Perfil normalizado:", normalizedProfile);
-      setProfile(normalizedProfile);
+      if (profileData) {
+        console.log("Datos del perfil:", profileData);
+        console.log("Campos disponibles:", Object.keys(profileData));
+        
+        // Crear objeto normalizado
+        let normalizedProfile = { ...profileData };
+        
+        // 1. Extraer macros del objeto anidado si existe
+        if (profileData.macros) {
+          console.log("Macros disponibles en formato anidado:", profileData.macros);
+          
+          // Extraer proteínas
+          if (profileData.macros.protein && profileData.macros.protein.grams !== undefined) {
+            normalizedProfile.target_protein_g = Number(profileData.macros.protein.grams);
+          }
+          
+          // Extraer carbohidratos
+          if (profileData.macros.carbs && profileData.macros.carbs.grams !== undefined) {
+            normalizedProfile.target_carbs_g = Number(profileData.macros.carbs.grams);
+          }
+          
+          // Extraer grasas
+          if (profileData.macros.fat && profileData.macros.fat.grams !== undefined) {
+            normalizedProfile.target_fat_g = Number(profileData.macros.fat.grams);
+          }
+        }
+        
+        // 2. Si no se encontraron macros anidados o son 0, intentar con campos directos
+        if (!normalizedProfile.target_protein_g) {
+          normalizedProfile.target_protein_g = Number(profileData.proteins_grams || profileData.target_protein_g || 0);
+        }
+        
+        if (!normalizedProfile.target_carbs_g) {
+          normalizedProfile.target_carbs_g = Number(profileData.carbs_grams || profileData.target_carbs_g || 0);
+        }
+        
+        if (!normalizedProfile.target_fat_g) {
+          normalizedProfile.target_fat_g = Number(profileData.fats_grams || profileData.target_fat_g || 0);
+        }
+        
+        // Extraer calorías - probar varios posibles nombres de campo
+        normalizedProfile.goal_calories = Number(
+          profileData.goal_calories || 
+          profileData.daily_calories || 
+          0
+        );
+        
+        console.log("Valores de macros extraídos:", {
+          goal_calories: normalizedProfile.goal_calories,
+          target_protein_g: normalizedProfile.target_protein_g,
+          target_carbs_g: normalizedProfile.target_carbs_g,
+          target_fat_g: normalizedProfile.target_fat_g
+        });
+        
+        console.log("Perfil normalizado final:", normalizedProfile);
+        setProfile(normalizedProfile);
+      }
+    } catch (err) {
+      console.error("Error al cargar perfil nutricional:", err);
+      setError("No se pudo cargar tu perfil nutricional.");
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    console.error("Error al cargar perfil nutricional:", err);
-    setError("No se pudo cargar tu perfil nutricional.");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const loadActivePlans = async () => {
     try {
@@ -115,12 +134,13 @@ const loadProfile = async () => {
   };
 
   const hasProfile = profile !== null;
-  // Cambiar la condición hasTargets para ser más flexible
-const hasTargets = hasProfile && 
-profile.goal_calories !== undefined && profile.goal_calories !== null &&
-profile.target_protein_g !== undefined && profile.target_protein_g !== null &&
-profile.target_carbs_g !== undefined && profile.target_carbs_g !== null &&
-profile.target_fat_g !== undefined && profile.target_fat_g !== null;
+  
+  // Verificar que todos los objetivos nutricionales existen y son mayores que 0
+  const hasTargets = hasProfile && 
+    profile.goal_calories > 0 &&
+    profile.target_protein_g > 0 &&
+    profile.target_carbs_g > 0 &&
+    profile.target_fat_g > 0;
   
   if (loading) {
     return (
