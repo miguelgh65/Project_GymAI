@@ -1,9 +1,9 @@
 # back_end/gym/models/calculator_schemas.py
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, validator
 from enum import Enum
-from typing import Optional, Dict, Union
+from typing import Optional, List, Dict, Union, Any
+from datetime import datetime, date
 
-# Enums para las diferentes opciones
 class Units(str, Enum):
     METRIC = "metric"
     IMPERIAL = "imperial"
@@ -34,7 +34,6 @@ class GoalIntensity(str, Enum):
     NORMAL = "normal"    # ±300-500 kcal
     AGGRESSIVE = "aggressive"  # ±500-1000 kcal
 
-# Modelos de datos
 class MacroCalculatorInput(BaseModel):
     units: Units
     formula: Formula
