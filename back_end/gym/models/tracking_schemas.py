@@ -1,4 +1,5 @@
 # back_end/gym/models/tracking_schemas.py
+# Defines the Pydantic models for daily tracking data
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 from datetime import date, datetime
@@ -19,6 +20,9 @@ class DailyTrackingCreate(BaseModel):
     calorie_note: Optional[str] = None
     actual_calories: Optional[int] = None
     excess_deficit: Optional[int] = None
+    # Note: actual_protein is missing here, which might be an oversight
+    # If you intend to *send* protein data from the frontend,
+    # you should add: actual_protein: Optional[int] = None
 
 class DailyTrackingResponse(BaseModel):
     """Modelo para respuesta de seguimiento diario."""
@@ -28,6 +32,7 @@ class DailyTrackingResponse(BaseModel):
     completed_meals: Dict[str, bool]
     calorie_note: Optional[str] = None
     actual_calories: Optional[int] = None
+    actual_protein: Optional[int] = None # Included here for responses
     excess_deficit: Optional[int] = None
     created_at: datetime
     updated_at: datetime
@@ -46,3 +51,10 @@ class WeeklyTrackingSummary(BaseModel):
             "Cena": 0
         }
     )
+    # Fields potentially used by calculate_weekly_summary service function
+    planned_calories: Optional[float] = None
+    consumed_calories: Optional[float] = None
+    completion_percentage: Optional[float] = None
+    planned_protein: Optional[float] = None
+    consumed_protein: Optional[float] = None
+    protein_completion_percentage: Optional[float] = None

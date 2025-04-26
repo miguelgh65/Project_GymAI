@@ -3,16 +3,26 @@ import React, { useState, useEffect } from 'react';
 import { 
   Box, Typography, Card, CardContent, Grid, 
   Paper, TextField, Button, CircularProgress, Alert,
-  Chip
+  Chip, Divider, Tooltip, IconButton
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
-  faCheckCircle, faSave, faSyncAlt
+  faCheckCircle, faSave, faSyncAlt,
+  faEdit, faTimes, faInfoCircle, faCalculator
 } from '@fortawesome/free-solid-svg-icons';
 import { NutritionCalculator } from '../../../../services/NutritionService';
 import TrackingService from '../../../../services/nutrition/TrackingService';
 
 const DailyTracking = () => {
+  // Valores predeterminados para cada tipo de comida
+  const mealDefaults = {
+    Desayuno: { calories: 350, protein: 20 },
+    Almuerzo: { calories: 250, protein: 15 },
+    Comida: { calories: 550, protein: 30 },
+    Merienda: { calories: 150, protein: 10 },
+    Cena: { calories: 400, protein: 25 }
+  };
+  
   const [completedMeals, setCompletedMeals] = useState({
     Desayuno: false,
     Almuerzo: false, 
@@ -21,7 +31,10 @@ const DailyTracking = () => {
     Cena: false
   });
   
+  // Estados para las calorías y proteínas
   const [actualCalories, setActualCalories] = useState('');
+  const [actualProtein, setActualProtein] = useState('');
+  const [isManualEntry, setIsManualEntry] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -70,7 +83,15 @@ const DailyTracking = () => {
             Merienda: false,
             Cena: false
           });
-          setActualCalories(trackingData.actual_calories || '');
+          
+          if (trackingData.actual_calories) {
+            setActualCalories(trackingData.actual_calories.toString());
+            setIsManualEntry(true); // Si ya tiene valores, asumir entrada manual
+          }
+          
+          if (trackingData.actual_protein) {
+            setActualProtein(trackingData.actual_protein.toString());
+          }
         } else {
           console.log("No tracking data found for today");
           // Load from localStorage as fallback
@@ -97,6 +118,8 @@ const DailyTracking = () => {
       console.log("Loading from localStorage fallback");
       const savedMeals = localStorage.getItem(`completed_meals_${today}`);
       const savedCalories = localStorage.getItem(`actual_calories_${today}`);
+      const savedProtein = localStorage.getItem(`actual_protein_${today}`);
+      const savedIsManual = localStorage.getItem(`is_manual_entry_${today}`);
       
       if (savedMeals) {
         setCompletedMeals(JSON.parse(savedMeals));
@@ -105,9 +128,32 @@ const DailyTracking = () => {
       if (savedCalories) {
         setActualCalories(savedCalories);
       }
+      
+      if (savedProtein) {
+        setActualProtein(savedProtein);
+      }
+      
+      if (savedIsManual) {
+        setIsManualEntry(JSON.parse(savedIsManual));
+      }
     } catch (err) {
       console.error("Error loading from localStorage:", err);
     }
+  };
+  
+  // Función para calcular automáticamente calorías y proteínas basado en comidas completadas
+  const calculateNutrientsFromMeals = () => {
+    let totalCalories = 0;
+    let totalProtein = 0;
+    
+    Object.entries(completedMeals).forEach(([meal, isCompleted]) => {
+      if (isCompleted && mealDefaults[meal]) {
+        totalCalories += mealDefaults[meal].calories;
+        totalProtein += mealDefaults[meal].protein;
+      }
+    });
+    
+    return { calories: totalCalories, protein: totalProtein };
   };
   
   // Toggle a meal's completion status
@@ -119,17 +165,53 @@ const DailyTracking = () => {
     
     setCompletedMeals(newCompletedMeals);
     
+    // Recalcular nutrientes automáticamente si no está en modo manual
+    if (!isManualEntry) {
+      const { calories, protein } = calculateNutrientsFromMeals();
+      setActualCalories(calories.toString());
+      setActualProtein(protein.toString());
+    }
+    
     // Save to localStorage as backup
     localStorage.setItem(`completed_meals_${today}`, JSON.stringify(newCompletedMeals));
   };
   
-  // Handle changes to the actual calories
+  // Handle manual changes to the actual calories
   const handleCaloriesChange = (event) => {
     const newValue = event.target.value;
     setActualCalories(newValue);
+    setIsManualEntry(true);
     
     // Save to localStorage as backup
     localStorage.setItem(`actual_calories_${today}`, newValue);
+    localStorage.setItem(`is_manual_entry_${today}`, JSON.stringify(true));
+  };
+  
+  // Handle manual changes to protein
+  const handleProteinChange = (event) => {
+    const newValue = event.target.value;
+    setActualProtein(newValue);
+    setIsManualEntry(true);
+    
+    // Save to localStorage as backup
+    localStorage.setItem(`actual_protein_${today}`, newValue);
+    localStorage.setItem(`is_manual_entry_${today}`, JSON.stringify(true));
+  };
+  
+  // Toggle between auto and manual mode
+  const toggleEntryMode = () => {
+    if (isManualEntry) {
+      // Cambiar a modo automático
+      const { calories, protein } = calculateNutrientsFromMeals();
+      setActualCalories(calories.toString());
+      setActualProtein(protein.toString());
+      setIsManualEntry(false);
+      localStorage.setItem(`is_manual_entry_${today}`, JSON.stringify(false));
+    } else {
+      // Cambiar a modo manual
+      setIsManualEntry(true);
+      localStorage.setItem(`is_manual_entry_${today}`, JSON.stringify(true));
+    }
   };
   
   // Calculate excess/deficit
@@ -151,12 +233,15 @@ const DailyTracking = () => {
     
     try {
       const excessDeficit = calculateExcessDeficit();
+      const numCalories = actualCalories ? parseInt(actualCalories, 10) : null;
+      const numProtein = actualProtein ? parseInt(actualProtein, 10) : null;
       
       const trackingData = {
         tracking_date: today,
         completed_meals: completedMeals,
-        calorie_note: actualCalories ? `Calorías consumidas: ${actualCalories}` : "",
-        actual_calories: actualCalories ? parseInt(actualCalories, 10) : null,
+        calorie_note: numCalories ? `Calorías consumidas: ${numCalories}` : "",
+        actual_calories: numCalories,
+        actual_protein: numProtein, // Nuevo campo
         excess_deficit: excessDeficit
       };
       
@@ -223,53 +308,90 @@ const DailyTracking = () => {
         )}
         
         <Box sx={{ mt: 2 }}>
-          <Typography variant="subtitle1" gutterBottom>
-            Comidas completadas hoy ({new Date().toLocaleDateString()}):
-          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+            <Typography variant="subtitle1">
+              Comidas completadas hoy ({new Date().toLocaleDateString()}):
+            </Typography>
+            
+            <Box>
+              <Chip 
+                label={isManualEntry ? "Entrada Manual" : "Cálculo Automático"} 
+                size="small" 
+                color={isManualEntry ? "primary" : "default"}
+                sx={{ mr: 1 }}
+              />
+              <Tooltip title={isManualEntry ? "Cambiar a cálculo automático" : "Cambiar a entrada manual"}>
+                <IconButton size="small" onClick={toggleEntryMode}>
+                  <FontAwesomeIcon icon={isManualEntry ? faCalculator : faEdit} />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </Box>
           
           <Grid container spacing={1} sx={{ mb: 3 }}>
-            {Object.keys(completedMeals).map((meal) => (
+            {Object.entries(mealDefaults).map(([meal, defaults]) => (
               <Grid item xs={6} sm={4} key={meal}>
-                <Paper 
-                  elevation={1} 
-                  onClick={() => toggleMealCompleted(meal)}
-                  sx={{ 
-                    p: 1.5, 
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                    border: '1px solid',
-                    borderColor: completedMeals[meal] ? 'success.main' : 'divider',
-                    bgcolor: completedMeals[meal] ? 'success.light' : 'background.paper',
-                    '&:hover': { bgcolor: completedMeals[meal] ? 'success.light' : 'action.hover' }
-                  }}
-                >
-                  <Typography variant="body2">
-                    {completedMeals[meal] && <FontAwesomeIcon icon={faCheckCircle} style={{ marginRight: '5px', color: '#2e7d32' }} />}
-                    {meal}
-                  </Typography>
-                </Paper>
+                <Tooltip title={`${defaults.calories} kcal, ${defaults.protein}g proteína`}>
+                  <Paper 
+                    elevation={1} 
+                    onClick={() => toggleMealCompleted(meal)}
+                    sx={{ 
+                      p: 1.5, 
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      border: '1px solid',
+                      borderColor: completedMeals[meal] ? 'success.main' : 'divider',
+                      bgcolor: completedMeals[meal] ? 'success.light' : 'background.paper',
+                      '&:hover': { bgcolor: completedMeals[meal] ? 'success.light' : 'action.hover' }
+                    }}
+                  >
+                    <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {completedMeals[meal] && <FontAwesomeIcon icon={faCheckCircle} style={{ marginRight: '5px', color: '#2e7d32' }} />}
+                      {meal}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {defaults.calories} kcal | {defaults.protein}g prot
+                    </Typography>
+                  </Paper>
+                </Tooltip>
               </Grid>
             ))}
           </Grid>
           
-          <Typography variant="subtitle1" gutterBottom>
-            Calorías consumidas:
-          </Typography>
+          <Divider sx={{ my: 2 }} />
           
-          <TextField 
-            fullWidth
-            type="number"
-            label="Calorías consumidas hoy (kcal)"
-            placeholder="Ej: 2000"
-            value={actualCalories}
-            onChange={handleCaloriesChange}
-            variant="outlined"
-            size="small"
-            sx={{ mb: 2 }}
-          />
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <TextField 
+                fullWidth
+                type="number"
+                label="Calorías consumidas hoy (kcal)"
+                placeholder="Ej: 2000"
+                value={actualCalories}
+                onChange={handleCaloriesChange}
+                variant="outlined"
+                size="small"
+                disabled={!isManualEntry}
+              />
+            </Grid>
+            
+            <Grid item xs={12} sm={6}>
+              <TextField 
+                fullWidth
+                type="number"
+                label="Proteínas consumidas hoy (g)"
+                placeholder="Ej: 120"
+                value={actualProtein}
+                onChange={handleProteinChange}
+                variant="outlined"
+                size="small"
+                disabled={!isManualEntry}
+              />
+            </Grid>
+          </Grid>
           
           {userProfile && (userProfile.goal_calories || userProfile.daily_calories) && (
-            <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box sx={{ my: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="body2" color="text.secondary">
                 Tu objetivo diario es de {userProfile.goal_calories || userProfile.daily_calories} calorías
               </Typography>
@@ -293,6 +415,7 @@ const DailyTracking = () => {
             onClick={saveTrackingData}
             disabled={saving}
             startIcon={saving ? <CircularProgress size={20} color="inherit" /> : <FontAwesomeIcon icon={faSave} />}
+            sx={{ mt: 2 }}
           >
             {saving ? 'Guardando...' : 'Guardar Seguimiento'}
           </Button>

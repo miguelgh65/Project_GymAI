@@ -1,218 +1,329 @@
 # back_end/gym/routes/nutrition/calculator.py
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-import math
+from fastapi import APIRouter, Depends, HTTPException
+from enum import Enum
 import logging
+from typing import Dict, Optional
+from datetime import datetime
 
-# Importaciones
-from back_end.gym.middlewares import get_current_user
-from back_end.gym.config import DB_CONFIG
-from back_end.gym.utils.json_utils import CustomJSONResponse
-import psycopg2
+from ...models.calculator_schemas import MacroCalculatorInput, NutritionProfile
+from ...services.auth_service import get_current_user_id
+from ...services.db_utils import execute_db_query
 
-# Importar esquemas desde el nuevo archivo de modelos
-from back_end.gym.models.calculator_schemas import (
-    MacroCalculatorInput,
-    MacroCalculatorResult,
-    Units,
-    Formula,
-    ActivityLevel,
-    Gender,
-    Goal,
-    GoalIntensity
-)
+router = APIRouter()
 
-# Configurar logger específico para este módulo
-logger = logging.getLogger(__name__)
+# Enumeraciones para los cálculos
+class Goal(Enum):
+    MAINTAIN = "maintain"
+    LOSE = "lose"
+    GAIN = "gain"
 
-router = APIRouter(prefix="/api/nutrition", tags=["nutrition"])
+class GoalIntensity(Enum):
+    LIGHT = "light"
+    NORMAL = "normal"
+    AGGRESSIVE = "aggressive"
+    VERY_AGGRESSIVE = "very_aggressive"  # Añadido para soportar "Muy Agresivo"
 
-# Función de cálculo de BMR según diferentes fórmulas
-def calculate_bmr(data: MacroCalculatorInput) -> float:
+class ActivityLevel(Enum):
+    SEDENTARY = "sedentary"
+    LIGHT = "light"
+    MODERATE = "moderate"
+    ACTIVE = "active"
+    VERY_ACTIVE = "very_active"
+
+class Formula(Enum):
+    MIFFLIN_ST_JEOR = "mifflin_st_jeor"
+    HARRIS_BENEDICT = "harris_benedict"
+    KATCH_MCARDLE = "katch_mcardle"
+    WHO = "who"
+
+class Unit(Enum):
+    METRIC = "metric"
+    IMPERIAL = "imperial"
+
+# Función para calcular el BMR según diferentes fórmulas
+def calculate_bmr(formula: str, gender: str, age: int, weight: float, height: float, body_fat_percentage: Optional[float] = None, units: str = "metric") -> float:
     # Convertir unidades imperiales a métricas si es necesario
-    height_cm = data.height if data.units == Units.METRIC else data.height * 2.54
-    weight_kg = data.weight if data.units == Units.METRIC else data.weight * 0.453592
-    
-    # Calcular BMR según la fórmula seleccionada
-    if data.formula == Formula.MIFFLIN_ST_JEOR:
-        if data.gender == Gender.MALE:
-            return (10 * weight_kg) + (6.25 * height_cm) - (5 * data.age) + 5
-        else:
-            return (10 * weight_kg) + (6.25 * height_cm) - (5 * data.age) - 161
-    
-    elif data.formula == Formula.HARRIS_BENEDICT:
-        if data.gender == Gender.MALE:
-            return 66.5 + (13.75 * weight_kg) + (5.003 * height_cm) - (6.75 * data.age)
-        else:
-            return 655.1 + (9.563 * weight_kg) + (1.850 * height_cm) - (4.676 * data.age)
-    
-    elif data.formula == Formula.WHO:
-        if data.gender == Gender.MALE:
-            if data.age < 18:
-                return 15.3 * weight_kg + 679
-            elif data.age < 30:
-                return 15.3 * weight_kg + 679
-            elif data.age < 60:
-                return 11.6 * weight_kg + 879
-            else:
-                return 13.5 * weight_kg + 487
-        else:
-            if data.age < 18:
-                return 13.3 * weight_kg + 496
-            elif data.age < 30:
-                return 14.7 * weight_kg + 496
-            elif data.age < 60:
-                return 8.7 * weight_kg + 829
-            else:
-                return 10.5 * weight_kg + 596
-    
-    elif data.formula == Formula.KATCH_MCARDLE and data.body_fat_percentage is not None:
-        # Calcular masa magra en kg
-        lean_mass = weight_kg * (1 - data.body_fat_percentage / 100)
-        return 370 + (21.6 * lean_mass)
-    
-    # Fallback a Mifflin-St Jeor si algo falla
-    if data.gender == Gender.MALE:
-        return (10 * weight_kg) + (6.25 * height_cm) - (5 * data.age) + 5
-    else:
-        return (10 * weight_kg) + (6.25 * height_cm) - (5 * data.age) - 161
+    if units == "imperial":
+        weight = weight * 0.453592  # libras a kg
+        height = height * 2.54  # pulgadas a cm
 
-# Endpoint para calcular macros y calorías
-@router.post("/calculate-macros", response_model=MacroCalculatorResult)
-async def calculate_macros(
-    request: Request,
-    data: MacroCalculatorInput,
-    user = Depends(get_current_user)
-):
-    if not user:
-        raise HTTPException(status_code=401, detail="Usuario no autenticado")
+    # Fórmula Mifflin-St Jeor (la más precisa para la mayoría de personas)
+    if formula == Formula.MIFFLIN_ST_JEOR.value:
+        if gender == "male":
+            return (10 * weight) + (6.25 * height) - (5 * age) + 5
+        else:  # female
+            return (10 * weight) + (6.25 * height) - (5 * age) - 161
+
+    # Fórmula Harris-Benedict (versión revisada)
+    elif formula == Formula.HARRIS_BENEDICT.value:
+        if gender == "male":
+            return 13.397 * weight + 4.799 * height - 5.677 * age + 88.362
+        else:  # female
+            return 9.247 * weight + 3.098 * height - 4.330 * age + 447.593
+
+    # Fórmula Katch-McArdle (usa % de grasa corporal, mejor para atletas)
+    elif formula == Formula.KATCH_MCARDLE.value and body_fat_percentage is not None:
+        lean_mass = weight * (1 - (body_fat_percentage / 100))
+        return 370 + (21.6 * lean_mass)
+
+    # Fórmula OMS/WHO (basada en el peso)
+    elif formula == Formula.WHO.value:
+        if gender == "male":
+            if age < 30:
+                return 15.3 * weight + 679
+            elif age < 60:
+                return 11.6 * weight + 879
+            else:
+                return 13.5 * weight + 487
+        else:  # female
+            if age < 30:
+                return 14.7 * weight + 496
+            elif age < 60:
+                return 8.7 * weight + 829
+            else:
+                return 10.5 * weight + 596
+
+    # Si no coincide ninguna fórmula, usa Mifflin-St Jeor como fallback
+    if gender == "male":
+        return (10 * weight) + (6.25 * height) - (5 * age) + 5
+    else:  # female
+        return (10 * weight) + (6.25 * height) - (5 * age) - 161
+
+# Función para calcular el BMI (Índice de Masa Corporal)
+def calculate_bmi(weight: float, height: float, units: str = "metric") -> float:
+    # Convertir unidades imperiales a métricas si es necesario
+    if units == "imperial":
+        weight = weight * 0.453592  # libras a kg
+        height = height * 2.54  # pulgadas a cm
+
+    # BMI = peso(kg) / altura(m)²
+    height_m = height / 100  # convertir cm a m
+    return round(weight / (height_m * height_m), 1)
+
+# Función para calcular el TDEE (Gasto Energético Total Diario)
+def calculate_tdee(bmr: float, activity_level: str) -> float:
+    activity_multipliers = {
+        ActivityLevel.SEDENTARY.value: 1.2,      # Poco o nada de ejercicio, trabajo de escritorio
+        ActivityLevel.LIGHT.value: 1.375,        # Ejercicio ligero/deportes 1-3 días/semana
+        ActivityLevel.MODERATE.value: 1.55,      # Ejercicio moderado 3-5 días/semana
+        ActivityLevel.ACTIVE.value: 1.725,       # Ejercicio intenso 6-7 días/semana
+        ActivityLevel.VERY_ACTIVE.value: 1.9     # Ejercicio muy intenso, trabajo físico, entrenamiento 2 veces/día
+    }
+    multiplier = activity_multipliers.get(activity_level, 1.2)  # Usa 1.2 como valor por defecto
+    return bmr * multiplier
+
+# Función para calcular las calorías objetivo según el objetivo y su intensidad
+def calculate_goal_calories(tdee: float, goal: str, goal_intensity: str) -> int:
+    if goal == Goal.MAINTAIN.value:
+        return round(tdee)
     
+    calorie_adjustments = {
+        GoalIntensity.LIGHT.value: 250,
+        GoalIntensity.NORMAL.value: 500,
+        GoalIntensity.AGGRESSIVE.value: 750,
+        GoalIntensity.VERY_AGGRESSIVE.value: 1000,
+    }
+    
+    adjustment = calorie_adjustments.get(goal_intensity, 500)  # Valor por defecto: 500
+    
+    if goal == Goal.LOSE.value:
+        return round(tdee - adjustment)
+    else:  # GAIN
+        return round(tdee + adjustment)
+
+# Endpoint principal para calcular macros
+@router.post("/calculate-macros", response_model=NutritionProfile)
+async def calculate_macros(data: MacroCalculatorInput, user_id: int = Depends(get_current_user_id)):
     try:
-        # Calcular BMR según la fórmula seleccionada
-        bmr = calculate_bmr(data)
-        
-        # Calcular TDEE (Total Daily Energy Expenditure)
-        activity_multipliers = {
-            ActivityLevel.SEDENTARY: 1.2,
-            ActivityLevel.LIGHT: 1.375,
-            ActivityLevel.MODERATE: 1.55,
-            ActivityLevel.ACTIVE: 1.725,
-            ActivityLevel.VERY_ACTIVE: 1.9
-        }
-        tdee = bmr * activity_multipliers[data.activity_level]
-        
-        # Calcular BMI
-        height_m = (data.height / 100) if data.units == Units.METRIC else (data.height * 0.0254)
-        weight_kg = data.weight if data.units == Units.METRIC else (data.weight * 0.453592)
-        bmi = weight_kg / (height_m * height_m)
-        
-        # Calcular calorías objetivo según la meta
-        goal_calories = tdee  # Por defecto, mantener peso
-        if data.goal == Goal.LOSE:
-            deficit = 500 if data.goal_intensity == GoalIntensity.NORMAL else 1000
-            goal_calories = max(1200, tdee - deficit)  # Mínimo seguro
-        elif data.goal == Goal.GAIN:
-            surplus = 500 if data.goal_intensity == GoalIntensity.NORMAL else 1000
-            goal_calories = tdee + surplus
-        
-        # Calcular macros en gramos y porcentajes
-        # Distribución estándar: 30% proteína, 35% carbohidratos, 35% grasas
-        protein_cals = goal_calories * 0.30
-        carbs_cals = goal_calories * 0.35
-        fat_cals = goal_calories * 0.35
-        
-        protein_g = protein_cals / 4  # 4 calorías por gramo de proteína
-        carbs_g = carbs_cals / 4      # 4 calorías por gramo de carbohidratos
-        fat_g = fat_cals / 9          # 9 calorías por gramo de grasa
-        
-        # Preparar respuesta
-        macros = {
-            "protein": {
-                "grams": round(protein_g),
-                "calories": round(protein_cals),
-                "percentage": 30
-            },
-            "carbs": {
-                "grams": round(carbs_g),
-                "calories": round(carbs_cals),
-                "percentage": 35
-            },
-            "fat": {
-                "grams": round(fat_g),
-                "calories": round(fat_cals),
-                "percentage": 35
-            }
-        }
-        
-        result = MacroCalculatorResult(
-            bmr=round(bmr),
-            tdee=round(tdee),
-            bmi=round(bmi, 1),
-            goal_calories=round(goal_calories),
-            macros=macros
+        # Calcular BMR (Tasa Metabólica Basal)
+        bmr = calculate_bmr(
+            formula=data.formula,
+            gender=data.gender,
+            age=data.age,
+            weight=data.weight,
+            height=data.height,
+            body_fat_percentage=data.body_fat_percentage,
+            units=data.units
         )
         
-        # Guardar resultado en la base de datos
-        success = await save_nutrition_profile(user['id'], data, result)
-        if not success:
-            logger.warning(f"No se pudo guardar el perfil nutricional para usuario {user['id']}")
-        else:
-            logger.info(f"Perfil nutricional guardado para usuario {user['id']}")
+        # Calcular TDEE (Gasto Energético Total Diario)
+        tdee = calculate_tdee(bmr, data.activity_level)
         
-        return result
+        # Calcular BMI (Índice de Masa Corporal)
+        bmi = calculate_bmi(data.weight, data.height, data.units)
         
+        # Calcular calorías objetivo según el objetivo e intensidad
+        goal_calories = calculate_goal_calories(tdee, data.goal, data.goal_intensity)
+        
+        # Obtener porcentajes de macros de la distribución enviada por el frontend
+        protein_percentage = data.macro_distribution.protein
+        carbs_percentage = data.macro_distribution.carbs
+        fat_percentage = data.macro_distribution.fat
+        
+        # Validar que los porcentajes sumen 100%
+        total_percentage = protein_percentage + carbs_percentage + fat_percentage
+        if abs(total_percentage - 100) > 0.1:
+            logging.warning(f"Los porcentajes de macros no suman 100%: P={protein_percentage}, C={carbs_percentage}, F={fat_percentage}, Total={total_percentage}")
+        
+        # Calcular gramos de cada macronutriente
+        # 1g de proteína = 4 calorías
+        # 1g de carbohidratos = 4 calorías
+        # 1g de grasa = 9 calorías
+        protein_grams = round((goal_calories * (protein_percentage / 100)) / 4)
+        carbs_grams = round((goal_calories * (carbs_percentage / 100)) / 4)
+        fat_grams = round((goal_calories * (fat_percentage / 100)) / 9)
+        
+        # Crear objeto de respuesta
+        profile = {
+            "user_id": str(user_id),
+            "formula": data.formula,
+            "sex": data.gender,
+            "age": data.age,
+            "height": data.height,
+            "weight": data.weight,
+            "body_fat_percentage": data.body_fat_percentage,
+            "activity_level": data.activity_level,
+            "goal": data.goal,
+            "goal_intensity": data.goal_intensity,
+            "units": data.units,
+            "bmr": round(bmr),
+            "tdee": round(tdee),
+            "bmi": bmi,
+            "daily_calories": goal_calories,
+            "proteins_grams": protein_grams,
+            "carbs_grams": carbs_grams,
+            "fats_grams": fat_grams
+        }
+        
+        # Si el usuario está autenticado, guardar o actualizar su perfil
+        if user_id:
+            try:
+                logging.getLogger(__name__).debug(f"Intentando guardar perfil nutricional para user_id: {user_id}")
+                
+                # Verificar si ya existe un perfil para este usuario
+                check_query = "SELECT id FROM nutrition.user_nutrition_profiles WHERE user_id = %s"
+                profile_exists = execute_db_query(check_query, (str(user_id),), fetch_one=True)
+                
+                logging.getLogger(__name__).debug(f"Perfil existente: {profile_exists}")
+                
+                # Datos a guardar en la base de datos
+                profile_data = {
+                    "user_id": str(user_id),
+                    "formula": data.formula,
+                    "sex": data.gender,
+                    "age": data.age, 
+                    "height": data.height,
+                    "weight": data.weight,
+                    "body_fat_percentage": data.body_fat_percentage,
+                    "activity_level": data.activity_level,
+                    "goal": data.goal,
+                    "goal_intensity": data.goal_intensity,
+                    "units": data.units,
+                    "bmr": round(bmr),
+                    "tdee": round(tdee),
+                    "bmi": bmi,
+                    "daily_calories": goal_calories,
+                    "proteins_grams": protein_grams,
+                    "carbs_grams": carbs_grams,
+                    "fats_grams": fat_grams
+                }
+                
+                logging.getLogger(__name__).debug(f"Datos a guardar: {profile_data}")
+                
+                if profile_exists:
+                    # Actualizar perfil existente
+                    update_query = """
+                    UPDATE nutrition.user_nutrition_profiles SET
+                        formula = %(formula)s,
+                        sex = %(sex)s,
+                        age = %(age)s,
+                        height = %(height)s,
+                        weight = %(weight)s,
+                        body_fat_percentage = %(body_fat_percentage)s,
+                        activity_level = %(activity_level)s,
+                        goal = %(goal)s,
+                        goal_intensity = %(goal_intensity)s,
+                        units = %(units)s,
+                        bmr = %(bmr)s,
+                        tdee = %(tdee)s,
+                        bmi = %(bmi)s,
+                        daily_calories = %(daily_calories)s,
+                        proteins_grams = %(proteins_grams)s,
+                        carbs_grams = %(carbs_grams)s,
+                        fats_grams = %(fats_grams)s,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE user_id = %(user_id)s
+                    """
+                    logging.getLogger(__name__).debug(f"Query de actualización: {update_query}")
+                    execute_db_query(update_query, profile_data)
+                    logging.getLogger(__name__).info(f"Perfil actualizado para usuario {user_id}")
+                else:
+                    # Crear nuevo perfil
+                    insert_query = """
+                    INSERT INTO nutrition.user_nutrition_profiles (
+                        user_id, formula, sex, age, height, weight, body_fat_percentage, 
+                        activity_level, goal, goal_intensity, units, bmr, tdee, bmi, 
+                        daily_calories, proteins_grams, carbs_grams, fats_grams
+                    ) VALUES (
+                        %(user_id)s, %(formula)s, %(sex)s, %(age)s, %(height)s, %(weight)s, 
+                        %(body_fat_percentage)s, %(activity_level)s, %(goal)s, %(goal_intensity)s, 
+                        %(units)s, %(bmr)s, %(tdee)s, %(bmi)s, %(daily_calories)s, 
+                        %(proteins_grams)s, %(carbs_grams)s, %(fats_grams)s
+                    )
+                    """
+                    execute_db_query(insert_query, profile_data)
+                    logging.getLogger(__name__).info(f"Nuevo perfil creado para usuario {user_id}")
+                
+                logging.getLogger(__name__).info(f"Perfil nutricional guardado para usuario {user_id}")
+            except Exception as e:
+                logging.getLogger(__name__).error(f"Error al guardar perfil nutricional: {e}")
+                # No interrumpimos el flujo si falla el guardado, solo logueamos el error
+        
+        return NutritionProfile(**profile)
     except Exception as e:
-        logger.error(f"Error en el cálculo de macros: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error en el cálculo de macros: {str(e)}")
+        logging.getLogger(__name__).error(f"Error en el cálculo de macros: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-# Función para guardar el perfil nutricional
-async def save_nutrition_profile(user_id, input_data, result_data):
-    conn = None
-    cur = None
+# Endpoint para obtener el perfil nutricional de un usuario
+@router.get("/profile", response_model=Optional[NutritionProfile])
+async def get_nutrition_profile(user_id: int = Depends(get_current_user_id)):
     try:
-        logger.debug(f"Intentando guardar perfil nutricional para user_id: {user_id}")
+        query = """
+        SELECT 
+            user_id, formula, sex, age, height, weight, body_fat_percentage, 
+            activity_level, goal, goal_intensity, units, bmr, tdee, bmi, 
+            daily_calories, proteins_grams, carbs_grams, fats_grams,
+            created_at, updated_at
+        FROM nutrition.user_nutrition_profiles
+        WHERE user_id = %s
+        """
+        result = execute_db_query(query, (str(user_id),), fetch_one=True)
         
-        conn = psycopg2.connect(**DB_CONFIG)
-        cur = conn.cursor()
+        if not result:
+            return None
+        
+        return NutritionProfile(**result)
+    except Exception as e:
+        logging.getLogger(__name__).error(f"Error al obtener perfil nutricional: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Endpoint para guardar el perfil nutricional de un usuario
+@router.post("/profile", response_model=NutritionProfile)
+async def save_nutrition_profile(data: NutritionProfile, user_id: int = Depends(get_current_user_id)):
+    try:
+        # Asignar el ID de usuario
+        data.user_id = str(user_id)
         
         # Verificar si ya existe un perfil para este usuario
-        cur.execute(
-            """
-            SELECT id FROM nutrition.user_nutrition_profiles 
-            WHERE user_id = %s
-            """, 
-            (str(user_id),)
-        )
+        check_query = "SELECT id FROM nutrition.user_nutrition_profiles WHERE user_id = %s"
+        profile_exists = execute_db_query(check_query, (str(user_id),), fetch_one=True)
         
-        existing_profile = cur.fetchone()
-        logger.debug(f"Perfil existente: {existing_profile}")
+        # Preparar los datos para guardar
+        profile_data = data.dict()
+        profile_data["updated_at"] = datetime.now()
         
-        # Preparar los datos con mapeo correcto a los nombres de columnas de la BD
-        # IMPORTANTE: Aquí está la corrección de los nombres de columnas
-        profile_data = {
-            'user_id': str(user_id),
-            'formula': input_data.formula.value,
-            'sex': input_data.gender.value,                # gender -> sex
-            'age': input_data.age,
-            'height': int(input_data.height),              # Convertir a entero
-            'weight': input_data.weight,
-            'body_fat_percentage': input_data.body_fat_percentage,
-            'activity_level': input_data.activity_level.value,
-            'goal': input_data.goal.value,
-            'goal_intensity': input_data.goal_intensity.value,
-            'units': input_data.units.value,
-            'bmr': result_data.bmr,
-            'tdee': result_data.tdee,
-            'bmi': result_data.bmi,
-            'daily_calories': result_data.goal_calories,   # goal_calories -> daily_calories
-            'proteins_grams': result_data.macros['protein']['grams'],  # protein_g -> proteins_grams
-            'carbs_grams': result_data.macros['carbs']['grams'],       # carbs_g -> carbs_grams
-            'fats_grams': result_data.macros['fat']['grams']           # fat_g -> fats_grams
-        }
-        
-        logger.debug(f"Datos a guardar: {profile_data}")
-        
-        if existing_profile:
-            # Actualizar el perfil existente
+        if profile_exists:
+            # Actualizar perfil existente
             update_query = """
             UPDATE nutrition.user_nutrition_profiles SET
                 formula = %(formula)s,
@@ -232,127 +343,30 @@ async def save_nutrition_profile(user_id, input_data, result_data):
                 proteins_grams = %(proteins_grams)s,
                 carbs_grams = %(carbs_grams)s,
                 fats_grams = %(fats_grams)s,
-                updated_at = CURRENT_TIMESTAMP
+                updated_at = %(updated_at)s
             WHERE user_id = %(user_id)s
             """
-            
-            logger.debug(f"Query de actualización: {update_query}")
-            cur.execute(update_query, profile_data)
-            logger.info(f"Perfil actualizado para usuario {user_id}")
+            execute_db_query(update_query, profile_data)
         else:
-            # Crear un nuevo perfil
+            # Crear nuevo perfil
+            profile_data["created_at"] = datetime.now()
             insert_query = """
             INSERT INTO nutrition.user_nutrition_profiles (
-                user_id, formula, sex, age, height, weight, body_fat_percentage,
-                activity_level, goal, goal_intensity, units, bmr, tdee, bmi,
-                daily_calories, proteins_grams, carbs_grams, fats_grams
+                user_id, formula, sex, age, height, weight, body_fat_percentage, 
+                activity_level, goal, goal_intensity, units, bmr, tdee, bmi, 
+                daily_calories, proteins_grams, carbs_grams, fats_grams,
+                created_at, updated_at
             ) VALUES (
                 %(user_id)s, %(formula)s, %(sex)s, %(age)s, %(height)s, %(weight)s, 
                 %(body_fat_percentage)s, %(activity_level)s, %(goal)s, %(goal_intensity)s, 
                 %(units)s, %(bmr)s, %(tdee)s, %(bmi)s, %(daily_calories)s, 
-                %(proteins_grams)s, %(carbs_grams)s, %(fats_grams)s
+                %(proteins_grams)s, %(carbs_grams)s, %(fats_grams)s,
+                %(created_at)s, %(updated_at)s
             )
             """
-            
-            logger.debug(f"Query de inserción: {insert_query}")
-            cur.execute(insert_query, profile_data)
-            logger.info(f"Nuevo perfil creado para usuario {user_id}")
+            execute_db_query(insert_query, profile_data)
         
-        conn.commit()
-        return True
-        
+        return data
     except Exception as e:
-        logger.error(f"Error al guardar perfil nutricional: {str(e)}", exc_info=True)
-        if conn:
-            conn.rollback()
-        return False
-    finally:
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
-
-# Endpoint para obtener el perfil nutricional del usuario
-@router.get("/profile", response_class=CustomJSONResponse)
-async def get_nutrition_profile(request: Request, user = Depends(get_current_user)):
-    if not user:
-        raise HTTPException(status_code=401, detail="Usuario no autenticado")
-    
-    try:
-        conn = psycopg2.connect(**DB_CONFIG)
-        cur = conn.cursor()
-        
-        # Obtener el perfil nutricional del usuario
-        cur.execute(
-            """
-            SELECT * FROM nutrition.user_nutrition_profiles 
-            WHERE user_id = %s
-            """, 
-            (str(user['id']),)
-        )
-        
-        profile_data = cur.fetchone()
-        
-        if not profile_data:
-            return CustomJSONResponse(content={"success": True, "profile": None})
-        
-        # Obtener los nombres de las columnas
-        column_names = [desc[0] for desc in cur.description]
-        
-        # Crear un diccionario con los datos
-        profile = dict(zip(column_names, profile_data))
-        
-        # Reconstruir el objeto de macros para mantener consistencia con el endpoint de cálculo
-        # CustomJSONResponse se encargará de convertir los decimales a flotantes
-        macros = {
-            "protein": {
-                "grams": profile['proteins_grams'],  # Ajustado a los nombres reales de columnas
-                "calories": profile['proteins_grams'] * 4,
-                "percentage": round((profile['proteins_grams'] * 4 / profile['daily_calories']) * 100)  # Ajustado a nombres reales
-            },
-            "carbs": {
-                "grams": profile['carbs_grams'],  # Ajustado a los nombres reales de columnas
-                "calories": profile['carbs_grams'] * 4,
-                "percentage": round((profile['carbs_grams'] * 4 / profile['daily_calories']) * 100)  # Ajustado a nombres reales
-            },
-            "fat": {
-                "grams": profile['fats_grams'],  # Ajustado a los nombres reales de columnas
-                "calories": profile['fats_grams'] * 9,
-                "percentage": round((profile['fats_grams'] * 9 / profile['daily_calories']) * 100)  # Ajustado a nombres reales
-            }
-        }
-        
-        # Construir respuesta final con mapeo de nombres
-        response_data = {
-            "id": profile['id'],
-            "user_id": profile['user_id'],
-            "formula": profile['formula'],
-            "gender": profile['sex'],  # Mapeo sex -> gender para la respuesta
-            "age": profile['age'],
-            "height": profile['height'],
-            "weight": profile['weight'],
-            "body_fat_percentage": profile['body_fat_percentage'],
-            "activity_level": profile['activity_level'],
-            "goal": profile['goal'],
-            "goal_intensity": profile['goal_intensity'],
-            "units": profile['units'],
-            "bmr": profile['bmr'],
-            "tdee": profile['tdee'],
-            "bmi": profile['bmi'],
-            "goal_calories": profile['daily_calories'],  # Mapeo daily_calories -> goal_calories para la respuesta
-            "macros": macros,
-            "created_at": profile['created_at'],
-            "updated_at": profile['updated_at']
-        }
-        
-        # CustomJSONResponse se encargará de transformar los tipos problemáticos automáticamente
-        return CustomJSONResponse(content={"success": True, "profile": response_data})
-        
-    except Exception as e:
-        logger.error(f"Error al obtener el perfil nutricional: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error al obtener el perfil nutricional: {str(e)}")
-    finally:
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
+        logging.getLogger(__name__).error(f"Error al guardar perfil nutricional: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

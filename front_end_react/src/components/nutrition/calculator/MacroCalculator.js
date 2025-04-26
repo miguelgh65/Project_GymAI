@@ -1,18 +1,23 @@
 // src/components/nutrition/calculator/MacroCalculator.js
 import React, { useState, useEffect } from 'react';
 import {
-    Box, Typography, TextField, Button, Card, CardContent,
-    FormControl, InputLabel, Select, MenuItem, Grid,
-    Slider, Alert, CircularProgress, Divider, Paper
+    Box, Typography, Button, Card, CardContent,
+    Grid, Alert, CircularProgress, Divider
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
-    faCalculator, faChartPie, faDumbbell, faWeight, 
-    faRuler, faSave, faArrowRight 
+    faCalculator, faSave, faArrowRight
 } from '@fortawesome/free-solid-svg-icons';
-import { NutritionCalculator } from '../../../services/NutritionService';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { NutritionCalculator } from '../../../services/nutrition/NutritionCalculator';
 import { useNavigate } from 'react-router-dom';
+
+// Importación de componentes
+import MacroDistributionSelector from './components/MacroDistributionSelector';
+import ResultsDisplay from './components/ResultsDisplay';
+import BasicInfoSection from './components/BasicInfoSection';
+import PhysicalDataSection from './components/PhysicalDataSection';
+import GoalsSection from './components/GoalsSection';
+import { DEFAULT_FORM_VALUES, DEFAULT_MACRO_DISTRIBUTION } from './constants';
 
 const MacroCalculator = ({ user }) => {
     const [loading, setLoading] = useState(false);
@@ -23,19 +28,36 @@ const MacroCalculator = ({ user }) => {
     const [results, setResults] = useState(null);
     const navigate = useNavigate();
 
-    // Formulario
-    const [formData, setFormData] = useState({
-        units: 'metric',
-        formula: 'mifflin_st_jeor',
-        gender: 'male',
-        age: 30,
-        height: 175, // cm
-        weight: 75, // kg
-        body_fat_percentage: null,
-        activity_level: 'moderate',
-        goal: 'maintain',
-        goal_intensity: 'normal'
-    });
+    // Estado de distribución de macros
+    const [macroDistribution, setMacroDistribution] = useState(DEFAULT_MACRO_DISTRIBUTION);
+
+    // Estado del formulario
+    const [formData, setFormData] = useState(DEFAULT_FORM_VALUES);
+
+    // Manejador para cambios en el formulario
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+        // Limpiar resultados y alertas si cambian los datos del formulario
+        setResults(null);
+        setError(null);
+        setAlert(null);
+    };
+
+    // Manejador para cambios en sliders
+    const handleSliderChange = (name) => (e, newValue) => {
+        setFormData(prev => ({
+            ...prev,
+            [name]: newValue
+        }));
+        // Limpiar resultados y alertas si cambian los datos del formulario
+        setResults(null);
+        setError(null);
+        setAlert(null);
+    };
 
     // Cargar perfil nutricional del usuario al inicio
     useEffect(() => {
@@ -71,6 +93,15 @@ const MacroCalculator = ({ user }) => {
                             goal_calories: profileData.goal_calories,
                             macros: profileData.macros
                         });
+                        
+                        // Inicializar distribución de macros basada en el perfil
+                        if (profileData.macros.protein && profileData.macros.carbs && profileData.macros.fat) {
+                            setMacroDistribution({
+                                protein: profileData.macros.protein.percentage || 25,
+                                carbs: profileData.macros.carbs.percentage || 50,
+                                fat: profileData.macros.fat.percentage || 25
+                            });
+                        }
                     }
                 }
             } catch (err) {
@@ -83,31 +114,6 @@ const MacroCalculator = ({ user }) => {
 
         loadProfile();
     }, []);
-
-    // Manejador para cambios en el formulario
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
-        // Limpiar resultados y alertas si cambian los datos del formulario
-        setResults(null);
-        setError(null);
-        setAlert(null);
-    };
-
-    // Manejador para cambios en sliders
-    const handleSliderChange = (name) => (e, newValue) => {
-        setFormData(prev => ({
-            ...prev,
-            [name]: newValue
-        }));
-        // Limpiar resultados y alertas si cambian los datos del formulario
-        setResults(null);
-        setError(null);
-        setAlert(null);
-    };
 
     // Manejador para enviar el formulario de cálculo
     const handleSubmit = async (e) => {
@@ -138,9 +144,17 @@ const MacroCalculator = ({ user }) => {
                 height: parseFloat(formData.height),
                 weight: parseFloat(formData.weight),
                 body_fat_percentage: formData.body_fat_percentage ? parseFloat(formData.body_fat_percentage) : null,
+                // Incluir la distribución de macros
+                macro_distribution: {
+                    protein: macroDistribution.protein,
+                    carbs: macroDistribution.carbs,
+                    fat: macroDistribution.fat
+                }
             };
             
             console.log("Enviando datos para cálculo:", dataToSend);
+            console.log("Distribución de macros enviada:", dataToSend.macro_distribution);
+            
             const result = await NutritionCalculator.calculateMacros(dataToSend);
             console.log("Resultados recibidos:", result);
             setResults(result);
@@ -218,7 +232,9 @@ const MacroCalculator = ({ user }) => {
             // Campos para el dashboard (importante)
             target_protein_g: results.macros.protein.grams,
             target_carbs_g: results.macros.carbs.grams,
-            target_fat_g: results.macros.fat.grams
+            target_fat_g: results.macros.fat.grams,
+            // Añadir distribución de macros
+            macro_distribution: macroDistribution
         };
 
         try {
@@ -237,155 +253,6 @@ const MacroCalculator = ({ user }) => {
         } finally {
             setCalculating(false);
         }
-    };
-
-    // Componente para gráfico de macros
-    const MacroChart = ({ macros }) => {
-        if (!macros) return null;
-        
-        const data = [
-            { name: 'Proteínas', value: macros.protein.calories, color: '#4caf50' },
-            { name: 'Carbohidratos', value: macros.carbs.calories, color: '#2196f3' },
-            { name: 'Grasas', value: macros.fat.calories, color: '#ff9800' }
-        ];
-
-        // Validar datos antes de renderizar gráfico
-        if (data.some(item => typeof item.value !== 'number' || isNaN(item.value))) {
-            console.warn("Datos inválidos para MacroChart:", data);
-            return <Typography variant="caption" color="error">Datos de calorías inválidos para el gráfico.</Typography>;
-        }
-
-        return (
-            <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                    <Pie
-                        data={data}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        paddingAngle={2}
-                        dataKey="value"
-                        label={({ name, percent }) => 
-                            percent > 0 ? `${name}: ${(percent * 100).toFixed(0)}%` : ''
-                        }
-                    >
-                        {data.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                    </Pie>
-                    <Tooltip
-                        formatter={(value, name, props) => 
-                            [`${value.toFixed(0)} kcal (${(props.payload.percent * 100).toFixed(1)}%)`, name]
-                        }
-                    />
-                    <Legend />
-                </PieChart>
-            </ResponsiveContainer>
-        );
-    };
-
-    // Renderizado de resultados
-    const renderResults = () => {
-        if (!results) return null;
-
-        // Validar estructura de resultados
-        if (!results.macros || !results.macros.protein || !results.macros.carbs || !results.macros.fat) {
-            console.error("Estructura de resultados inválida:", results);
-            return <Alert severity="warning" sx={{ mt: 3 }}>Resultados incompletos recibidos.</Alert>;
-        }
-
-        return (
-            <Card sx={{ mt: 4, boxShadow: 3 }}>
-                <CardContent>
-                    <Typography variant="h6" gutterBottom color="primary">
-                        <FontAwesomeIcon icon={faChartPie} style={{ marginRight: '10px' }} />
-                        Resultados del Cálculo
-                    </Typography>
-                    <Divider sx={{ mb: 3 }}/>
-
-                    <Grid container spacing={3}>
-                        <Grid item xs={12} md={6}>
-                            <Box>
-                                <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
-                                    Métricas Estimadas:
-                                </Typography>
-                                <Typography variant="body1">
-                                    <strong>BMR (Metabolismo Basal):</strong> {results.bmr?.toFixed(0) ?? 'N/A'} kcal
-                                </Typography>
-                                <Typography variant="body1">
-                                    <strong>TDEE (Gasto Energético Diario):</strong> {results.tdee?.toFixed(0) ?? 'N/A'} kcal
-                                </Typography>
-                                <Typography variant="body1">
-                                    <strong>BMI (Índice de Masa Corporal):</strong> {results.bmi?.toFixed(1) ?? 'N/A'}
-                                </Typography>
-                                <Typography variant="h6" sx={{ mt: 2, fontWeight: 'bold', color: 'secondary.main' }}>
-                                    Objetivo Diario: {results.goal_calories?.toFixed(0) ?? 'N/A'} kcal
-                                </Typography>
-                            </Box>
-
-                            <Box sx={{ mt: 3 }}>
-                                <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
-                                    Macronutrientes Diarios (Gramos):
-                                </Typography>
-                                <Grid container spacing={1}>
-                                    <Grid item xs={4}>
-                                        <Paper elevation={1} sx={{ p: 1.5, textAlign: 'center', bgcolor: '#e8f5e9' }}>
-                                            <Typography variant="h6" color="#2e7d32">
-                                                {results.macros.protein.grams?.toFixed(0) ?? 'N/A'}g
-                                            </Typography>
-                                            <Typography variant="body2">Proteínas</Typography>
-                                            <Typography variant="caption" display="block">
-                                                {results.macros.protein.percentage?.toFixed(0) ?? 'N/A'}%
-                                            </Typography>
-                                        </Paper>
-                                    </Grid>
-                                    <Grid item xs={4}>
-                                        <Paper elevation={1} sx={{ p: 1.5, textAlign: 'center', bgcolor: '#e3f2fd' }}>
-                                            <Typography variant="h6" color="#1565c0">
-                                                {results.macros.carbs.grams?.toFixed(0) ?? 'N/A'}g
-                                            </Typography>
-                                            <Typography variant="body2">Carbohidratos</Typography>
-                                            <Typography variant="caption" display="block">
-                                                {results.macros.carbs.percentage?.toFixed(0) ?? 'N/A'}%
-                                            </Typography>
-                                        </Paper>
-                                    </Grid>
-                                    <Grid item xs={4}>
-                                        <Paper elevation={1} sx={{ p: 1.5, textAlign: 'center', bgcolor: '#fff3e0' }}>
-                                            <Typography variant="h6" color="#e65100">
-                                                {results.macros.fat.grams?.toFixed(0) ?? 'N/A'}g
-                                            </Typography>
-                                            <Typography variant="body2">Grasas</Typography>
-                                            <Typography variant="caption" display="block">
-                                                {results.macros.fat.percentage?.toFixed(0) ?? 'N/A'}%
-                                            </Typography>
-                                        </Paper>
-                                    </Grid>
-                                </Grid>
-                            </Box>
-                        </Grid>
-
-                        <Grid item xs={12} md={6}>
-                            <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-                                <Typography variant="subtitle1" gutterBottom align="center">
-                                    Distribución Calórica (%)
-                                </Typography>
-                                
-                                {results.macros.protein.calories != null && 
-                                 results.macros.carbs.calories != null && 
-                                 results.macros.fat.calories != null ? (
-                                    <MacroChart macros={results.macros} />
-                                ) : (
-                                    <Typography variant="caption">Datos insuficientes para gráfico.</Typography>
-                                )}
-                            </Box>
-                        </Grid>
-                    </Grid>
-                </CardContent>
-            </Card>
-        );
     };
 
     // Renderizado principal del componente
@@ -424,250 +291,36 @@ const MacroCalculator = ({ user }) => {
                     {/* Formulario */}
                     <form onSubmit={handleSubmit}>
                         <Grid container spacing={3}>
-                            {/* Fila 1: Unidades, Fórmula, Género, Edad */}
-                            <Grid item xs={12} sm={6} md={3}>
-                                <FormControl fullWidth size="small">
-                                    <InputLabel id="units-label">Unidades</InputLabel>
-                                    <Select
-                                        labelId="units-label"
-                                        id="units"
-                                        name="units"
-                                        value={formData.units}
-                                        onChange={handleChange}
-                                        label="Unidades"
-                                    >
-                                        <MenuItem value="metric">Métrico (kg/cm)</MenuItem>
-                                        <MenuItem value="imperial">Imperial (lb/in)</MenuItem>
-                                    </Select>
-                                </FormControl>
-                            </Grid>
+                            {/* Información básica: Unidades, Fórmula, Género, Edad */}
+                            <BasicInfoSection 
+                                formData={formData} 
+                                handleChange={handleChange} 
+                                handleSliderChange={handleSliderChange} 
+                            />
                             
-                            <Grid item xs={12} sm={6} md={3}>
-                                <FormControl fullWidth size="small">
-                                    <InputLabel id="formula-label">Fórmula</InputLabel>
-                                    <Select
-                                        labelId="formula-label"
-                                        id="formula"
-                                        name="formula"
-                                        value={formData.formula}
-                                        onChange={handleChange}
-                                        label="Fórmula"
-                                    >
-                                        <MenuItem value="mifflin_st_jeor">Mifflin-St Jeor</MenuItem>
-                                        <MenuItem value="harris_benedict">Harris-Benedict</MenuItem>
-                                        <MenuItem value="katch_mcardle">Katch-McArdle</MenuItem>
-                                        <MenuItem value="who">OMS</MenuItem>
-                                    </Select>
-                                </FormControl>
-                            </Grid>
+                            {/* Datos físicos: Altura, Peso, % Grasa */}
+                            <PhysicalDataSection 
+                                formData={formData} 
+                                handleChange={handleChange} 
+                                handleSliderChange={handleSliderChange} 
+                            />
+
+                            {/* Objetivos: Nivel Actividad, Objetivo, Intensidad */}
+                            <GoalsSection 
+                                formData={formData} 
+                                handleChange={handleChange} 
+                            />
                             
-                            <Grid item xs={12} sm={6} md={3}>
-                                <FormControl fullWidth size="small">
-                                    <InputLabel id="gender-label">Género</InputLabel>
-                                    <Select
-                                        labelId="gender-label"
-                                        id="gender"
-                                        name="gender"
-                                        value={formData.gender}
-                                        onChange={handleChange}
-                                        label="Género"
-                                    >
-                                        <MenuItem value="male">Masculino</MenuItem>
-                                        <MenuItem value="female">Femenino</MenuItem>
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-                            
-                            <Grid item xs={12} sm={6} md={3}>
-                                <TextField
-                                    fullWidth
-                                    id="age"
-                                    name="age"
-                                    label="Edad"
-                                    type="number"
-                                    size="small"
-                                    value={formData.age}
-                                    onChange={handleChange}
-                                    InputProps={{ inputProps: { min: 15, max: 100 } }}
-                                />
-                                <Slider
-                                    value={typeof formData.age === 'number' ? formData.age : 0}
-                                    onChange={handleSliderChange('age')}
-                                    aria-labelledby="age-slider"
-                                    min={15}
-                                    max={100}
-                                    size="small"
-                                    sx={{ mt: -1 }}
+                            {/* Selector de distribución de macros */}
+                            <Grid item xs={12}>
+                                <MacroDistributionSelector 
+                                    distribution={macroDistribution} 
+                                    onChange={setMacroDistribution} 
+                                    disabled={calculating}
                                 />
                             </Grid>
 
-                            {/* Fila 2: Altura, Peso, % Grasa */}
-                            <Grid item xs={12} sm={6} md={4}>
-                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    <FontAwesomeIcon icon={faRuler} style={{ marginRight: '10px', color: '#666' }} />
-                                    <TextField
-                                        fullWidth
-                                        id="height"
-                                        name="height"
-                                        label={`Altura (${formData.units === 'metric' ? 'cm' : 'in'})`}
-                                        type="number"
-                                        size="small"
-                                        value={formData.height}
-                                        onChange={handleChange}
-                                        InputProps={{
-                                            inputProps: {
-                                                min: formData.units === 'metric' ? 120 : 48,
-                                                max: formData.units === 'metric' ? 220 : 84,
-                                                step: 0.1
-                                            }
-                                        }}
-                                    />
-                                </Box>
-                                <Slider
-                                    value={typeof formData.height === 'number' ? formData.height : 0}
-                                    onChange={handleSliderChange('height')}
-                                    aria-labelledby="height-slider"
-                                    min={formData.units === 'metric' ? 120 : 48}
-                                    max={formData.units === 'metric' ? 220 : 84}
-                                    step={formData.units === 'metric' ? 1 : 0.5}
-                                    size="small"
-                                    sx={{ mt: -1 }}
-                                />
-                            </Grid>
-                            
-                            <Grid item xs={12} sm={6} md={4}>
-                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    <FontAwesomeIcon icon={faWeight} style={{ marginRight: '10px', color: '#666' }} />
-                                    <TextField
-                                        fullWidth
-                                        id="weight"
-                                        name="weight"
-                                        label={`Peso (${formData.units === 'metric' ? 'kg' : 'lb'})`}
-                                        type="number"
-                                        size="small"
-                                        value={formData.weight}
-                                        onChange={handleChange}
-                                        InputProps={{
-                                            inputProps: {
-                                                min: formData.units === 'metric' ? 40 : 88,
-                                                max: formData.units === 'metric' ? 200 : 440,
-                                                step: 0.1
-                                            }
-                                        }}
-                                    />
-                                </Box>
-                                <Slider
-                                    value={typeof formData.weight === 'number' ? formData.weight : 0}
-                                    onChange={handleSliderChange('weight')}
-                                    aria-labelledby="weight-slider"
-                                    min={formData.units === 'metric' ? 40 : 88}
-                                    max={formData.units === 'metric' ? 200 : 440}
-                                    step={formData.units === 'metric' ? 0.5 : 1}
-                                    size="small"
-                                    sx={{ mt: -1 }}
-                                />
-                            </Grid>
-                            
-                            <Grid item xs={12} sm={6} md={4}>
-                                <TextField
-                                    fullWidth
-                                    id="body_fat_percentage"
-                                    name="body_fat_percentage"
-                                    label="% Grasa Corporal"
-                                    type="number"
-                                    size="small"
-                                    value={formData.body_fat_percentage || ''}
-                                    onChange={handleChange}
-                                    InputProps={{
-                                        inputProps: { min: 3, max: 60, step: 0.1 },
-                                        endAdornment: <Typography variant="caption" sx={{mr: 1}}>%</Typography>
-                                    }}
-                                    helperText={formData.formula === 'katch_mcardle' ? 'Requerido por Katch-McArdle' : 'Opcional'}
-                                    required={formData.formula === 'katch_mcardle'}
-                                />
-                                <Slider
-                                    value={typeof formData.body_fat_percentage === 'number' ? formData.body_fat_percentage : 0}
-                                    onChange={handleSliderChange('body_fat_percentage')}
-                                    aria-labelledby="bodyfat-slider"
-                                    min={3}
-                                    max={60}
-                                    step={0.5}
-                                    size="small"
-                                    sx={{ mt: -1 }}
-                                />
-                            </Grid>
-
-                            {/* Fila 3: Nivel Actividad, Objetivo, Intensidad */}
-                            <Grid item xs={12} sm={6} md={4}>
-                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    <FontAwesomeIcon icon={faDumbbell} style={{ marginRight: '10px', color: '#666' }} />
-                                    <FormControl fullWidth size="small">
-                                        <InputLabel id="activity-level-label">Nivel Actividad</InputLabel>
-                                        <Select
-                                            labelId="activity-level-label"
-                                            id="activity_level"
-                                            name="activity_level"
-                                            value={formData.activity_level}
-                                            onChange={handleChange}
-                                            label="Nivel Actividad"
-                                        >
-                                            <MenuItem value="sedentary">Sedentario</MenuItem>
-                                            <MenuItem value="light">Ligero (1-3 días/sem)</MenuItem>
-                                            <MenuItem value="moderate">Moderado (3-5 días/sem)</MenuItem>
-                                            <MenuItem value="active">Activo (6-7 días/sem)</MenuItem>
-                                            <MenuItem value="very_active">Muy Activo (intenso diario)</MenuItem>
-                                        </Select>
-                                    </FormControl>
-                                </Box>
-                            </Grid>
-                            
-                            <Grid item xs={12} sm={6} md={4}>
-                                <FormControl fullWidth size="small">
-                                    <InputLabel id="goal-label">Objetivo</InputLabel>
-                                    <Select
-                                        labelId="goal-label"
-                                        id="goal"
-                                        name="goal"
-                                        value={formData.goal}
-                                        onChange={handleChange}
-                                        label="Objetivo"
-                                    >
-                                        <MenuItem value="maintain">Mantener Peso</MenuItem>
-                                        <MenuItem value="lose">Perder Peso</MenuItem>
-                                        <MenuItem value="gain">Ganar Peso</MenuItem>
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-                            
-                            <Grid item xs={12} sm={6} md={4}>
-                                <FormControl fullWidth size="small">
-                                    <InputLabel id="goal-intensity-label">Intensidad</InputLabel>
-                                    <Select
-                                        labelId="goal-intensity-label"
-                                        id="goal_intensity"
-                                        name="goal_intensity"
-                                        value={formData.goal_intensity}
-                                        onChange={handleChange}
-                                        label="Intensidad"
-                                        disabled={formData.goal === 'maintain'}
-                                    >
-                                        <MenuItem value="light">
-                                            {formData.goal === 'lose' ? 'Ligero (≈ -250 kcal)' : 'Ligero (≈ +250 kcal)'}
-                                        </MenuItem>
-                                        <MenuItem value="normal">
-                                            {formData.goal === 'lose' ? 'Normal (≈ -500 kcal)' : 'Normal (≈ +500 kcal)'}
-                                        </MenuItem>
-                                        <MenuItem value="aggressive">
-                                            {formData.goal === 'lose' ? 'Agresivo (≈ -750 kcal)' : 'Agresivo (≈ +750 kcal)'}
-                                        </MenuItem>
-                                        <MenuItem value="very_aggressive">
-                                            {formData.goal === 'lose' ? 'Muy Agresivo (≈ -1000 kcal)' : 'Muy Agresivo (≈ +1000 kcal)'}
-                                        </MenuItem>
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-
-                            {/* Fila 4: Botón Calcular */}
+                            {/* Botón Calcular */}
                             <Grid item xs={12} sx={{ textAlign: 'center', mt: 2 }}>
                                 <Button
                                     type="submit"
@@ -689,7 +342,7 @@ const MacroCalculator = ({ user }) => {
             </Card>
 
             {/* Renderizar resultados si existen */}
-            {renderResults()}
+            {results && <ResultsDisplay results={results} />}
 
             {/* Botones para Guardar Perfil y Aplicar a Plan */}
             {results && !calculating && (
@@ -721,4 +374,5 @@ const MacroCalculator = ({ user }) => {
     );
 };
 
+// Asegurarse de que haya una exportación por defecto
 export default MacroCalculator;

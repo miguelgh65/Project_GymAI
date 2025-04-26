@@ -1,5 +1,5 @@
 // src/components/nutrition/dashboard/NutritionDashboard.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, createContext } from 'react';
 import { Box, Typography, Alert, CircularProgress, Grid } from '@mui/material';
 import { NutritionCalculator, MealPlanService } from '../../../services/NutritionService';
 import { useNavigate } from 'react-router-dom';
@@ -11,13 +11,41 @@ import DailyTracking from './dashboard-components/DailyTracking';
 import PlanSelector from './dashboard-components/PlanSelector';
 import WeeklySummary from './dashboard-components/WeeklySummary';
 
+// Crear un contexto para la comunicación entre componentes
+export const TrackingContext = createContext({
+  refreshTracking: () => {},
+  lastUpdate: null
+});
+
 const NutritionDashboard = ({ user }) => {
   const [profile, setProfile] = useState(null);
   const [activePlans, setActivePlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [lastTrackingUpdate, setLastTrackingUpdate] = useState(Date.now());
   const navigate = useNavigate();
   
+  // Función para forzar la actualización de datos de seguimiento
+  const refreshTracking = useCallback(() => {
+    console.log("Actualizando datos de seguimiento...");
+    setLastTrackingUpdate(Date.now());
+  }, []);
+
+  // Escuchar eventos personalizados de tracking-updated
+  useEffect(() => {
+    const handleTrackingUpdate = () => {
+      console.log("Evento tracking-updated recibido");
+      refreshTracking();
+    };
+
+    window.addEventListener('tracking-updated', handleTrackingUpdate);
+    
+    return () => {
+      window.removeEventListener('tracking-updated', handleTrackingUpdate);
+    };
+  }, [refreshTracking]);
+
+  // Cargar datos iniciales
   useEffect(() => {
     loadProfile();
     loadActivePlans();
@@ -156,37 +184,40 @@ const NutritionDashboard = ({ user }) => {
       
       {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
       
-      {!hasProfile ? (
-        <ProfileMissing onGoToCalculator={goToMacroCalculator} />
-      ) : (
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
-            <ProfileSummary 
-              profile={profile} 
-              onRecalculate={goToMacroCalculator} 
-              onCreatePlan={createPlanWithProfile}
-              hasTargets={hasTargets}
-            />
+      {/* Proporcionar el contexto a todos los componentes hijos */}
+      <TrackingContext.Provider value={{ refreshTracking, lastUpdate: lastTrackingUpdate }}>
+        {!hasProfile ? (
+          <ProfileMissing onGoToCalculator={goToMacroCalculator} />
+        ) : (
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={6}>
+              <ProfileSummary 
+                profile={profile} 
+                onRecalculate={goToMacroCalculator} 
+                onCreatePlan={createPlanWithProfile}
+                hasTargets={hasTargets}
+              />
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <DailyTracking />
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <PlanSelector 
+                profile={profile}
+                activePlans={activePlans}
+                hasTargets={hasTargets}
+                onRefreshPlans={loadActivePlans}
+              />
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <WeeklySummary profile={profile} />
+            </Grid>
           </Grid>
-          
-          <Grid item xs={12} md={6}>
-            <DailyTracking />
-          </Grid>
-          
-          <Grid item xs={12} md={6}>
-            <PlanSelector 
-              profile={profile}
-              activePlans={activePlans}
-              hasTargets={hasTargets}
-              onRefreshPlans={loadActivePlans}
-            />
-          </Grid>
-          
-          <Grid item xs={12} md={6}>
-            <WeeklySummary />
-          </Grid>
-        </Grid>
-      )}
+        )}
+      </TrackingContext.Provider>
     </Box>
   );
 };

@@ -178,6 +178,7 @@ CREATE TABLE IF NOT EXISTS nutrition.daily_tracking (
     completed_meals JSONB,
     calorie_note TEXT,
     actual_calories INTEGER,
+    actual_protein INTEGER, -- <<< ADDED THIS LINE (use NUMERIC(10,2) if you need decimals)
     excess_deficit INTEGER,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,

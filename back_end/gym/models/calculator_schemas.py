@@ -1,54 +1,53 @@
 # back_end/gym/models/calculator_schemas.py
-from pydantic import BaseModel, Field, validator
-from enum import Enum
-from typing import Optional, List, Dict, Union, Any
-from datetime import datetime, date
+from pydantic import BaseModel, Field
+from typing import Optional, Dict, Any, List
+from datetime import datetime
 
-class Units(str, Enum):
-    METRIC = "metric"
-    IMPERIAL = "imperial"
+# Distribución de macronutrientes
+class MacroDistribution(BaseModel):
+    protein: float = Field(..., description="Porcentaje de proteínas")
+    carbs: float = Field(..., description="Porcentaje de carbohidratos")
+    fat: float = Field(..., description="Porcentaje de grasas")
 
-class Formula(str, Enum):
-    MIFFLIN_ST_JEOR = "mifflin_st_jeor"
-    HARRIS_BENEDICT = "harris_benedict"
-    WHO = "who"
-    KATCH_MCARDLE = "katch_mcardle"
-
-class ActivityLevel(str, Enum):
-    SEDENTARY = "sedentary"  # 1.2
-    LIGHT = "light"          # 1.375
-    MODERATE = "moderate"    # 1.55
-    ACTIVE = "active"        # 1.725
-    VERY_ACTIVE = "very_active"  # 1.9
-
-class Gender(str, Enum):
-    MALE = "male"
-    FEMALE = "female"
-
-class Goal(str, Enum):
-    MAINTAIN = "maintain"
-    LOSE = "lose"
-    GAIN = "gain"
-
-class GoalIntensity(str, Enum):
-    NORMAL = "normal"    # ±300-500 kcal
-    AGGRESSIVE = "aggressive"  # ±500-1000 kcal
-
+# Modelo para los datos de entrada de la calculadora de macros
 class MacroCalculatorInput(BaseModel):
-    units: Units
-    formula: Formula
-    gender: Gender
+    units: str
+    formula: str
+    gender: str
     age: int
-    height: float  # cm or inches
-    weight: float  # kg or pounds
+    height: float
+    weight: float
     body_fat_percentage: Optional[float] = None
-    activity_level: ActivityLevel
-    goal: Goal
-    goal_intensity: GoalIntensity
+    activity_level: str
+    goal: str
+    goal_intensity: str
+    macro_distribution: MacroDistribution
 
-class MacroCalculatorResult(BaseModel):
+# Modelo para el perfil nutricional
+class NutritionProfile(BaseModel):
+    user_id: Optional[str] = None
+    formula: str
+    sex: str
+    age: int
+    height: float
+    weight: float
+    body_fat_percentage: Optional[float] = None
+    activity_level: str
+    goal: str
+    goal_intensity: str
+    units: str
     bmr: float
     tdee: float
     bmi: float
-    goal_calories: int
-    macros: Dict[str, Dict[str, Union[float, int]]]
+    daily_calories: int
+    proteins_grams: int
+    carbs_grams: int
+    fats_grams: int
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+# Respuesta de perfil nutricional con extras
+class NutritionProfileResponse(BaseModel):
+    profile: NutritionProfile
+    has_tracking_today: bool
+    active_plan: Optional[Dict[str, Any]] = None
