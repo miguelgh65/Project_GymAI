@@ -162,8 +162,16 @@ async def calculate_macros(data: MacroCalculatorInput, user_id: int = Depends(ge
         
         # Validar que los porcentajes sumen 100%
         total_percentage = protein_percentage + carbs_percentage + fat_percentage
-        if abs(total_percentage - 100) > 0.1:
+        if abs(total_percentage - 100) > 0.5:  # Usar un umbral de 0.5% para flexibilidad
             logging.warning(f"Los porcentajes de macros no suman 100%: P={protein_percentage}, C={carbs_percentage}, F={fat_percentage}, Total={total_percentage}")
+            
+            # Ajustar los porcentajes para que sumen exactamente 100%
+            factor = 100 / total_percentage
+            protein_percentage = protein_percentage * factor
+            carbs_percentage = carbs_percentage * factor
+            fat_percentage = fat_percentage * factor
+            
+            logging.info(f"Porcentajes ajustados: P={protein_percentage}, C={carbs_percentage}, F={fat_percentage}")
         
         # Calcular gramos de cada macronutriente
         # 1g de proteína = 4 calorías

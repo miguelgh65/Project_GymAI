@@ -137,6 +137,14 @@ const MacroCalculator = ({ user }) => {
         }
 
         try {
+            // Verificar que los porcentajes sumen 100%
+            const totalPercentage = macroDistribution.protein + macroDistribution.carbs + macroDistribution.fat;
+            if (Math.abs(totalPercentage - 100) > 0.5) {
+                setError(`Los porcentajes de macros deben sumar 100% (actual: ${totalPercentage.toFixed(1)}%)`);
+                setCalculating(false);
+                return;
+            }
+            
             // Convertir datos numéricos a números antes de enviar
             const dataToSend = {
                 ...formData,
@@ -144,11 +152,11 @@ const MacroCalculator = ({ user }) => {
                 height: parseFloat(formData.height),
                 weight: parseFloat(formData.weight),
                 body_fat_percentage: formData.body_fat_percentage ? parseFloat(formData.body_fat_percentage) : null,
-                // Incluir la distribución de macros
+                // Incluir la distribución de macros - asegurar que son números exactos
                 macro_distribution: {
-                    protein: macroDistribution.protein,
-                    carbs: macroDistribution.carbs,
-                    fat: macroDistribution.fat
+                    protein: parseFloat(macroDistribution.protein.toFixed(1)),
+                    carbs: parseFloat(macroDistribution.carbs.toFixed(1)),
+                    fat: parseFloat(macroDistribution.fat.toFixed(1))
                 }
             };
             
@@ -157,6 +165,54 @@ const MacroCalculator = ({ user }) => {
             
             const result = await NutritionCalculator.calculateMacros(dataToSend);
             console.log("Resultados recibidos:", result);
+            
+            // Verificar si los porcentajes de macros en el resultado coinciden con los enviados
+            const resultProteinPct = result.macros?.protein?.percentage || 0;
+            const resultCarbsPct = result.macros?.carbs?.percentage || 0;
+            const resultFatPct = result.macros?.fat?.percentage || 0;
+            
+            console.log("Porcentajes recibidos:", {
+                protein: resultProteinPct,
+                carbs: resultCarbsPct,
+                fat: resultFatPct
+            });
+            
+            // Aplicar un umbral de diferencia aceptable (3%)
+            const proteinDiff = Math.abs(resultProteinPct - macroDistribution.protein);
+            const carbsDiff = Math.abs(resultCarbsPct - macroDistribution.carbs);
+            const fatDiff = Math.abs(resultFatPct - macroDistribution.fat);
+            
+            if (proteinDiff > 3 || carbsDiff > 3 || fatDiff > 3) {
+                console.warn("La API no respetó los porcentajes de macros enviados. Recalculando localmente.");
+                
+                // Recalcular macros según los porcentajes deseados
+                const goalCalories = result.goal_calories;
+                const proteinGrams = Math.round((goalCalories * (macroDistribution.protein / 100)) / 4);
+                const carbsGrams = Math.round((goalCalories * (macroDistribution.carbs / 100)) / 4);
+                const fatGrams = Math.round((goalCalories * (macroDistribution.fat / 100)) / 9);
+                
+                // Corregir los macros en el resultado
+                result.macros = {
+                    protein: {
+                        grams: proteinGrams,
+                        calories: Math.round(proteinGrams * 4),
+                        percentage: Math.round(macroDistribution.protein)
+                    },
+                    carbs: {
+                        grams: carbsGrams,
+                        calories: Math.round(carbsGrams * 4),
+                        percentage: Math.round(macroDistribution.carbs)
+                    },
+                    fat: {
+                        grams: fatGrams,
+                        calories: Math.round(fatGrams * 9),
+                        percentage: Math.round(macroDistribution.fat)
+                    }
+                };
+                
+                console.log("Macros recalculados:", result.macros);
+            }
+            
             setResults(result);
         } catch (err) {
             console.error("Error calculando macros:", err);
