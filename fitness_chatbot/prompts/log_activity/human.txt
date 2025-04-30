@@ -1,0 +1,5 @@
+<human>
+Extrae los datos estructurados para registrar la siguiente actividad:
+
+{query}
+</human>

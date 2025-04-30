@@ -1,0 +1,247 @@
+/* Estilos para el Dashboard */
+.dashboard-container {
+    max-width: 1400px;
+    margin: 20px auto;
+    padding: 20px;
+    font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  }
+  
+  .dashboard-header {
+    text-align: center;
+    margin-bottom: 25px;
+  }
+  
+  .dashboard-header h1 {
+    color: #1976d2;
+    font-weight: 500;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+  
+  /* Sección de filtros */
+  .filter-section {
+    background-color: white;
+    margin-bottom: 30px;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  
+  .select-input, .date-input {
+    width: 100%;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+  }
+  
+  .select-input:focus, .date-input:focus {
+    border-color: #1976d2;
+    box-shadow: 0 0 0 1px rgba(25, 118, 210, 0.25);
+  }
+  
+  .primary-btn {
+    background-color: #1976d2;
+    color: white;
+    transition: all 0.3s ease;
+  }
+  
+  .primary-btn:hover {
+    background-color: #1565c0;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Tarjetas de métricas */
+  .dashboard-metrics {
+    margin-top: 20px;
+  }
+  
+  .metric-card {
+    display: flex;
+    align-items: center;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  
+  .metric-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+  }
+  
+  .metric-icon {
+    width: 50px;
+    height: 50px;
+    background-color: rgba(52, 152, 219, 0.1);
+    color: #1976d2;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-right: 16px;
+  }
+  
+  #card-sessions .metric-icon {
+    background-color: rgba(52, 152, 219, 0.1);
+    color: #3498db;
+  }
+  
+  #card-max-weight .metric-icon {
+    background-color: rgba(155, 89, 182, 0.1);
+    color: #9b59b6;
+  }
+  
+  #card-progress .metric-icon {
+    background-color: rgba(46, 204, 113, 0.1);
+    color: #2ecc71;
+  }
+  
+  #card-volume .metric-icon {
+    background-color: rgba(230, 126, 34, 0.1);
+    color: #e67e22;
+  }
+  
+  .metric-content h3 {
+    font-size: 1rem;
+    color: #555;
+    margin-bottom: 5px;
+  }
+  
+  .metric-value {
+    font-size: 1.75rem !important;
+    font-weight: 700 !important;
+    color: #333;
+  }
+  
+  .metric-value.positive {
+    color: #2ecc71;
+  }
+  
+  .metric-value.negative {
+    color: #e74c3c;
+  }
+  
+  /* Contenedores de gráficos */
+  .chart-container {
+    height: 100%;
+    border-radius: 8px;
+  }
+  
+  .chart-container h2 {
+    font-size: 1.2rem;
+    color: #333;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+  }
+  
+  /* Tabla de sesiones */
+  .table-container {
+    height: 100%;
+    overflow: hidden;
+  }
+  
+  .table-responsive {
+    overflow-x: auto;
+    max-height: 350px;
+  }
+  
+  .sessions-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .sessions-table th, .sessions-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .sessions-table th {
+    background-color: #f5f7fa;
+    font-weight: 600;
+    color: #555;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  
+  .sessions-table tr:last-child td {
+    border-bottom: none;
+  }
+  
+  .sessions-table tr:hover td {
+    background-color: rgba(25, 118, 210, 0.05);
+  }
+  
+  .empty-state {
+    text-align: center;
+    color: #757575;
+  }
+  
+  /* Mapa de calor */
+  #activity-heatmap {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+  
+  .day {
+    stroke: white;
+    stroke-width: 1px;
+  }
+  
+  .month-label {
+    font-size: 9px;
+    fill: #666;
+  }
+  
+  /* Adaptaciones responsive */
+  @media (max-width: 960px) {
+    .dashboard-container {
+      padding: 15px;
+    }
+    
+    .metric-card {
+      padding: 15px;
+    }
+    
+    .metric-icon {
+      width: 40px;
+      height: 40px;
+      font-size: 1.2rem;
+      margin-right: 12px;
+    }
+    
+    .metric-value {
+      font-size: 1.5rem !important;
+    }
+  }
+  
+  @media (max-width: 600px) {
+    .dashboard-container {
+      padding: 10px;
+    }
+    
+    .dashboard-header h1 {
+      font-size: 1.5rem;
+    }
+    
+    .metric-card {
+      padding: 12px;
+    }
+    
+    .metric-icon {
+      width: 36px;
+      height: 36px;
+      font-size: 1rem;
+      margin-right: 10px;
+    }
+    
+    .metric-value {
+      font-size: 1.3rem !important;
+    }
+  }

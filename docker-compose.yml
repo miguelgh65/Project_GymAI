@@ -1,0 +1,79 @@
+services:
+  gym-postgres:
+    image: postgres:latest
+    container_name: gym-postgres
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    ports:
+      - "5438:5432"
+    restart: unless-stopped
+    networks:
+      - gymnet
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  gym-fastapi-backend:
+    container_name: gym-fastapi-backend
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}
+      - PYTHONPATH=/app
+      - TZ=Europe/Madrid
+    volumes:
+      - ./:/app
+    ports:
+      - "5050:5050"
+    depends_on:
+      gym-postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "/app/start.sh"
+    networks:
+      - gymnet
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:5050/docs > /dev/null || exit 0"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  gym-react-frontend:
+    container_name: gym-react-frontend
+    build:
+      context: ./front_end_react
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    volumes:
+      - ./front_end_react:/app
+      - /app/node_modules
+    environment:
+      - REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL}
+      - REACT_APP_PROJECT_NAME=${REACT_APP_PROJECT_NAME}
+      - REACT_APP_GOOGLE_CLIENT_ID=${REACT_APP_GOOGLE_CLIENT_ID}
+    depends_on:
+      - gym-fastapi-backend
+    restart: unless-stopped
+    networks:
+      - gymnet
+
+networks:
+  gymnet:
+    driver: bridge
+
+volumes:
+  postgres_data:
