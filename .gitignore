@@ -1,0 +1,9 @@
+# Ignorar archivos sensibles
+**/telegram_bot.log
+**/test_tracking_api.sh
+**/__pycache__/
+*.pyc
+.env
+.env.*
+*.token
+*.secret
