@@ -6,5 +6,32 @@ node_modules/
 
 # Ignorar el archivo .env
 .env
-telegram/gym/telegram_bot.log
-test_tracking_api.sh
+# Ignore all __pycache__ directories and files
+**/__pycache__/
+*.pyc
+__pycache__/
+
+# Ignore log files that might contain secrets
+*.log
+
+# Ignore environment files that might contain sensitive information
+.env
+*.env
+.env.*
+
+# Ignore files with potential secrets or tokens
+**/telegram_bot.log
+**/test_tracking_api.sh
+
+# Ignore SSH keys, certificates, and other sensitive files
+*.pem
+*.key
+*.cert
+
+# Ignore IDE and system-specific files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+
