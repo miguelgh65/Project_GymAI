@@ -6,3 +6,5 @@ node_modules/
 
 # Ignorar el archivo .env
 .env
+telegram/gym/telegram_bot.log
+test_tracking_api.sh
