@@ -1,0 +1,5 @@
+<human>
+Analiza el siguiente mensaje y clasifícalo según su intención:
+
+{query}
+</human>

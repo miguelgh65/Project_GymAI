@@ -1,0 +1,7 @@
+<context>
+{user_context}
+</context>
+
+<human>
+{query}
+</human>
