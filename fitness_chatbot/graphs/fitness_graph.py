@@ -2,7 +2,6 @@ import logging
 from typing import Dict, Any, Tuple
 
 from langgraph.graph import END, StateGraph
-from langgraph.checkpoint.memory import MemorySaver
 
 from fitness_chatbot.schemas.agent_state import AgentState, IntentType
 from fitness_chatbot.schemas.memory_schemas import MemoryState
@@ -64,5 +63,5 @@ def create_fitness_graph():
     # Definir el punto de entrada
     graph.set_entry_point("classify_intent")
     
-    # Compilar el grafo con persistencia de estado
-    return graph.compile(checkpointer=MemorySaver())
+    # Compilar el grafo SIN checkpointer para evitar error
+    return graph.compile()
