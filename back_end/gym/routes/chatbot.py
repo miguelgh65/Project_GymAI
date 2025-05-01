@@ -1,155 +1,196 @@
-# workflows/gym/routes/chatbot.py
+# back_end/gym/routes/chatbot.py
 import logging
 import os
-import sys
+import json
+import requests
+from typing import Dict, Any, List
 
-# Add the project root to the path
-# Asegúrate que esta lógica de path funcione correctamente en tu despliegue
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
-if project_root not in sys.path:
-    sys.path.append(project_root)
-    logging.info(f"Added {project_root} to Python path")
+# Configuración de logging
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-# Se elimina HTMLResponse y Jinja2Templates
 from fastapi.responses import JSONResponse
-# from fastapi.templating import Jinja2Templates # Eliminado
 
-# Asumiendo que middlewares está accesible
-# Ajusta la ruta si es necesario, p.ej., from ...middlewares import get_current_user
+# Importaciones para la autenticación
 from back_end.gym.middlewares import get_current_user
 
-# Configure LangSmith if available (logging ya está configurado)
+# Importamos el LLM del config para usarlo como respaldo
+from back_end.gym.config import llm
+
+# URL del servicio LangGraph (intentar primero host.docker.internal)
+LANGGRAPH_URL = os.getenv("LANGGRAPH_URL", "http://host.docker.internal:8000")
+LANGGRAPH_ENDPOINT = os.getenv("LANGGRAPH_ENDPOINT", "/api/chat")
+USE_FALLBACK = os.getenv("USE_FALLBACK", "true").lower() == "true"  # Por defecto, usar fallback
+
+# Configure LangSmith if available
 try:
     import langsmith
     HAS_LANGSMITH = True
-    logging.info("Successfully imported LangSmith for chatbot integration")
+    logger.info("Successfully imported LangSmith for chatbot integration")
 except ImportError:
     HAS_LANGSMITH = False
-    logging.warning("LangSmith not available, continuing without tracing")
+    logger.warning("LangSmith not available, continuing without tracing")
 
 router = APIRouter(
-    prefix="/api/chatbot", # Añadir prefijo a las rutas de este router
-    tags=["chatbot"],      # Etiqueta para Swagger UI
+    prefix="/api/chatbot",
+    tags=["chatbot"],
 )
-# Instancia de Templates eliminada
-# templates = Jinja2Templates(directory="/app/front_end/templates") # Eliminado
 
-# Import the fitness agent module - now that we've created the utils module
-# (La lógica de importación y fallback se mantiene)
-try:
-    # Asegúrate que la ruta de importación sea correcta para tu estructura
-    from fitness_agent.agent.nodes.router_node import process_message
-    logging.info("Successfully imported process_message from fitness_agent.agent.nodes.router_node")
-except ImportError as e:
-    logging.error(f"Error importing process_message: {e}")
-
-    # Simple message response class to maintain compatibility if import fails
-    class MessageResponse:
-        """Class to hold the agent's response."""
-        def __init__(self, content: str):
-            self.content = content
-
-    # Fallback process message function if the import fails
-    def process_message(user_id: str, message: str) -> MessageResponse:
+def fallback_chatbot_response(user_id: str, message: str) -> Dict[str, Any]:
+    """
+    Función de respaldo que usa el LLM configurado directamente para responder 
+    cuando LangGraph no está disponible.
+    """
+    logger.info(f"Usando respuesta de respaldo para usuario {user_id}")
+    
+    try:
+        # Prompt con contexto de fitness
+        system_prompt = """Eres un asistente de fitness y entrenamiento personal. Ofrece consejos útiles, 
+        información sobre ejercicios, técnicas correctas, nutrición deportiva y rutinas de entrenamiento. 
+        Mantén un tono motivador pero basado en evidencia científica. Si no estás seguro de algo, 
+        indícalo claramente y sugiere consultar con un profesional.
+        
+        El usuario está interesado en mejorar su condición física y busca orientación práctica.
         """
-        Fallback implementation if the import fails.
+        
+        # Preparar mensajes para el LLM
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": message}
+        ]
+        
+        # Invocamos el LLM directamente desde el config
+        response = llm.invoke(messages)
+        content = response.content if hasattr(response, 'content') else str(response)
+        
+        # Estructura de respuesta similar a LangGraph
+        return {
+            "messages": [
+                {"role": "user", "content": message},
+                {"role": "assistant", "content": content}
+            ]
+        }
+    except Exception as e:
+        logger.exception(f"Error en respuesta de respaldo: {e}")
+        return {
+            "messages": [
+                {"role": "user", "content": message},
+                {"role": "assistant", "content": "Lo siento, estoy experimentando dificultades técnicas. Por favor, inténtalo de nuevo más tarde."}
+            ]
+        }
 
-        Args:
-            user_id: ID of the user
-            message: Message from the user
+@router.post("/send", response_class=JSONResponse)
+async def chatbot_send(request: Request, user = Depends(get_current_user)):
+    """API endpoint para enviar mensajes al chatbot"""
+    
+    # Verificar autenticación
+    if not user or not user.get('id'):
+        logger.warning("Intento de acceso a chatbot sin autenticación")
+        return JSONResponse(
+            content={"success": False, "message": "Usuario no autenticado"},
+            status_code=status.HTTP_401_UNAUTHORIZED
+        )
 
-        Returns:
-            MessageResponse: Object with the response content
-        """
-        # If we have LangSmith, configure tags
+    # Extraer datos del request
+    try:
+        data = await request.json()
+        message = data.get("message", "").strip()
+        
+        if not message:
+            logger.warning("Mensaje vacío recibido")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Message cannot be empty."
+            )
+
+        # Usar ID de usuario 
+        user_id = str(user["id"])
+        logger.info(f"Procesando mensaje para usuario {user_id}: '{message[:50]}...'")
+        
+        # Configurar LangSmith si está disponible
         if HAS_LANGSMITH:
             try:
                 project_name = os.getenv("LANGSMITH_PROJECT", "gym")
                 langsmith.set_project(project_name)
                 langsmith.set_tags([f"user:{user_id}"])
             except Exception as e:
-                logging.error(f"Error configuring LangSmith: {e}")
+                logger.error(f"Error configuring LangSmith: {e}")
 
-        try:
-            # Return a message that explains we're in fallback mode
-            response_content = f"Received: '{message}'. (Fallback mode: AI agent not fully loaded)."
-            logging.info(f"Generated fallback response for user {user_id}")
-            return MessageResponse(response_content)
-        except Exception as e:
-            logging.error(f"Error in fallback process_message: {e}")
-            return MessageResponse("Sorry, an error occurred while processing your message.")
-
-# --- Endpoint de Página Eliminado ---
-# La ruta GET /chatbot que renderizaba HTML se ha eliminado.
-# React se encargará de mostrar la interfaz del chatbot.
-
-# --- Endpoints API para el Chatbot ---
-
-@router.post("/send", response_class=JSONResponse) # Ruta relativa al prefijo: /api/chatbot/send
-async def chatbot_send(request: Request, user = Depends(get_current_user)):
-    """API endpoint to send messages to the chatbot"""
-    # Verify user authentication
-    if not user or not user.get('id'): # Verificar que 'id' existe en el objeto user
-        return JSONResponse(
-            content={"success": False, "message": "User not authenticated"},
-            status_code=status.HTTP_401_UNAUTHORIZED
-        )
-
-    # Extract data from request
-    try:
-        data = await request.json()
-        # Validar que 'message' existe y no está vacío
-        message = data.get("message", "").strip()
-        if not message:
-            # Usar HTTPException para errores de cliente claros
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Message cannot be empty."
-            )
-
-        # Use the internal user ID (asegurarse que es el tipo correcto, ej: string)
-        user_id = str(user["id"])
-        logging.info(f"Processing message for user {user_id}")
-
-        # Process the message using the imported (or fallback) function
-        # Asume que process_message devuelve un objeto con atributo 'content'
-        response_obj = process_message(user_id=user_id, message=message)
-
-        # Format the response for the frontend
-        # Asegurarse que response_obj.content existe
-        response_content = getattr(response_obj, 'content', "Error: No content in response object.")
-
-        responses = [{
-            "role": "assistant",
-            "content": response_content
-        }]
+        # Intentar usar LangGraph primero, si no está forzado el fallback
+        result = None
+        if not USE_FALLBACK:
+            try:
+                langgraph_url = f"{LANGGRAPH_URL}{LANGGRAPH_ENDPOINT}"
+                payload = {
+                    "user_id": user_id,
+                    "message": message
+                }
+                
+                headers = {
+                    "Content-Type": "application/json",
+                    "X-API-Key": os.getenv("LANGGRAPH_API_KEY", ""),
+                }
+                
+                logger.info(f"Intentando conectar a LangGraph: {langgraph_url}")
+                timeout = int(os.getenv("LANGGRAPH_TIMEOUT", "5"))  # Timeout corto para probar rápido
+                
+                response = requests.post(
+                    langgraph_url,
+                    json=payload,
+                    headers=headers,
+                    timeout=timeout,
+                    verify=os.getenv("LANGGRAPH_VERIFY_SSL", "true").lower() == "true"
+                )
+                
+                response.raise_for_status()
+                result = response.json()
+                logger.info(f"Respuesta recibida de LangGraph correctamente")
+                
+            except requests.exceptions.RequestException as req_err:
+                logger.warning(f"Error conectando a LangGraph, usando respaldo: {req_err}")
+                # Si falla LangGraph, usamos el respaldo pero no elevamos el error
+                result = None
+        
+        # Si no tenemos resultado de LangGraph, usamos el respaldo
+        if result is None:
+            result = fallback_chatbot_response(user_id, message)
+            
+        # Extraer la respuesta del resultado
+        messages = result.get("messages", [])
+        response_message = next((msg for msg in messages if msg.get("role") == "assistant"), None)
+        
+        if not response_message:
+            logger.error(f"No se encontró respuesta del asistente en el resultado.")
+            # Respuesta alternativa si no se puede extraer
+            responses = [{
+                "role": "assistant",
+                "content": "Lo siento, no pude procesar tu consulta correctamente. Por favor, inténtalo de nuevo."
+            }]
+        else:
+            responses = [{
+                "role": "assistant",
+                "content": response_message.get("content", "")
+            }]
 
         return JSONResponse(content={"success": True, "responses": responses})
 
     except json.JSONDecodeError:
-         raise HTTPException(
-             status_code=status.HTTP_400_BAD_REQUEST,
-             detail="Invalid JSON format in request body."
-         )
+        logger.error("Error al decodificar JSON en solicitud")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid JSON format in request body."
+        )
     except HTTPException as http_exc:
-         # Re-lanzar HTTPException para que FastAPI la maneje
-         raise http_exc
-    except AttributeError as attr_err:
-         logging.error(f"Attribute error processing message (likely response object issue): {attr_err}")
-         return JSONResponse(
-             content={"success": False, "message": "Error formatting the response."},
-             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
-         )
+        # Re-lanzar excepciones HTTP para que FastAPI las maneje
+        raise http_exc
     except Exception as e:
-        logging.exception(f"Error processing message for user {user.get('id', 'N/A')}: {e}") # Log completo del error
-        # Devolver un error genérico al cliente
+        logger.exception(f"Error procesando mensaje para usuario {user.get('id', 'N/A')}: {e}")
         return JSONResponse(
-            content={"success": False, "message": "An internal error occurred while processing the message."},
+            content={"success": False, "message": "Error interno del servidor al procesar la solicitud."},
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
-@router.get("/history", response_class=JSONResponse) # Ruta relativa al prefijo: /api/chatbot/history
+@router.get("/history", response_class=JSONResponse)
 async def chatbot_history(request: Request, user = Depends(get_current_user)):
     """API endpoint to get conversation history"""
     # Verify user authentication
@@ -164,17 +205,14 @@ async def chatbot_history(request: Request, user = Depends(get_current_user)):
 
     try:
         # --- Implementación del historial ---
-        # Aquí es donde conectarías con tu base de datos o sistema de almacenamiento
-        # para recuperar el historial de conversaciones del user_id.
         # Ejemplo simulado:
-        logging.info(f"Fetching conversation history for user {user_id} (currently returning empty).")
-        # history_from_db = tu_funcion_para_obtener_historial(user_id)
-        history_from_db = [] # Placeholder
+        logger.info(f"Fetching conversation history for user {user_id} (currently returning empty).")
+        history_from_db = []  # Placeholder
 
         return JSONResponse(content={"success": True, "history": history_from_db, "user_id": user_id})
 
     except Exception as e:
-        logging.exception(f"Error fetching history for user {user_id}: {e}") # Log completo del error
+        logger.exception(f"Error fetching history for user {user_id}: {e}")
         return JSONResponse(
              content={"success": False, "message": "An internal error occurred while fetching history."},
              status_code=status.HTTP_500_INTERNAL_SERVER_ERROR

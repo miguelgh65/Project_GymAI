@@ -34,6 +34,8 @@ services:
       - TZ=Europe/Madrid
     volumes:
       - ./:/app
+      # Asegúrate de que las siguientes líneas NO están comentadas:
+      # - ./fitness_agent:/app/fitness_agent  # Si tienes líneas adicionales asegúrate que estén habilitadas
     ports:
       - "5050:5050"
     depends_on:

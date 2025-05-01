@@ -1,0 +1,57 @@
+# Archivo: requirements.txt (Basado en tu lista y asegurando dependencias del chatbot)
+
+# --- FastAPI & Web Server ---
+fastapi>=0.95.0
+uvicorn[standard]>=0.18.0
+python-multipart==0.0.20 # Manteniendo tu versión específica
+
+# --- Database ---
+psycopg2-binary>=2.9
+
+# --- Data Validation & Config ---
+pydantic>=2.0
+python-dotenv
+
+# --- Langchain / LangGraph / LLM ---
+langchain>=0.1.4
+langchain-core>=0.1.17
+langchain-community>=0.0.13
+langchain-deepseek>=0.1.2  # Ya tenías la dependencia para DeepSeek
+langgraph>=0.0.19        # Ya tenías LangGraph (aseguramos >=0.0.19)
+# langgraph==0.3.20       # Comentado como en tu original, parece un conflicto/typo
+
+# --- Authentication & Security ---
+python-jose[cryptography]>=3.4.0 # Usando tu versión
+passlib[bcrypt]>=1.7.4         # Necesario para hashing de contraseñas si usas seguridad estándar
+authlib>=1.5.1
+itsdangerous>=2.2.0
+pyjwt>=2.10.1
+
+# --- Google Auth ---
+google-auth>=2.38.0
+google-auth-oauthlib>=1.2.1
+# Considera añadir también si los necesitas explícitamente:
+# google-api-python-client
+# google-auth-httplib2
+
+# --- Scheduling (Fitbit) ---
+apscheduler>=3.11.0 # Usando tu versión
+
+# --- Telegram Bot ---
+pyTelegramBotAPI>=4.10.0
+Jinja2>=3.1.2           # Usado por Telegram o Flask/FastAPI templates?
+
+# --- Testing & Development ---
+pytest>=7.0
+graphviz>=0.20          # Para visualización de LangGraph
+ipython>=8.0.0          # Útil para desarrollo/debugging interactivo
+
+# --- Otros ---
+requests>=2.28          # Dependencia común
+httpx>=0.24.0           # Recomendado: Cliente HTTP asíncrono (útil con FastAPI/Langchain async)
+
+# --- Opcional: LangSmith ---
+# langsmith>=0.1.0      # Descomenta si usas LangSmith para tracing
+
+# --- Opcional: SQLAlchemy (si lo usas) ---
+# SQLAlchemy>=2.0.15

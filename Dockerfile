@@ -20,7 +20,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copia las carpetas que realmente necesita el backend
 COPY back_end/gym/ /app/back_end/gym/
 COPY telegram/ /app/telegram/
-COPY fitness_agent/ /app/fitness_agent/
+COPY fitness_chatbot/ /app/fitness_chatbot/
 COPY start.sh /app/
 # COPY .env /app/ # No es ideal copiar .env a la imagen, se carga con env_file en docker-compose
 

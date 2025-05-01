@@ -10,49 +10,66 @@ from fastapi.responses import FileResponse, RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 
+# ---- NUEVO: CONFIGURACIÓN DEL PYTHON PATH ----
+# Añadir el directorio raíz al Python path para poder importar fitness_agent
+print("Current Directory:", os.getcwd())
+print("Initial Python Path:", sys.path)
+
+# Intentar múltiples posibles localizaciones
+possible_paths = [
+    "/app",                # Directorio raíz del contenedor
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")), # Subir dos niveles
+]
+
+for path in possible_paths:
+    if os.path.exists(path):
+        if path not in sys.path:
+            sys.path.insert(0, path)
+            print(f"Added {path} to Python path")
+
+print("Updated Python Path:", sys.path)
+# Verificar si ahora podemos importar fitness_agent
+try:
+    import fitness_agent
+    print(f"✅ fitness_agent module found at: {fitness_agent.__file__}")
+except ImportError as e:
+    print(f"❌ Still cannot import fitness_agent: {e}")
+# ---- FIN NUEVO CÓDIGO ----
+
 # --- Importaciones Corregidas ---
 try:
     # Usar importación relativa (. significa desde el mismo directorio gym)
     from .middlewares import AuthenticationMiddleware
-    from .services.fitbit_scheduler import start_scheduler # Asumiendo que está en services/
+    from .services.fitbit_scheduler import start_scheduler
 except ImportError as e:
     # Log crítico si falla importación esencial
     logging.critical(f"Error crítico importando módulos locales: {e}", exc_info=True)
     sys.exit(f"Error importando módulos locales: {e}")
 
-# --- Fin Importaciones Corregidas ---
-
-
 # Cargar variables de entorno
 load_dotenv()
 
-
 # --- Configuración de Logging (Nivel DEBUG) ---
 logging.basicConfig(
-    level=logging.DEBUG, # <-- ASEGÚRATE QUE SEA DEBUG
-    format='%(asctime)s - %(name)s [%(levelname)s] - %(message)s', # Añadido levelname
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s [%(levelname)s] - %(message)s',
     handlers=[
-        logging.StreamHandler(sys.stdout), # Log a consola stdout
-        # logging.FileHandler('app.log', encoding='utf-8') # Opcional: guardar en archivo
+        logging.StreamHandler(sys.stdout),
     ]
 )
-# Configurar logging para librerías externas si son muy ruidosas
+# Configurar logging para librerías externas
 logging.getLogger('uvicorn').setLevel(logging.INFO)
 logging.getLogger('uvicorn.access').setLevel(logging.WARNING)
 logging.getLogger('fastapi').setLevel(logging.INFO)
 logging.getLogger('watchfiles').setLevel(logging.WARNING)
 
-logger = logging.getLogger(__name__) # Logger para este archivo
-
-# Deshabilitar LangSmith (si no lo usas o según configuración)
-# ... (código LangSmith existente) ...
+logger = logging.getLogger(__name__)
 
 # Definir contexto de vida
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     scheduler = None
     try:
-        # Asegúrate que start_scheduler está correctamente importado arriba
         scheduler = start_scheduler()
         if scheduler: logger.info("✅ Fitbit scheduler iniciado correctamente")
     except NameError:
@@ -62,7 +79,7 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    if scheduler and getattr(scheduler, 'running', False): # Chequeo más seguro
+    if scheduler and getattr(scheduler, 'running', False):
         try:
             scheduler.shutdown()
             logger.info("🛑 Fitbit scheduler detenido.")
@@ -73,7 +90,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 # Configurar CORS - MEJORADA
-cors_origins_str = os.getenv('CORS_ORIGINS', 'http://localhost,http://localhost:3000,http://localhost:5050') # Valor por defecto más permisivo
+cors_origins_str = os.getenv('CORS_ORIGINS', 'http://localhost,http://localhost:3000,http://localhost:5050')
 cors_origins = [origin.strip() for origin in cors_origins_str.split(',') if origin.strip()]
 
 # Añadir comodín en desarrollo si es necesario
@@ -91,12 +108,12 @@ logger.info("---------------------------------")
 # En app_fastapi.py - Reemplaza la configuración CORS actual
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # En desarrollo puedes usar * 
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
     expose_headers=["*"],
-    max_age=86400,  # Tiempo que el navegador puede cachear la respuesta preflight
+    max_age=86400,
 )
 # Middleware de sesiones
 secret_key = os.getenv('SECRET_KEY')
@@ -106,24 +123,16 @@ if not secret_key:
 app.add_middleware(SessionMiddleware, secret_key=secret_key)
 
 # Middleware de autenticación (DESPUÉS de CORS y Session)
-# Asegúrate que AuthenticationMiddleware está correctamente importado arriba
 try:
     app.add_middleware(AuthenticationMiddleware)
 except NameError:
      logger.critical("💥 AuthenticationMiddleware no definido (Import Error?) - ¡LA AUTENTICACIÓN NO FUNCIONARÁ!")
-     # Considera detener la app si el middleware es esencial
-     # sys.exit("Middleware de autenticación no pudo ser añadido.")
-
 
 # Importar routers (usando importaciones relativas)
-# --- Importaciones Corregidas ---
-# En la sección de importación de routers
-# En app_fastapi.py - Sección de importación de routers
-
 try:
     # Routers existentes
     from .routes import auth as auth_routes
-    from .routes import chatbot as chatbot_routes
+    from .routes import chatbot as chatbot_routes  # Usaremos esta versión actualizada
     from .routes import dashboard as dashboard_routes
     from .routes import main as main_routes
     from .routes import profile as profile_routes
@@ -141,7 +150,7 @@ try:
     app.include_router(dashboard_routes.router)
     app.include_router(profile_routes.router)
     app.include_router(fitbit_router)
-    app.include_router(chatbot_routes.router)
+    app.include_router(chatbot_routes.router)  # Este contiene el nuevo código para fitness_agent
     app.include_router(auth_routes.router)
     
     # NUEVO: Incluir el router combinado de nutrición
@@ -151,7 +160,7 @@ try:
 except ImportError as e:
     logger.critical(f"💥 Error Crítico importando routers (relativa): {e}", exc_info=True)
     sys.exit(f"Error importando routers: {e}")
-    
+
 @app.get("/fitbit-callback")
 async def fitbit_callback_direct(request: Request):
     """Endpoint para manejar callback de OAuth de Fitbit y redirigir al handler correcto"""
