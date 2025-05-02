@@ -46,7 +46,7 @@ router = APIRouter(
     tags=["chatbot"],
 )
 
-async def stream_generator(user_id: str, message: str):
+async def stream_generator(user_id: str, message: str, auth_token: Optional[str] = None):
     """
     Generador de streaming mejorado para respuestas del chatbot.
     Envía cada token a medida que lo genera para un streaming real.
@@ -58,8 +58,8 @@ async def stream_generator(user_id: str, message: str):
         if CHATBOT_AVAILABLE and not USE_FALLBACK:
             # Usar el chatbot avanzado (grafo con nodos)
             try:
-                # Procesar el mensaje con el grafo
-                response = await process_with_graph(user_id, message)
+                # Procesar el mensaje con el grafo, pasando el token JWT
+                response = await process_with_graph(user_id, message, auth_token)
                 
                 # Simular streaming para el contenido
                 content = response.content if hasattr(response, 'content') else str(response)
@@ -218,9 +218,16 @@ async def chatbot_send(request: Request, user = Depends(get_current_user)):
         if stream:
             logger.info(f"Usando modo streaming para usuario {user_id}")
             
+            # Obtener el token JWT del encabezado Authorization
+            auth_header = request.headers.get("Authorization")
+            auth_token = None
+            if auth_header and auth_header.startswith("Bearer "):
+                auth_token = auth_header.replace("Bearer ", "")
+                logger.info("Token JWT obtenido del encabezado Authorization")
+            
             # Usar StreamingResponse con los headers correctos para SSE
             return StreamingResponse(
-                stream_generator(user_id, message),
+                stream_generator(user_id, message, auth_token),
                 media_type="text/event-stream",
                 headers={
                     "Cache-Control": "no-cache, no-transform",
@@ -241,6 +248,13 @@ async def chatbot_send(request: Request, user = Depends(get_current_user)):
             except Exception as e:
                 logger.error(f"Error configuring LangSmith: {e}")
 
+        # Obtener el token JWT del encabezado Authorization
+        auth_header = request.headers.get("Authorization")
+        auth_token = None
+        if auth_header and auth_header.startswith("Bearer "):
+            auth_token = auth_header.replace("Bearer ", "")
+            logger.info("Token JWT obtenido del encabezado Authorization")
+
         # Intentar usar el chatbot avanzado primero (fitness_chatbot)
         result = None
         
@@ -248,8 +262,8 @@ async def chatbot_send(request: Request, user = Depends(get_current_user)):
             try:
                 logger.info(f"Procesando mensaje con fitness_chatbot para usuario {user_id}")
                 
-                # Procesar el mensaje con el grafo
-                response = await process_with_graph(user_id, message)
+                # Procesar el mensaje con el grafo, pasando el token JWT
+                response = await process_with_graph(user_id, message, auth_token)
                 content = response.content if hasattr(response, 'content') else str(response)
                 
                 # Crear resultado similar al formato esperado
@@ -272,7 +286,8 @@ async def chatbot_send(request: Request, user = Depends(get_current_user)):
                 langgraph_url = f"{LANGGRAPH_URL}{LANGGRAPH_ENDPOINT}"
                 payload = {
                     "user_id": user_id,
-                    "message": message
+                    "message": message,
+                    "auth_token": auth_token  # Pasar el token a LangGraph si es externo
                 }
                 
                 headers = {
@@ -280,9 +295,14 @@ async def chatbot_send(request: Request, user = Depends(get_current_user)):
                     "X-API-Key": os.getenv("LANGGRAPH_API_KEY", ""),
                 }
                 
+                # Si hay un token JWT, incluirlo también en la solicitud a LangGraph
+                if auth_token:
+                    headers["Authorization"] = f"Bearer {auth_token}"
+                
                 logger.info(f"Intentando conectar a LangGraph: {langgraph_url}")
                 timeout = int(os.getenv("LANGGRAPH_TIMEOUT", "5"))  # Timeout corto para probar rápido
                 
+                import requests
                 response = requests.post(
                     langgraph_url,
                     json=payload,

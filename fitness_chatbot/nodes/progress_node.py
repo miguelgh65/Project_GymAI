@@ -1,20 +1,14 @@
-# fitness_chatbot/nodes/progress_node.py - VERSIÓN CON ANÁLISIS POR IA
+# fitness_chatbot/nodes/progress_node.py
 import logging
-import json
-import requests
-from datetime import datetime, timedelta
 from typing import Tuple, Dict, Any, Optional, List
 
 from fitness_chatbot.schemas.agent_state import AgentState
 from fitness_chatbot.schemas.memory_schemas import MemoryState
-from fitness_chatbot.utils.api_utils import make_api_request
+from fitness_chatbot.utils.api_utils import get_progress_data, get_exercise_data
 from fitness_chatbot.utils.prompt_manager import PromptManager
 from fitness_chatbot.configs.llm_config import get_llm
 
 logger = logging.getLogger("fitness_chatbot")
-
-# URL base para la API
-API_BASE_URL = "http://localhost"
 
 async def process_progress_query(states: Tuple[AgentState, MemoryState]) -> Tuple[AgentState, MemoryState]:
     """
@@ -37,46 +31,47 @@ async def process_progress_query(states: Tuple[AgentState, MemoryState]) -> Tupl
     if ejercicio:
         logger.info(f"Ejercicio '{ejercicio}' detectado en la consulta")
     
-    # Fechas para filtrado (último mes)
-    fecha_hasta = datetime.now().strftime("%Y-%m-%d")
-    fecha_desde = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
-    
     try:
-        # Llamar a la API de ejercicios_stats utilizando nuestra utilidad de API
-        params = {
-            "desde": fecha_desde,
-            "hasta": fecha_hasta
-        }
+        # Obtener el token de autenticación del contexto del usuario
+        auth_token = agent_state.get("user_context", {}).get("auth_token")
+        logger.info(f"Token de autenticación disponible: {'Sí' if auth_token else 'No'}")
         
-        # Añadir ejercicio si se ha detectado
+        # Usar nuestra función de API en lugar de llamadas directas a requests
         if ejercicio:
-            params["ejercicio"] = ejercicio
+            # Consulta por ejercicio específico
+            logger.info(f"Obteniendo datos de progreso para ejercicio: {ejercicio}")
+            data = get_progress_data(user_id, ejercicio, auth_token=auth_token)
+        else:
+            # Consulta general
+            logger.info(f"Obteniendo datos generales de progreso")
+            data = get_progress_data(user_id, auth_token=auth_token)
         
-        url = f"{API_BASE_URL}/api/ejercicios_stats"
-        logger.info(f"Consultando API: {url} con params: {params}")
-        
-        # Hacer la solicitud a la API
-        response = requests.get(
-            url,
-            params=params,
-            headers={"Accept": "application/json"}
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
+        # Verificar si obtuvimos datos correctamente
+        if data.get("success", False):
             logger.info(f"Datos recibidos de la API: {list(data.keys()) if isinstance(data, dict) else 'no es un dict'}")
             
             # Preparar los datos para enviar a la IA
             user_context = prepare_data_for_llm(data, ejercicio)
             
-            # Obtener la respuesta del LLM
-            respuesta = await get_analysis_from_llm(query, user_context)
+            # Obtener la respuesta del LLM usando el sistema de prompts
+            messages = PromptManager.get_prompt_messages(
+                "progress", 
+                query=query, 
+                user_context=user_context
+            )
+            
+            # Invocar el LLM
+            llm = get_llm()
+            response = await llm.ainvoke(messages)
+            respuesta = response.content if hasattr(response, 'content') else str(response)
         else:
-            logger.error(f"Error al llamar a la API: {response.status_code} - {response.text}")
-            respuesta = "Lo siento, no pude obtener información sobre tu progreso en este momento."
+            # Error al obtener datos
+            error_message = data.get("error", "Error desconocido")
+            logger.error(f"Error al obtener datos de progreso: {error_message}")
+            respuesta = f"Lo siento, no pude obtener información sobre tu progreso en este momento. Error: {error_message}"
     
     except Exception as e:
-        logger.error(f"Error consultando la API: {e}")
+        logger.exception(f"Error procesando consulta de progreso: {e}")
         respuesta = "Tuve un problema al consultar tu historial de progreso. Por favor, intenta de nuevo más tarde."
     
     # Actualizar estado y memoria
@@ -196,32 +191,3 @@ def prepare_data_for_llm(data: Dict[str, Any], ejercicio: Optional[str] = None) 
     context_parts.append("4. Proporciona recomendaciones basadas en los datos")
     
     return "\n".join(context_parts)
-
-async def get_analysis_from_llm(query: str, user_context: str) -> str:
-    """
-    Obtiene un análisis de los datos utilizando el LLM.
-    
-    Args:
-        query: Consulta del usuario
-        user_context: Datos formateados para el análisis
-        
-    Returns:
-        Respuesta generada por el LLM
-    """
-    try:
-        # Obtener el prompt para análisis de progreso
-        messages = PromptManager.get_prompt_messages(
-            "progress", 
-            query=query, 
-            user_context=user_context
-        )
-        
-        # Invocar el LLM
-        llm = get_llm()
-        response = await llm.ainvoke(messages)
-        
-        # Obtener y devolver la respuesta
-        return response.content
-    except Exception as e:
-        logger.error(f"Error al obtener análisis del LLM: {e}")
-        return "Pude obtener tus datos de progreso, pero tuve problemas al analizarlos. Por favor, intenta de nuevo."

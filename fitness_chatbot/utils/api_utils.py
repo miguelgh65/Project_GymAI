@@ -1,268 +1,224 @@
-# fitness_chatbot/nodes/router_node.py - VERSIÓN MEJORADA
+# fitness_chatbot/utils/api_utils.py
 import logging
 import json
-import re
-from typing import Tuple, Dict, Any, Optional
-
-from fitness_chatbot.schemas.agent_state import AgentState, IntentType
-from fitness_chatbot.schemas.memory_schemas import MemoryState
-from fitness_chatbot.schemas.prompt_schemas import IntentClassification
-from fitness_chatbot.configs.llm_config import get_llm
-from fitness_chatbot.utils.prompt_manager import PromptManager
+import os
+import requests
+from typing import Dict, Any, Optional, List, Union
 
 logger = logging.getLogger("fitness_chatbot")
 
-async def classify_intent(states: Tuple[AgentState, MemoryState]) -> Tuple[AgentState, MemoryState]:
+# URL base para las APIs - Usamos localhost dentro del contenedor
+# Dentro de Docker, usamos localhost ya que estamos en el mismo contenedor que el backend
+API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:5050")
+
+# La función para obtener el token de autenticación desde el middleware de FastAPI
+# El token debe ser obtenido inicialmente y pasado al nodo
+def get_auth_token() -> Optional[str]:
     """
-    Clasifica la intención del usuario basándose en su consulta.
-    
-    Args:
-        states: Tupla con (AgentState, MemoryState)
+    Obtiene el token de autenticación JWT para usar en las solicitudes a la API.
     
     Returns:
-        Tupla actualizada con (AgentState, MemoryState)
+        El token JWT o None si no está disponible
     """
-    logger.info("--- CLASIFICACIÓN DE INTENCIÓN INICIADA ---")
+    # En un entorno real, este token vendría del frontend o estaría almacenado en algún lugar seguro
+    # Para fines de prueba, podrías usar un token hard-coded
+    return None  # Esto será reemplazado por el token real que viene del usuario
+
+def make_api_request(
+    endpoint: str, 
+    method: str = "GET", 
+    params: Optional[Dict[str, Any]] = None,
+    json_data: Optional[Dict[str, Any]] = None,
+    headers: Optional[Dict[str, str]] = None,
+    timeout: int = 30,
+    auth_token: Optional[str] = None  # Nuevo parámetro para el token
+) -> Dict[str, Any]:
+    """
+    Realiza una solicitud a la API del backend.
     
-    # Desempaquetar estados
-    agent_state, memory_state = states
-    
-    # Obtener la consulta del usuario
-    query = agent_state["query"]
-    logger.info(f"Consulta a clasificar: '{query}'")
-    
-    # Comprobar si hay una intención ya definida (para llamadas directas a nodos específicos)
-    if agent_state.get("intent"):
-        logger.info(f"Intención ya definida: {agent_state['intent']}")
+    Args:
+        endpoint: Ruta del endpoint (sin la base URL)
+        method: Método HTTP (GET, POST, PUT, DELETE)
+        params: Parámetros de consulta
+        json_data: Datos JSON para el cuerpo de la solicitud
+        headers: Cabeceras HTTP adicionales
+        timeout: Tiempo de espera en segundos
+        auth_token: Token JWT para autenticación
         
-        # Actualizar historial de mensajes
-        if "messages" not in memory_state:
-            memory_state["messages"] = []
-        
-        memory_state["messages"].append({"role": "user", "content": query})
-        
-        return agent_state, memory_state
+    Returns:
+        Dict con la respuesta JSON o información de error
+    """
+    # Asegurar que el endpoint no comienza con /
+    if endpoint.startswith("/"):
+        endpoint = endpoint[1:]
     
-    # Utilizar el LLM para clasificar la intención
+    # Construir URL completa
+    url = f"{API_BASE_URL}/api/{endpoint}"
+    
+    # Configurar cabeceras por defecto
+    default_headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+    }
+    
+    # Añadir token de autenticación si está disponible
+    if auth_token:
+        default_headers["Authorization"] = f"Bearer {auth_token}"
+    
+    # Combinar con cabeceras adicionales
+    if headers:
+        default_headers.update(headers)
+    
+    logger.info(f"Realizando solicitud {method} a {url}")
+    if params:
+        logger.debug(f"Parámetros: {params}")
+    if json_data:
+        logger.debug(f"Datos JSON: {json_data}")
+    if auth_token:
+        logger.debug(f"Solicitud autenticada con token: {auth_token[:10]}...")
+    
     try:
-        # Configuración mejorada para el LLM - menor temperatura para respuestas más deterministas
-        temp_llm = get_llm()
-        if hasattr(temp_llm, 'with_temperature'):
-            llm = temp_llm.with_temperature(0.2)
+        # Realizar la solicitud
+        response = requests.request(
+            method=method.upper(),
+            url=url,
+            params=params,
+            json=json_data,
+            headers=default_headers,
+            timeout=timeout
+        )
+        
+        # Intentar obtener respuesta JSON
+        try:
+            response_data = response.json()
+        except json.JSONDecodeError:
+            logger.warning(f"Respuesta no JSON recibida: {response.text[:200]}")
+            response_data = {"text": response.text}
+        
+        # Añadir información sobre la respuesta
+        response_data["status_code"] = response.status_code
+        response_data["success"] = 200 <= response.status_code < 300
+        
+        if not response_data["success"]:
+            logger.warning(f"API respondió con código {response.status_code}: {response_data.get('detail', '')}")
         else:
-            llm = temp_llm
-            
-        # Obtener mensajes de prompt para el router
-        messages = PromptManager.get_prompt_messages("router", query=query)
+            logger.info(f"API respondió exitosamente ({response.status_code})")
         
-        # Configurar el modelo para obtener salida estructurada
-        structured_llm = llm.with_structured_output(IntentClassification)
-        
-        # Llamar al LLM para clasificar
-        classification = await structured_llm.ainvoke(messages)
-        
-        # Extraer la intención
-        intent = classification.intent.lower()
-        
-        # Log para debug
-        logger.info(f"LLM clasificó la intención como: {intent}")
-        
-        # Normalizar la intención
-        normalized_intent = normalize_intent(intent, query)
-        
-        logger.info(f"Intención normalizada final: {normalized_intent}")
-            
-    except Exception as e:
-        logger.error(f"Error en la clasificación con LLM: {str(e)}")
-        
-        # Si falla el LLM, usar un clasificador de reglas como fallback
-        normalized_intent = classify_by_rules(query)
-        logger.info(f"Fallback a clasificación por reglas: {normalized_intent}")
+        return response_data
     
-    # Actualizar estado con la intención detectada
-    agent_state["intent"] = normalized_intent
-    
-    # Actualizar historial de mensajes
-    if "messages" not in memory_state:
-        memory_state["messages"] = []
-    
-    memory_state["messages"].append({"role": "user", "content": query})
-    
-    logger.info("--- CLASIFICACIÓN DE INTENCIÓN FINALIZADA ---")
-    
-    return agent_state, memory_state
+    except requests.RequestException as e:
+        logger.error(f"Error en solicitud API: {str(e)}")
+        return {
+            "success": False,
+            "error": str(e),
+            "status_code": getattr(e.response, "status_code", 500) if hasattr(e, "response") else 500
+        }
 
-def normalize_intent(intent: str, query: str) -> str:
+def get_exercise_data(
+    user_id: str, 
+    exercise: Optional[str] = None, 
+    days: int = 30,
+    auth_token: Optional[str] = None  # Nuevo parámetro para el token
+) -> Dict[str, Any]:
     """
-    Normaliza la intención detectada y aplica lógica adicional basada en la consulta.
+    Obtiene datos de ejercicios del usuario.
     
     Args:
-        intent: Intención detectada por el LLM
-        query: Consulta original del usuario
+        user_id: ID del usuario
+        exercise: Nombre del ejercicio específico (opcional)
+        days: Número de días hacia atrás para obtener datos
+        auth_token: Token JWT para autenticación
         
     Returns:
-        Intención normalizada
+        Dict con datos de ejercicios
     """
-    # Palabras clave que indican solicitudes de listado general de ejercicios
-    exercise_list_keywords = [
-        "dame", "muestra", "listado", "lista", "ultimos", "últimos",
-        "recientes", "historial", "ejercicios", "que he hecho"
-    ]
-    
-    # Si la intención es "progress" pero la consulta parece ser una solicitud de 
-    # listado de ejercicios, cambiar a "exercise"
-    if intent == "progress" or intent == IntentType.PROGRESS:
-        query_lower = query.lower()
-        keyword_count = sum(1 for keyword in exercise_list_keywords if keyword in query_lower)
+    if exercise:
+        # Obtener datos de un ejercicio específico
+        endpoint = "ejercicios_stats"
+        # Usar fecha actual para filtrar
+        from datetime import datetime, timedelta
+        fecha_hasta = datetime.now().strftime("%Y-%m-%d")
+        fecha_desde = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
         
-        if keyword_count >= 2:
-            logger.info(f"Reclasificando de 'progress' a 'exercise' basado en palabras clave: {keyword_count} coincidencias")
-            return IntentType.EXERCISE
-    
-    # Normalizar el formato de la intención
-    if "ejercicio" in intent or "entrenamiento" in intent or intent == "exercise":
-        return IntentType.EXERCISE
-    elif "nutri" in intent or "comida" in intent or "dieta" in intent or intent == "nutrition":
-        return IntentType.NUTRITION
-    elif "progreso" in intent or "estadística" in intent or "evolución" in intent or intent == "progress":
-        return IntentType.PROGRESS
-    elif any(kw in intent for kw in ["registrar", "anotar", "log", "guardar"]) or intent == "log_activity":
-        return IntentType.LOG_ACTIVITY
+        params = {
+            "desde": fecha_desde,
+            "hasta": fecha_hasta,
+            "ejercicio": exercise
+        }
+        
+        logger.info(f"Obteniendo estadísticas para ejercicio: {exercise}")
+        return make_api_request(endpoint, params=params, auth_token=auth_token)
     else:
-        return IntentType.GENERAL
+        # Obtener logs generales de ejercicios
+        endpoint = "logs"
+        params = {"days": days}
+        
+        logger.info(f"Obteniendo logs de ejercicios para los últimos {days} días")
+        return make_api_request(endpoint, params=params, auth_token=auth_token)
 
-def classify_by_rules(query: str) -> str:
+def log_exercise(
+    user_id: str, 
+    exercise_data: str,
+    auth_token: Optional[str] = None  # Nuevo parámetro para el token
+) -> Dict[str, Any]:
     """
-    Clasificador de reglas básico como fallback en caso de que falle el LLM.
+    Registra un ejercicio en el backend.
     
     Args:
-        query: Consulta del usuario
+        user_id: ID del usuario
+        exercise_data: Descripción textual del ejercicio
+        auth_token: Token JWT para autenticación
         
     Returns:
-        Intención clasificada
+        Dict con resultado del registro
     """
-    query_lower = query.lower()
+    endpoint = "log-exercise"
+    json_data = {"exercise_data": exercise_data}
     
-    # --- 1. DETECTAR REGISTRO DE EJERCICIO ---
-    registration_keywords = [
-        'registra', 'apunta', 'anota', 'guarda', 'agrega', 'añade', 
-        'he hecho', 'hice', 'realicé', 'terminé'
-    ]
-    exercise_keywords = [
-        'press banca', 'press de banca', 'banca', 'sentadilla', 'sentadillas', 
-        'peso muerto', 'dominada', 'dominadas', 'curl', 'bíceps', 'fondos', 
-        'press militar', 'elevaciones', 'remo', 'extensiones', 'tríceps', 
-        'jalón', 'abdominales', 'flexiones', 'pushups', 'series', 'repeticiones'
-    ]
-    
-    # Patrones numéricos típicos de ejercicios
-    exercise_patterns = [
-        r'\d+\s*[xX]\s*\d+',        # 10x20, 3x10
-        r'\d+\s*series',            # 3 series
-        r'\d+\s*repeticiones',      # 10 repeticiones
-        r'\d+\s*reps',              # 10 reps
-        r'\d+\s*kg',                # 60 kg
-    ]
-    
-    # Detectar registro de ejercicio
-    has_registration_keyword = any(keyword in query_lower for keyword in registration_keywords)
-    has_exercise_keyword = any(keyword in query_lower for keyword in exercise_keywords)
-    has_exercise_pattern = any(re.search(pattern, query_lower) for pattern in exercise_patterns)
-    
-    if (has_registration_keyword and has_exercise_keyword) or (has_exercise_keyword and has_exercise_pattern):
-        return IntentType.LOG_ACTIVITY
-    
-    # --- 2. DETECTAR CONSULTA DE LISTADO DE EJERCICIOS ---
-    listing_keywords = [
-        'dame', 'muestra', 'ver', 'mostrar', 'listar', 'últimos', 'ultimos', 
-        'recientes', 'historia', 'historial', 'ejercicios', 'qué he hecho', 'que he hecho'
-    ]
-    
-    has_listing_keyword = any(keyword in query_lower for keyword in listing_keywords)
-    
-    if has_listing_keyword and (has_exercise_keyword or "ejercicio" in query_lower):
-        return IntentType.EXERCISE
-    
-    # --- 3. DETECTAR CONSULTA DE PROGRESO ---
-    progress_keywords = [
-        'progreso', 'avance', 'mejora', 'evolución', 'estadística', 'cómo voy', 
-        'he mejorado', 'comparar', 'gráfica', 'tendencia', 'comparado con'
-    ]
-    
-    has_progress_keyword = any(keyword in query_lower for keyword in progress_keywords)
-    
-    if has_progress_keyword:
-        return IntentType.PROGRESS
-    
-    # --- 4. DETECTAR CONSULTA DE NUTRICIÓN ---
-    nutrition_keywords = [
-        'comida', 'dieta', 'nutrición', 'comer', 'proteína', 'carbohidratos', 
-        'calorías', 'macros', 'plan alimenticio', 'suplemento', 'alimentación'
-    ]
-    
-    has_nutrition_keyword = any(keyword in query_lower for keyword in nutrition_keywords)
-    
-    if has_nutrition_keyword:
-        return IntentType.NUTRITION
-    
-    # --- 5. PREGUNTAS SOBRE EJERCICIOS (no registro) ---
-    if has_exercise_keyword:
-        return IntentType.EXERCISE
-    
-    # Si no se puede clasificar, devolver general
-    return IntentType.GENERAL
+    logger.info(f"Registrando ejercicio para usuario {user_id}: {exercise_data}")
+    return make_api_request(endpoint, method="POST", json_data=json_data, auth_token=auth_token)
 
-# Función auxiliar para procesar mensajes directamente (API)
-async def process_message(user_id: str, message: str) -> Any:
+def get_nutrition_data(
+    user_id: str, 
+    days: int = 7,
+    auth_token: Optional[str] = None  # Nuevo parámetro para el token
+) -> Dict[str, Any]:
     """
-    Procesa un mensaje del usuario y devuelve una respuesta usando el grafo de fitness.
-    Función auxiliar para compatibilidad con APIs.
+    Obtiene datos de nutrición del usuario.
     
     Args:
-        user_id: ID del usuario (debe ser Google ID)
-        message: Mensaje del usuario
+        user_id: ID del usuario
+        days: Número de días hacia atrás para obtener datos
+        auth_token: Token JWT para autenticación
         
     Returns:
-        Objeto con la respuesta del chatbot
+        Dict con datos de nutrición
     """
-    # Importar el grafo aquí para evitar importaciones circulares
-    from fitness_chatbot.graphs.fitness_graph import create_fitness_graph
-    
+    # Esto debería apuntar a un endpoint de nutrición en el backend
+    # Si no existe, devolver datos simulados
     try:
-        # Log para depuración
-        logger.info(f"Procesando mensaje con ID de usuario: {user_id}")
-        
-        # Crear estado inicial - user_id ya debería ser el Google ID
-        agent_state = AgentState(
-            query=message,
-            intent="",
-            user_id=user_id,  # Este ID debería ser el Google ID desde la API
-            user_context={},
-            intermediate_steps=[],
-            retrieved_data=[],
-            generation=""
-        )
-        
-        memory_state = MemoryState(
-            messages=[]
-        )
-        
-        # Obtener el grafo de fitness
-        fitness_graph = create_fitness_graph()
-        
-        # Invocar el grafo
-        final_state = await fitness_graph.ainvoke((agent_state, memory_state))
-        final_agent_state, final_memory_state = final_state
-        
-        # Obtener respuesta generada
-        response = final_agent_state.get("generation", "")
-        
-        # Crear objeto de respuesta similar a MessageResponse
-        class MessageResponse:
-            def __init__(self, content):
-                self.content = content
-        
-        return MessageResponse(response)
+        endpoint = "nutrition/tracking/week"
+        logger.info(f"Obteniendo datos de nutrición para los últimos {days} días")
+        return make_api_request(endpoint, auth_token=auth_token)
     except Exception as e:
-        logger.error(f"Error procesando mensaje: {str(e)}", exc_info=True)
-        return MessageResponse(f"Lo siento, ocurrió un error al procesar tu mensaje. Por favor, intenta de nuevo más tarde.")
+        logger.error(f"Error obteniendo datos de nutrición: {e}")
+        return {"success": False, "error": str(e)}
+
+def get_progress_data(
+    user_id: str, 
+    exercise: Optional[str] = None,
+    auth_token: Optional[str] = None  # Nuevo parámetro para el token
+) -> Dict[str, Any]:
+    """
+    Obtiene datos de progreso del usuario.
+    
+    Args:
+        user_id: ID del usuario
+        exercise: Nombre del ejercicio específico (opcional)
+        auth_token: Token JWT para autenticación
+        
+    Returns:
+        Dict con datos de progreso
+    """
+    # Usar el mismo endpoint que get_exercise_data pero con más días para ver progreso
+    return get_exercise_data(user_id, exercise, days=90, auth_token=auth_token)

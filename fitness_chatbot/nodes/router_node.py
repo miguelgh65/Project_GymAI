@@ -51,36 +51,67 @@ async def classify_intent(states: Tuple[AgentState, MemoryState]) -> Tuple[Agent
         ("ejercicio" in query_lower or any(ex in query_lower for ex in ["press", "banca", "sentadilla", "peso muerto"]))):
         logger.info("Clasificación directa: EXERCISE (consulta sobre último ejercicio)")
         normalized_intent = IntentType.EXERCISE
+    # Detección directa para registro de ejercicios
+    elif any(pattern in query_lower for pattern in ["registra", "anota", "apunta", "agrega", "he hecho"]) and \
+         any(ex in query_lower for ex in ["press", "banca", "sentadilla", "peso muerto", "curl", "dominada"]):
+        logger.info("Clasificación directa: LOG_ACTIVITY (registro de ejercicio)")
+        normalized_intent = IntentType.LOG_ACTIVITY
     else:
         # PASO 2: Utilizar el LLM para clasificar la intención
         try:
-            # Configuración mejorada para el LLM - menor temperatura para respuestas más deterministas
-            temp_llm = get_llm()
-            if hasattr(temp_llm, 'with_temperature'):
-                llm = temp_llm.with_temperature(0.2)
-            else:
-                llm = temp_llm
-                
             # Obtener mensajes de prompt para el router
             messages = PromptManager.get_prompt_messages("router", query=query)
             
-            # Configurar el modelo para obtener salida estructurada
-            structured_llm = llm.with_structured_output(IntentClassification)
-            
-            # Llamar al LLM para clasificar
-            classification = await structured_llm.ainvoke(messages)
-            
-            # Extraer la intención
-            intent = classification.intent.lower()
-            
-            # Log para debug
-            logger.info(f"LLM clasificó la intención como: {intent}")
-            
-            # Normalizar la intención
-            normalized_intent = normalize_intent(intent, query)
-            
-            logger.info(f"Intención normalizada final: {normalized_intent}")
+            # Configuración para el LLM
+            temp_llm = get_llm()
+            if temp_llm is None:
+                logger.error("LLM no inicializado correctamente. Usando clasificación por reglas.")
+                normalized_intent = classify_by_rules(query)
+                logger.info(f"Clasificación por reglas (LLM no disponible): {normalized_intent}")
+            else:
+                if hasattr(temp_llm, 'with_temperature'):
+                    llm = temp_llm.with_temperature(0.2)
+                else:
+                    llm = temp_llm
                 
+                # Intentar configurar el modelo para obtener salida estructurada
+                try:
+                    structured_llm = llm.with_structured_output(IntentClassification)
+                    
+                    # Llamar al LLM para clasificar
+                    classification = await structured_llm.ainvoke(messages)
+                    
+                    # Extraer la intención
+                    intent = classification.intent.lower()
+                    
+                    # Log para debug
+                    logger.info(f"LLM clasificó la intención como: {intent}")
+                    
+                    # Normalizar la intención
+                    normalized_intent = normalize_intent(intent, query)
+                    
+                    logger.info(f"Intención normalizada final: {normalized_intent}")
+                except Exception as e:
+                    logger.error(f"Error con salida estructurada: {e}")
+                    # Si falla la salida estructurada, usar llamada normal al LLM
+                    try:
+                        response = await llm.ainvoke(messages)
+                        content = response.content if hasattr(response, 'content') else str(response)
+                        
+                        # Extraer intención del texto
+                        intent_match = re.search(r'intent["\']?\s*:\s*["\']?(\w+)["\']?', content)
+                        if intent_match:
+                            intent = intent_match.group(1).lower()
+                            normalized_intent = normalize_intent(intent, query)
+                            logger.info(f"Intención extraída del texto: {normalized_intent}")
+                        else:
+                            # Si no se puede extraer, usar clasificación por reglas
+                            normalized_intent = classify_by_rules(query)
+                            logger.info(f"No se encontró intención en respuesta LLM. Usando reglas: {normalized_intent}")
+                    except Exception as inner_e:
+                        logger.error(f"Error en llamada normal al LLM: {inner_e}")
+                        normalized_intent = classify_by_rules(query)
+                        logger.info(f"Fallback a clasificación por reglas: {normalized_intent}")
         except Exception as e:
             logger.error(f"Error en la clasificación con LLM: {str(e)}")
             
@@ -97,6 +128,7 @@ async def classify_intent(states: Tuple[AgentState, MemoryState]) -> Tuple[Agent
     
     memory_state["messages"].append({"role": "user", "content": query})
     
+    logger.info(f"RESULTADO FINAL DE CLASIFICACIÓN: {normalized_intent}")
     logger.info("--- CLASIFICACIÓN DE INTENCIÓN FINALIZADA ---")
     
     return agent_state, memory_state
@@ -120,6 +152,12 @@ def normalize_intent(intent: str, query: str) -> str:
         "recientes", "historial", "ejercicios", "que he hecho"
     ]
     
+    # Palabras clave que indican registro de actividad
+    log_keywords = [
+        "registra", "apunta", "anota", "agrega", "añade", 
+        "he hecho", "hice", "realicé", "terminé"
+    ]
+    
     # Si la intención es "progress" pero la consulta parece ser una solicitud de 
     # listado de ejercicios, cambiar a "exercise"
     if intent == "progress" or intent == IntentType.PROGRESS:
@@ -128,6 +166,13 @@ def normalize_intent(intent: str, query: str) -> str:
         if keyword_count >= 1 and ("ejercicio" in query_lower or "entrenamiento" in query_lower):
             logger.info(f"Reclasificando de 'progress' a 'exercise' basado en palabras clave: {keyword_count} coincidencias")
             return IntentType.EXERCISE
+    
+    # Si la intención es "general" pero la consulta parece ser un registro, cambiar a "log_activity"
+    if (intent == "general" or intent == IntentType.GENERAL):
+        if any(keyword in query_lower for keyword in log_keywords) and \
+           any(exercise in query_lower for exercise in ["press", "banca", "sentadilla", "curl", "dominada"]):
+            logger.info("Reclasificando de 'general' a 'log_activity' basado en palabras clave de registro")
+            return IntentType.LOG_ACTIVITY
     
     # Normalizar el formato de la intención
     if "ejercicio" in intent or "entrenamiento" in intent or intent == "exercise":
@@ -223,7 +268,7 @@ def classify_by_rules(query: str) -> str:
     return IntentType.GENERAL
 
 # Función auxiliar para procesar mensajes directamente (API)
-async def process_message(user_id: str, message: str) -> Any:
+async def process_message(user_id: str, message: str, auth_token: Optional[str] = None) -> Any:
     """
     Procesa un mensaje del usuario y devuelve una respuesta usando el grafo de fitness.
     Función auxiliar para compatibilidad con APIs.
@@ -231,6 +276,7 @@ async def process_message(user_id: str, message: str) -> Any:
     Args:
         user_id: ID del usuario (debe ser Google ID)
         message: Mensaje del usuario
+        auth_token: Token JWT para autenticación con el backend
         
     Returns:
         Objeto con la respuesta del chatbot
@@ -241,13 +287,17 @@ async def process_message(user_id: str, message: str) -> Any:
     try:
         # Log para depuración
         logger.info(f"Procesando mensaje con ID de usuario: {user_id}")
+        logger.info(f"Mensaje recibido: '{message}'")
+        logger.info(f"Token de autenticación recibido: {'Sí' if auth_token else 'No'}")
         
         # Crear estado inicial - user_id ya debería ser el Google ID
         agent_state = AgentState(
             query=message,
             intent="",
             user_id=user_id,  # Este ID debería ser el Google ID desde la API
-            user_context={},
+            user_context={
+                "auth_token": auth_token  # Guardar el token en el contexto para usarlo en las llamadas a la API
+            },
             intermediate_steps=[],
             retrieved_data=[],
             generation=""
@@ -260,12 +310,20 @@ async def process_message(user_id: str, message: str) -> Any:
         # Obtener el grafo de fitness
         fitness_graph = create_fitness_graph()
         
+        if fitness_graph is None:
+            logger.error("Error: fitness_graph es None. No se pudo crear el grafo.")
+            class MessageResponse:
+                def __init__(self, content):
+                    self.content = content
+            return MessageResponse("Lo siento, ocurrió un error interno al procesar tu mensaje. Por favor, intenta de nuevo más tarde.")
+        
         # Invocar el grafo
         final_state = await fitness_graph.ainvoke((agent_state, memory_state))
         final_agent_state, final_memory_state = final_state
         
         # Obtener respuesta generada
         response = final_agent_state.get("generation", "")
+        logger.info(f"Respuesta generada: '{response[:50]}...'")
         
         # Crear objeto de respuesta similar a MessageResponse
         class MessageResponse:
@@ -275,4 +333,9 @@ async def process_message(user_id: str, message: str) -> Any:
         return MessageResponse(response)
     except Exception as e:
         logger.error(f"Error procesando mensaje: {str(e)}", exc_info=True)
+        # Crear una clase de respuesta para devolver el error
+        class MessageResponse:
+            def __init__(self, content):
+                self.content = content
+        
         return MessageResponse(f"Lo siento, ocurrió un error al procesar tu mensaje. Por favor, intenta de nuevo más tarde.")
