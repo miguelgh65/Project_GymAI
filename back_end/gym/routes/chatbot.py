@@ -3,13 +3,15 @@ import logging
 import os
 import json
 import requests
-from typing import Dict, Any, List
+import asyncio
+from typing import Dict, Any, List, AsyncIterable
 
 # Configuración de logging
 logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
+from starlette.responses import Response
 
 # Importaciones para la autenticación
 from back_end.gym.middlewares import get_current_user
@@ -35,6 +37,76 @@ router = APIRouter(
     prefix="/api/chatbot",
     tags=["chatbot"],
 )
+
+async def stream_generator(user_id: str, message: str):
+    """
+    Generador de streaming mejorado para respuestas del chatbot.
+    Envía cada token a medida que lo genera para un streaming real.
+    """
+    logger.info(f"Iniciando streaming para usuario {user_id}")
+    
+    try:
+        # Prompt con contexto de fitness
+        system_prompt = """Eres un asistente de fitness y entrenamiento personal. Ofrece consejos útiles, 
+        información sobre ejercicios, técnicas correctas, nutrición deportiva y rutinas de entrenamiento. 
+        Mantén un tono motivador pero basado en evidencia científica. Si no estás seguro de algo, 
+        indícalo claramente y sugiere consultar con un profesional.
+        
+        El usuario está interesado en mejorar su condición física y busca orientación práctica.
+        """
+        
+        # Preparar mensajes para el LLM
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": message}
+        ]
+        
+        # Versión con streaming
+        if hasattr(llm, 'stream') or hasattr(llm, 'astream'):
+            # Usar streaming nativo si está disponible
+            if hasattr(llm, 'astream'):
+                # Versión asíncrona - mejor para servidores web
+                accumulated_text = ""
+                
+                # Forzar un delay inicial para establecer la conexión
+                yield "data: {}\n\n"
+                await asyncio.sleep(0.05)
+                
+                # Usar astream para procesar token por token
+                async for chunk in llm.astream(messages):
+                    if hasattr(chunk, 'content') and chunk.content:
+                        # Acumular texto para mostrar lo generado hasta ahora
+                        accumulated_text += chunk.content
+                        yield f"data: {json.dumps({'content': accumulated_text})}\n\n"
+                        # Un pequeño delay ayuda a que el streaming sea visible
+                        await asyncio.sleep(0.01)
+            else:
+                # Versión síncrona (menos recomendada)
+                accumulated_text = ""
+                for chunk in llm.stream(messages):
+                    if hasattr(chunk, 'content') and chunk.content:
+                        accumulated_text += chunk.content
+                        yield f"data: {json.dumps({'content': accumulated_text})}\n\n"
+                        await asyncio.sleep(0.01)
+        else:
+            # Simulación para LLMs sin streaming nativo
+            response = llm.invoke(messages)
+            content = response.content if hasattr(response, 'content') else str(response)
+            
+            # Dividir en palabras/caracteres para simular streaming
+            full_text = ""
+            for i in range(len(content)):
+                full_text += content[i]
+                if i % 3 == 0:  # Cada 3 caracteres
+                    yield f"data: {json.dumps({'content': full_text})}\n\n"
+                    await asyncio.sleep(0.03)  # Pausa para simular un streaming realista
+        
+        # Evento final
+        yield f"data: {json.dumps({'done': True})}\n\n"
+        
+    except Exception as e:
+        logger.exception(f"Error en stream_generator: {e}")
+        yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
 def fallback_chatbot_response(user_id: str, message: str) -> Dict[str, Any]:
     """
@@ -95,6 +167,7 @@ async def chatbot_send(request: Request, user = Depends(get_current_user)):
     try:
         data = await request.json()
         message = data.get("message", "").strip()
+        stream = data.get("stream", False)  # Parámetro para activar streaming
         
         if not message:
             logger.warning("Mensaje vacío recibido")
@@ -106,7 +179,25 @@ async def chatbot_send(request: Request, user = Depends(get_current_user)):
         # Usar ID de usuario 
         user_id = str(user["id"])
         logger.info(f"Procesando mensaje para usuario {user_id}: '{message[:50]}...'")
+
+        # Verificar si se solicitó streaming
+        if stream:
+            logger.info(f"Usando modo streaming para usuario {user_id}")
+            
+            # Usar StreamingResponse con los headers correctos para SSE
+            return StreamingResponse(
+                stream_generator(user_id, message),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache, no-transform",
+                    "Connection": "keep-alive",
+                    "Content-Type": "text/event-stream",
+                    "X-Accel-Buffering": "no",  # Importante para Nginx
+                    "Access-Control-Allow-Origin": "*",  # Permitir CORS para este endpoint
+                }
+            )
         
+        # Si no es streaming, seguir con el flujo normal
         # Configurar LangSmith si está disponible
         if HAS_LANGSMITH:
             try:
@@ -190,6 +281,7 @@ async def chatbot_send(request: Request, user = Depends(get_current_user)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
+# Endpoint para historial (sin cambios)
 @router.get("/history", response_class=JSONResponse)
 async def chatbot_history(request: Request, user = Depends(get_current_user)):
     """API endpoint to get conversation history"""
