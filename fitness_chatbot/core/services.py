@@ -16,17 +16,21 @@ class FitnessDataService:
         Obtiene los ejercicios recientes de un usuario.
         
         Args:
-            user_id: ID del usuario
+            user_id: ID del usuario (debería ser Google ID principalmente)
             limit: Número máximo de ejercicios a devolver
-            
+                
         Returns:
             Lista de ejercicios recientes
         """
         try:
+            # Mejorar el log para depuración
+            logger.info(f"Consultando ejercicios para user_id={user_id}")
+            
+            # Consulta original con una cláusula adicional para buscar en google_id
             query = """
             SELECT fecha, ejercicio, repeticiones, duracion
             FROM gym.ejercicios
-            WHERE user_id = %s OR user_uuid = %s
+            WHERE user_id = %s OR user_uuid = %s OR google_id = %s
             ORDER BY fecha DESC
             LIMIT %s
             """
@@ -38,11 +42,20 @@ class FitnessDataService:
             except (ValueError, TypeError):
                 pass
             
+            # Log para ver los parámetros de búsqueda
+            logger.info(f"Parámetros de búsqueda: user_id={user_id}, user_uuid={user_uuid}, google_id={user_id}")
+            
             results = await DatabaseConnector.execute_query(
                 query, 
-                (user_id, user_uuid, limit),
+                (user_id, user_uuid, user_id, limit),  # user_id se usa también como google_id
                 fetch_all=True
             )
+            
+            # Log para ver resultados
+            if results:
+                logger.info(f"Encontrados {len(results)} ejercicios")
+            else:
+                logger.warning(f"No se encontraron ejercicios para user_id={user_id}")
             
             # Formatear los resultados
             formatted_results = []
@@ -88,7 +101,7 @@ class FitnessDataService:
             query = """
             SELECT fecha, repeticiones
             FROM gym.ejercicios
-            WHERE (user_id = %s OR user_uuid = %s) AND LOWER(ejercicio) = LOWER(%s)
+            WHERE (user_id = %s OR user_uuid = %s OR google_id = %s) AND LOWER(ejercicio) = LOWER(%s)
             ORDER BY fecha
             """
             
@@ -101,7 +114,7 @@ class FitnessDataService:
             
             results = await DatabaseConnector.execute_query(
                 query, 
-                (user_id, user_uuid, exercise_name),
+                (user_id, user_uuid, user_id, exercise_name),  # Añadido google_id
                 fetch_all=True
             )
             
@@ -155,13 +168,13 @@ class FitnessDataService:
                 pass
             
             query = """
-            INSERT INTO gym.ejercicios (fecha, ejercicio, repeticiones, user_id, user_uuid)
-            VALUES (CURRENT_TIMESTAMP, %s, %s, %s, %s)
+            INSERT INTO gym.ejercicios (fecha, ejercicio, repeticiones, user_id, user_uuid, google_id)
+            VALUES (CURRENT_TIMESTAMP, %s, %s, %s, %s, %s)
             """
             
             await DatabaseConnector.execute_query(
                 query,
-                (exercise_name, repetitions_json, user_id, user_uuid)
+                (exercise_name, repetitions_json, user_id, user_uuid, user_id)  # Añadido google_id
             )
             
             return True
@@ -186,14 +199,14 @@ class FitnessDataService:
             query = """
             SELECT tracking_date, completed_meals, calorie_note, actual_calories, actual_protein
             FROM nutrition.daily_tracking
-            WHERE user_id = %s 
+            WHERE user_id = %s OR google_id = %s
               AND tracking_date >= CURRENT_DATE - INTERVAL '%s days'
             ORDER BY tracking_date DESC
             """
             
             results = await DatabaseConnector.execute_query(
                 query, 
-                (user_id, days),
+                (user_id, user_id, days),  # Añadido google_id
                 fetch_all=True
             )
             
@@ -256,8 +269,8 @@ class FitnessDataService:
             
             query = """
             INSERT INTO nutrition.daily_tracking 
-            (user_id, tracking_date, completed_meals, calorie_note, actual_calories, actual_protein)
-            VALUES (%s, CURRENT_DATE, %s, %s, %s, %s)
+            (user_id, google_id, tracking_date, completed_meals, calorie_note, actual_calories, actual_protein)
+            VALUES (%s, %s, CURRENT_DATE, %s, %s, %s, %s)
             ON CONFLICT (user_id, tracking_date) 
             DO UPDATE SET 
                 completed_meals = nutrition.daily_tracking.completed_meals || %s,
@@ -273,9 +286,9 @@ class FitnessDataService:
             await DatabaseConnector.execute_query(
                 query,
                 (
-                    user_id, json.dumps(completed_meals), calorie_note, calories, protein,
+                    user_id, user_id, json.dumps(completed_meals), calorie_note, calories, protein,
                     json.dumps(completed_meals), calorie_note, calorie_note, calories, calories, protein, protein
-                )
+                )  # Añadido google_id
             )
             
             return True

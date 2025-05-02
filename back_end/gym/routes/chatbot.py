@@ -208,9 +208,11 @@ async def chatbot_send(request: Request, user = Depends(get_current_user)):
                 detail="Message cannot be empty."
             )
 
-        # Usar ID de usuario 
-        user_id = str(user.get('id'))
-        logger.info(f"Procesando mensaje para usuario {user_id}: '{message[:50]}...'")
+        # MODIFICACIÓN: Usar Google ID en lugar del ID interno
+        # Añadir un log para depuración
+        user_id = str(user.get('google_id', user.get('id')))
+        logger.info(f"Usando ID para consultas de ejercicios: {user_id} (Google ID si está disponible)")
+        logger.info(f"Info de usuario: id={user.get('id')}, google_id={user.get('google_id', 'No disponible')}")
 
         # Verificar si se solicitó streaming
         if stream:

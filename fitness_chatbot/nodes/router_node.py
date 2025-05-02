@@ -226,7 +226,7 @@ async def process_message(user_id: str, message: str) -> Any:
     Función auxiliar para compatibilidad con APIs.
     
     Args:
-        user_id: ID del usuario
+        user_id: ID del usuario (debe ser Google ID)
         message: Mensaje del usuario
         
     Returns:
@@ -236,11 +236,14 @@ async def process_message(user_id: str, message: str) -> Any:
     from fitness_chatbot.graphs.fitness_graph import create_fitness_graph
     
     try:
-        # Crear estado inicial
+        # Log para depuración
+        logger.info(f"Procesando mensaje con ID de usuario: {user_id}")
+        
+        # Crear estado inicial - user_id ya debería ser el Google ID
         agent_state = AgentState(
             query=message,
             intent="",
-            user_id=user_id,
+            user_id=user_id,  # Este ID debería ser el Google ID desde la API
             user_context={},
             intermediate_steps=[],
             retrieved_data=[],
