@@ -1,4 +1,4 @@
-# fitness_chatbot/nodes/router_node.py
+# fitness_chatbot/nodes/router_node.py - VERSIÓN MEJORADA
 import logging
 import json
 import re
@@ -43,50 +43,41 @@ async def classify_intent(states: Tuple[AgentState, MemoryState]) -> Tuple[Agent
         
         return agent_state, memory_state
     
-    # PASO 1: Reglas de pre-clasificación para casos específicos
-    query_lower = query.lower()
-    
-    # Detección directa para consultas sobre últimos ejercicios
-    if (("último" in query_lower or "ultimo" in query_lower or "dame" in query_lower) and 
-        ("ejercicio" in query_lower or any(ex in query_lower for ex in ["press", "banca", "sentadilla", "peso muerto"]))):
-        logger.info("Clasificación directa: EXERCISE (consulta sobre último ejercicio)")
-        normalized_intent = IntentType.EXERCISE
-    else:
-        # PASO 2: Utilizar el LLM para clasificar la intención
-        try:
-            # Configuración mejorada para el LLM - menor temperatura para respuestas más deterministas
-            temp_llm = get_llm()
-            if hasattr(temp_llm, 'with_temperature'):
-                llm = temp_llm.with_temperature(0.2)
-            else:
-                llm = temp_llm
-                
-            # Obtener mensajes de prompt para el router
-            messages = PromptManager.get_prompt_messages("router", query=query)
+    # Utilizar el LLM para clasificar la intención
+    try:
+        # Configuración mejorada para el LLM - menor temperatura para respuestas más deterministas
+        temp_llm = get_llm()
+        if hasattr(temp_llm, 'with_temperature'):
+            llm = temp_llm.with_temperature(0.2)
+        else:
+            llm = temp_llm
             
-            # Configurar el modelo para obtener salida estructurada
-            structured_llm = llm.with_structured_output(IntentClassification)
+        # Obtener mensajes de prompt para el router
+        messages = PromptManager.get_prompt_messages("router", query=query)
+        
+        # Configurar el modelo para obtener salida estructurada
+        structured_llm = llm.with_structured_output(IntentClassification)
+        
+        # Llamar al LLM para clasificar
+        classification = await structured_llm.ainvoke(messages)
+        
+        # Extraer la intención
+        intent = classification.intent.lower()
+        
+        # Log para debug
+        logger.info(f"LLM clasificó la intención como: {intent}")
+        
+        # Normalizar la intención
+        normalized_intent = normalize_intent(intent, query)
+        
+        logger.info(f"Intención normalizada final: {normalized_intent}")
             
-            # Llamar al LLM para clasificar
-            classification = await structured_llm.ainvoke(messages)
-            
-            # Extraer la intención
-            intent = classification.intent.lower()
-            
-            # Log para debug
-            logger.info(f"LLM clasificó la intención como: {intent}")
-            
-            # Normalizar la intención
-            normalized_intent = normalize_intent(intent, query)
-            
-            logger.info(f"Intención normalizada final: {normalized_intent}")
-                
-        except Exception as e:
-            logger.error(f"Error en la clasificación con LLM: {str(e)}")
-            
-            # Si falla el LLM, usar un clasificador de reglas como fallback
-            normalized_intent = classify_by_rules(query)
-            logger.info(f"Fallback a clasificación por reglas: {normalized_intent}")
+    except Exception as e:
+        logger.error(f"Error en la clasificación con LLM: {str(e)}")
+        
+        # Si falla el LLM, usar un clasificador de reglas como fallback
+        normalized_intent = classify_by_rules(query)
+        logger.info(f"Fallback a clasificación por reglas: {normalized_intent}")
     
     # Actualizar estado con la intención detectada
     agent_state["intent"] = normalized_intent
@@ -112,8 +103,6 @@ def normalize_intent(intent: str, query: str) -> str:
     Returns:
         Intención normalizada
     """
-    query_lower = query.lower()
-    
     # Palabras clave que indican solicitudes de listado general de ejercicios
     exercise_list_keywords = [
         "dame", "muestra", "listado", "lista", "ultimos", "últimos",
@@ -123,9 +112,10 @@ def normalize_intent(intent: str, query: str) -> str:
     # Si la intención es "progress" pero la consulta parece ser una solicitud de 
     # listado de ejercicios, cambiar a "exercise"
     if intent == "progress" or intent == IntentType.PROGRESS:
+        query_lower = query.lower()
         keyword_count = sum(1 for keyword in exercise_list_keywords if keyword in query_lower)
         
-        if keyword_count >= 1 and ("ejercicio" in query_lower or "entrenamiento" in query_lower):
+        if keyword_count >= 2:
             logger.info(f"Reclasificando de 'progress' a 'exercise' basado en palabras clave: {keyword_count} coincidencias")
             return IntentType.EXERCISE
     
