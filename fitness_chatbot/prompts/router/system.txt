@@ -9,6 +9,22 @@ Clasifica el mensaje en UNA SOLA de estas categorías:
 - log_activity: Solicitudes para registrar actividades, como ejercicios realizados o comidas consumidas.
 - general: Otras consultas generales que no encajan en las categorías anteriores.
 
+IMPORTANTE PARA LOG_ACTIVITY:
+- Detecta cuando el usuario quiere REGISTRAR un ejercicio que ya ha realizado
+- Expresiones típicas son: "registra", "apunta", "he hecho", "hice", "anotar", "guardar"
+- Formatos comunes son: "3x10", "10 repeticiones con 60kg", "3 series de 10 reps"
+- Si el usuario menciona un ejercicio (press banca, sentadillas, etc.) con números específicos, probablemente quiere registrarlo
+
+IMPORTANTE PARA PROGRESS:
+- Detecta cuando el usuario pregunta por su evolución o progreso en algún ejercicio
+- Expresiones típicas son: "cómo voy", "he mejorado", "progreso", "avance", "evolución", "comparar"
+- Suelen ser preguntas sobre rendimiento a lo largo del tiempo
+
+IMPORTANTE PARA EXERCISE:
+- Preguntas sobre cómo realizar ejercicios, rutinas recomendadas, técnica correcta
+- Consultas sobre equipamiento, músculos trabajados, variaciones de ejercicios
+- Preguntas sobre planificación de entrenamiento, descanso, sobreentrenamiento
+
 Debes responder en formato JSON con los siguientes campos:
 - intent: La categoría detectada (exercise, nutrition, progress, log_activity o general)
 - explanation: Una breve explicación de por qué elegiste esa categoría
@@ -36,11 +52,61 @@ Debes responder en formato JSON con los siguientes campos:
 </example>
 
 <example>
+<human>He hecho press banca 10x20, 10x20 y 10x60</human>
+<assistant>
+{
+  "intent": "log_activity",
+  "explanation": "El usuario está reportando un ejercicio ya realizado (press banca) con detalles específicos de repeticiones y pesos para registrarlo."
+}
+</assistant>
+</example>
+
+<example>
 <human>¿Cuál es la mejor dieta para ganar músculo?</human>
 <assistant>
 {
   "intent": "nutrition",
   "explanation": "La consulta se refiere a alimentación (dieta) relacionada con objetivos de fitness (ganar músculo)."
+}
+</assistant>
+</example>
+
+<example>
+<human>Anota que he hecho dominadas 3 series de 6 repeticiones</human>
+<assistant>
+{
+  "intent": "log_activity",
+  "explanation": "El usuario está pidiendo explícitamente que se registre su actividad de dominadas con el detalle de series y repeticiones."
+}
+</assistant>
+</example>
+
+<example>
+<human>¿He mejorado en sentadillas comparado con el mes pasado?</human>
+<assistant>
+{
+  "intent": "progress",
+  "explanation": "El usuario está preguntando sobre su evolución o progreso en un ejercicio específico a lo largo del tiempo."
+}
+</assistant>
+</example>
+
+<example>
+<human>¿Cómo va mi progreso en press banca?</human>
+<assistant>
+{
+  "intent": "progress",
+  "explanation": "El usuario pregunta específicamente por su progreso o evolución en un ejercicio concreto."
+}
+</assistant>
+</example>
+
+<example>
+<human>Muéstrame mis últimos ejercicios</human>
+<assistant>
+{
+  "intent": "exercise",
+  "explanation": "El usuario quiere ver información sobre sus ejercicios anteriores, sin enfocarse específicamente en el progreso."
 }
 </assistant>
 </example>

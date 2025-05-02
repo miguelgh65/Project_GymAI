@@ -1,3 +1,4 @@
+# fitness_chatbot/schemas/memory_schemas.py
 from typing import Annotated, List, Dict, TypedDict
 from langgraph.graph import add_messages
 

@@ -1,3 +1,4 @@
+# fitness_chatbot/utils/prompt_manager.py
 import os
 import logging
 import re
@@ -79,8 +80,14 @@ class PromptManager:
         human_content = PromptManager.format_prompt(human_template, **kwargs)
         
         # Extraer el contenido de las etiquetas <system>
-        system_match = re.search(r'<system>(.*?)</system>', system_content, re.DOTALL)
-        system_content = system_match.group(1).strip() if system_match else system_content
+        system_match = re.search(r'<s>(.*?)</s>', system_content, re.DOTALL)
+        if system_match:
+            system_content = system_match.group(1).strip()
+        else:
+            # Si no encuentra <s>, buscar otras etiquetas comunes
+            system_match = re.search(r'<system>(.*?)</system>', system_content, re.DOTALL)
+            if system_match:
+                system_content = system_match.group(1).strip()
         
         # Extraer el contenido de las etiquetas <human>
         human_match = re.search(r'<human>(.*?)</human>', human_content, re.DOTALL)
@@ -108,33 +115,33 @@ class PromptManager:
         """
         if category == "router":
             if prompt_type == "system":
-                return "<system>Clasifica el mensaje en una categoría: exercise, nutrition, progress, log_activity, general.</system>"
+                return "<s>Clasifica el mensaje en una categoría: exercise, nutrition, progress, log_activity, general.</s>"
             else:  # human
                 return "<human>Analiza el siguiente mensaje y clasifícalo según su intención:\n\n{query}</human>"
         
         elif category == "exercise":
             if prompt_type == "system":
-                return "<system>Eres un entrenador personal especializado en ejercicios y rutinas de entrenamiento.</system>"
+                return "<s>Eres un entrenador personal especializado en ejercicios y rutinas de entrenamiento.</s>"
             else:  # human
                 return "<context>{user_context}</context>\n\n<human>{query}</human>"
         
         elif category == "nutrition":
             if prompt_type == "system":
-                return "<system>Eres un nutricionista especializado en nutrición deportiva.</system>"
+                return "<s>Eres un nutricionista especializado en nutrición deportiva.</s>"
             else:  # human
                 return "<context>{user_context}</context>\n\n<human>{query}</human>"
         
         elif category == "progress":
             if prompt_type == "system":
-                return "<system>Eres un analista de progreso físico.</system>"
+                return "<s>Eres un analista de progreso físico.</s>"
             else:  # human
                 return "<context>{user_context}</context>\n\n<human>{query}</human>"
         
         elif category == "log_activity":
             if prompt_type == "system":
-                return "<system>Extrae datos estructurados de actividades para registrar en la base de datos.</system>"
+                return "<s>Extrae datos estructurados de actividades para registrar en la base de datos.</s>"
             else:  # human
                 return "<human>Extrae los datos para registrar esta actividad:\n\n{query}</human>"
         
         else:
-            return f"<system>Prompt por defecto para {category}/{prompt_type}.</system>"
+            return f"<s>Prompt por defecto para {category}/{prompt_type}.</s>"

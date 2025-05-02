@@ -1,10 +1,9 @@
 # back_end/gym/routes/chatbot.py
-import logging
 import os
 import json
-import requests
+import logging
 import asyncio
-from typing import Dict, Any, List, AsyncIterable
+from typing import Dict, Any, List, Optional, AsyncIterable
 
 # Configuración de logging
 logger = logging.getLogger(__name__)
@@ -22,7 +21,16 @@ from back_end.gym.config import llm
 # URL del servicio LangGraph (intentar primero host.docker.internal)
 LANGGRAPH_URL = os.getenv("LANGGRAPH_URL", "http://host.docker.internal:8000")
 LANGGRAPH_ENDPOINT = os.getenv("LANGGRAPH_ENDPOINT", "/api/chat")
-USE_FALLBACK = os.getenv("USE_FALLBACK", "true").lower() == "true"  # Por defecto, usar fallback
+USE_FALLBACK = os.getenv("USE_FALLBACK", "false").lower() == "true"  # Por defecto, usar fallback
+
+# Intentar importar el grafo de chatbot avanzado
+try:
+    from fitness_chatbot.nodes.router_node import process_message as process_with_graph
+    CHATBOT_AVAILABLE = True
+    logger.info("✅ Fitness Chatbot (LangGraph) disponible")
+except ImportError:
+    CHATBOT_AVAILABLE = False
+    logger.warning("⚠️ Fitness Chatbot (LangGraph) no disponible, usando fallback")
 
 # Configure LangSmith if available
 try:
@@ -46,6 +54,30 @@ async def stream_generator(user_id: str, message: str):
     logger.info(f"Iniciando streaming para usuario {user_id}")
     
     try:
+        # Comprobar si debemos usar el chatbot avanzado o el fallback
+        if CHATBOT_AVAILABLE and not USE_FALLBACK:
+            # Usar el chatbot avanzado (grafo con nodos)
+            try:
+                # Procesar el mensaje con el grafo
+                response = await process_with_graph(user_id, message)
+                
+                # Simular streaming para el contenido
+                content = response.content if hasattr(response, 'content') else str(response)
+                chunks = [content[i:i+3] for i in range(0, len(content), 3)]
+                
+                full_text = ""
+                for chunk in chunks:
+                    full_text += chunk
+                    yield f"data: {json.dumps({'content': full_text})}\n\n"
+                    await asyncio.sleep(0.01)  # Pequeña pausa para simular streaming
+                
+                # Evento final
+                yield f"data: {json.dumps({'done': True})}\n\n"
+                return
+            except Exception as e:
+                logger.error(f"Error usando el chatbot avanzado: {e}")
+                # Si falla, continuamos con el fallback
+        
         # Prompt con contexto de fitness
         system_prompt = """Eres un asistente de fitness y entrenamiento personal. Ofrece consejos útiles, 
         información sobre ejercicios, técnicas correctas, nutrición deportiva y rutinas de entrenamiento. 
@@ -177,7 +209,7 @@ async def chatbot_send(request: Request, user = Depends(get_current_user)):
             )
 
         # Usar ID de usuario 
-        user_id = str(user["id"])
+        user_id = str(user.get('id'))
         logger.info(f"Procesando mensaje para usuario {user_id}: '{message[:50]}...'")
 
         # Verificar si se solicitó streaming
@@ -207,9 +239,33 @@ async def chatbot_send(request: Request, user = Depends(get_current_user)):
             except Exception as e:
                 logger.error(f"Error configuring LangSmith: {e}")
 
-        # Intentar usar LangGraph primero, si no está forzado el fallback
+        # Intentar usar el chatbot avanzado primero (fitness_chatbot)
         result = None
-        if not USE_FALLBACK:
+        
+        if CHATBOT_AVAILABLE and not USE_FALLBACK:
+            try:
+                logger.info(f"Procesando mensaje con fitness_chatbot para usuario {user_id}")
+                
+                # Procesar el mensaje con el grafo
+                response = await process_with_graph(user_id, message)
+                content = response.content if hasattr(response, 'content') else str(response)
+                
+                # Crear resultado similar al formato esperado
+                result = {
+                    "messages": [
+                        {"role": "user", "content": message},
+                        {"role": "assistant", "content": content}
+                    ]
+                }
+                
+                logger.info(f"✅ Mensaje procesado correctamente con fitness_chatbot")
+                
+            except Exception as e:
+                logger.error(f"❌ Error usando fitness_chatbot: {e}")
+                # Si falla, continuamos con el siguiente método
+        
+        # Si no tenemos resultado del chatbot avanzado, intentar LangGraph externo
+        if result is None and not USE_FALLBACK:
             try:
                 langgraph_url = f"{LANGGRAPH_URL}{LANGGRAPH_ENDPOINT}"
                 payload = {
@@ -242,7 +298,7 @@ async def chatbot_send(request: Request, user = Depends(get_current_user)):
                 # Si falla LangGraph, usamos el respaldo pero no elevamos el error
                 result = None
         
-        # Si no tenemos resultado de LangGraph, usamos el respaldo
+        # Si no tenemos resultado de ninguno de los métodos anteriores, usamos el respaldo
         if result is None:
             result = fallback_chatbot_response(user_id, message)
             

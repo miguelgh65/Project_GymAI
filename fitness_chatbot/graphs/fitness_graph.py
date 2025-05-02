@@ -1,3 +1,4 @@
+# fitness_chatbot/graphs/fitness_graph.py
 import logging
 from typing import Dict, Any, Tuple
 
@@ -9,8 +10,8 @@ from fitness_chatbot.nodes.router_node import classify_intent
 from fitness_chatbot.nodes.exercise_node import process_exercise_query
 from fitness_chatbot.nodes.nutrition_node import process_nutrition_query
 from fitness_chatbot.nodes.progress_node import process_progress_query
-from fitness_chatbot.nodes.response_node import generate_final_response
 from fitness_chatbot.nodes.log_activity_node import log_activity
+from fitness_chatbot.nodes.response_node import generate_final_response
 
 logger = logging.getLogger("fitness_chatbot")
 
@@ -35,8 +36,8 @@ def create_fitness_graph():
     # Función para enrutar según la intención
     def route_by_intent(states):
         """Determina el siguiente nodo según la intención detectada."""
-        fitness_state, _ = states
-        intent = fitness_state.get("intent", IntentType.GENERAL)
+        agent_state, _ = states
+        intent = agent_state.get("intent", IntentType.GENERAL)
         logger.info(f"Enrutando por intención: {intent}")
         return intent
     

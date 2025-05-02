@@ -1,13 +1,28 @@
+# fitness_chatbot/nodes/exercise_node.py
 import logging
 from typing import Tuple, Dict, Any, Optional
+import json
 
 from fitness_chatbot.schemas.agent_state import AgentState, IntentType
 from fitness_chatbot.schemas.memory_schemas import MemoryState
 from fitness_chatbot.configs.llm_config import get_llm
 from fitness_chatbot.utils.prompt_manager import PromptManager
-from fitness_chatbot.core.services import FitnessDataService
 
-logger = logging.getLogger("fitness_chatbot")
+# Importar servicios de base de datos si están disponibles
+try:
+    from back_end.gym.services.database import get_exercise_logs
+    DB_SERVICES_AVAILABLE = True
+    logger = logging.getLogger("fitness_chatbot")
+    logger.info("✅ Servicios de DB para consulta de ejercicios disponibles")
+except ImportError:
+    # Definir stub para get_exercise_logs
+    def get_exercise_logs(user_id, days=7):
+        logger.warning(f"Usando stub para get_exercise_logs: user_id={user_id}, days={days}")
+        return []
+    
+    DB_SERVICES_AVAILABLE = False
+    logger = logging.getLogger("fitness_chatbot")
+    logger.warning("⚠️ Servicios de DB para consulta de ejercicios NO disponibles, usando stubs")
 
 async def process_exercise_query(states: Tuple[AgentState, MemoryState]) -> Tuple[AgentState, MemoryState]:
     """
@@ -28,22 +43,84 @@ async def process_exercise_query(states: Tuple[AgentState, MemoryState]) -> Tupl
     query = agent_state["query"]
     user_id = agent_state["user_id"]
     
+    logger.info(f"Procesando consulta de ejercicio: '{query}' para usuario {user_id}")
+    
+    # Inicializar contexto de usuario si no existe
+    if "user_context" not in agent_state:
+        agent_state["user_context"] = {}
+    
     # Extraer nombre de ejercicio (si existe)
     exercise_name = extract_exercise_name(query)
     logger.info(f"Nombre de ejercicio extraído: {exercise_name}")
     
-    # Obtener datos del ejercicio si se identificó uno
-    if exercise_name:
-        # Obtener historial del ejercicio
-        exercise_history = await FitnessDataService.get_user_progress(user_id, exercise_name)
-        if exercise_history:
-            agent_state["user_context"]["exercise_history"] = exercise_history
-            logger.info(f"Obtenidos {len(exercise_history)} registros históricos para {exercise_name}")
-    
-    # Si no hay ejercicio específico, obtener datos generales
-    recent_exercises = await FitnessDataService.get_user_exercises(user_id, limit=5)
-    agent_state["user_context"]["recent_exercises"] = recent_exercises
-    logger.info(f"Obtenidos {len(recent_exercises)} ejercicios recientes")
+    # Obtener datos históricos de ejercicios
+    try:
+        if DB_SERVICES_AVAILABLE:
+            # Obtener datos recientes
+            recent_exercises = get_exercise_logs(user_id, days=30)
+            
+            # Procesar los datos para tener un formato más amigable
+            processed_exercises = []
+            for exercise in recent_exercises:
+                try:
+                    # Convertir 'repeticiones' de JSON a objeto si es necesario
+                    repetitions = exercise.get('repeticiones')
+                    if repetitions and isinstance(repetitions, str):
+                        try:
+                            repetitions = json.loads(repetitions)
+                        except json.JSONDecodeError:
+                            repetitions = []
+                    
+                    # Añadir ejercicio procesado
+                    processed_exercises.append({
+                        "fecha": exercise.get('fecha'),
+                        "ejercicio": exercise.get('ejercicio'),
+                        "repeticiones": repetitions
+                    })
+                except Exception as e:
+                    logger.error(f"Error procesando ejercicio: {e}")
+            
+            # Filtrar por ejercicio específico si se mencionó uno
+            if exercise_name:
+                filtered_exercises = [ex for ex in processed_exercises 
+                                     if ex.get('ejercicio') and exercise_name.lower() in ex.get('ejercicio').lower()]
+                
+                if filtered_exercises:
+                    agent_state["user_context"]["exercise_history"] = filtered_exercises
+                    logger.info(f"Obtenidos {len(filtered_exercises)} registros históricos para {exercise_name}")
+            
+            # Almacenar todos los ejercicios recientes
+            agent_state["user_context"]["recent_exercises"] = processed_exercises
+            logger.info(f"Obtenidos {len(processed_exercises)} ejercicios recientes")
+            
+        else:
+            # Usar datos simulados para testing
+            logger.warning("Usando datos simulados para testing")
+            agent_state["user_context"]["recent_exercises"] = [
+                {
+                    "fecha": "2024-04-25",
+                    "ejercicio": "press banca",
+                    "repeticiones": [
+                        {"repeticiones": 10, "peso": 60},
+                        {"repeticiones": 8, "peso": 70},
+                        {"repeticiones": 6, "peso": 75}
+                    ]
+                },
+                {
+                    "fecha": "2024-04-23",
+                    "ejercicio": "sentadillas",
+                    "repeticiones": [
+                        {"repeticiones": 10, "peso": 100},
+                        {"repeticiones": 10, "peso": 100},
+                        {"repeticiones": 8, "peso": 110}
+                    ]
+                }
+            ]
+    except Exception as e:
+        logger.error(f"Error obteniendo datos históricos: {e}")
+        # Crear contexto básico en caso de error
+        agent_state["user_context"]["recent_exercises"] = []
+        agent_state["user_context"]["error"] = str(e)
     
     # Formatear el contexto para el LLM
     context = format_exercise_context(agent_state["user_context"])
@@ -129,5 +206,9 @@ def format_exercise_context(user_context: Dict[str, Any]) -> str:
     # Si no hay datos
     if not context:
         context.append("No hay datos disponibles sobre ejercicios para este usuario.")
+    
+    # Añadir mensaje de error si existe
+    if "error" in user_context and user_context["error"]:
+        context.append(f"\nERROR: {user_context['error']}")
     
     return "\n".join(context)

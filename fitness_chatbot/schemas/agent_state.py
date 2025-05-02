@@ -1,3 +1,4 @@
+# fitness_chatbot/schemas/agent_state.py
 from typing import Dict, Any, List, Optional, TypedDict
 
 # Definir tipos de intención
@@ -23,3 +24,4 @@ class AgentState(TypedDict):
     
     # Respuesta generada
     generation: str             # Respuesta generada para el usuario
+
