@@ -139,8 +139,7 @@ try:
     from .routes.fitbit import router as fitbit_router
     from .routes import routine as routine_routes
     from .routes import login_handler as login_routes
-    
-    # NUEVO: Importar el router combinado de nutrición
+    from .routes.internal import router as internal_router
     from .routes.nutrition import router as nutrition_router
 
     logger.info("Incluyendo routers...")
@@ -152,7 +151,8 @@ try:
     app.include_router(fitbit_router)
     app.include_router(chatbot_routes.router)  # Este contiene el nuevo código para fitness_agent
     app.include_router(auth_routes.router)
-    
+    app.include_router(internal_router)
+
     # NUEVO: Incluir el router combinado de nutrición
     app.include_router(nutrition_router)
     

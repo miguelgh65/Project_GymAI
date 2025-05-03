@@ -48,16 +48,22 @@ async def process_exercise_query(states: Tuple[AgentState, MemoryState]) -> Tupl
             auth_token = agent_state.get("user_context", {}).get("auth_token")
             logger.info(f"Token de autenticación disponible: {'Sí' if auth_token else 'No'}")
             
-            if ejercicio:
-                # Consulta por ejercicio específico
-                logger.info(f"Obteniendo datos para ejercicio específico: {ejercicio}")
-                exercise_data = get_exercise_data(user_id, ejercicio, auth_token=auth_token)
-                respuesta = format_specific_exercise_response(exercise_data, ejercicio)
-            else:
-                # Consulta general por todos los ejercicios
-                logger.info("Obteniendo listado general de ejercicios")
-                exercise_data = get_exercise_data(user_id, auth_token=auth_token)
-                respuesta = format_exercise_list_response(exercise_data)
+            # MEJORA: Reintentar con URL alternativa o usar acceso directo a BD
+            try:
+                if ejercicio:
+                    # Consulta por ejercicio específico
+                    logger.info(f"Obteniendo datos para ejercicio específico: {ejercicio}")
+                    exercise_data = get_exercise_data(user_id, ejercicio, auth_token=auth_token)
+                    respuesta = format_specific_exercise_response(exercise_data, ejercicio)
+                else:
+                    # Consulta general por todos los ejercicios
+                    logger.info("Obteniendo listado general de ejercicios")
+                    exercise_data = get_exercise_data(user_id, auth_token=auth_token)
+                    respuesta = format_exercise_list_response(exercise_data)
+            except Exception as api_error:
+                logger.error(f"Error en solicitud API: {str(api_error)}")
+                # Respuesta de fallback si la API falla
+                respuesta = "Lo siento, no pude obtener tus ejercicios en este momento. El servicio parece estar ocupado. Por favor, intenta de nuevo más tarde."
         else:
             # Consulta sobre información general de ejercicios
             logger.info("Consulta sobre información general de ejercicios")
@@ -80,8 +86,12 @@ async def process_exercise_query(states: Tuple[AgentState, MemoryState]) -> Tupl
             
             # Invocar el LLM
             llm = get_llm()
-            response = await llm.ainvoke(messages)
-            respuesta = response.content if hasattr(response, 'content') else str(response)
+            if llm is None:
+                logger.error("LLM no inicializado correctamente")
+                respuesta = "Lo siento, estoy teniendo problemas técnicos. Por favor, intenta más tarde."
+            else:
+                response = await llm.ainvoke(messages)
+                respuesta = response.content if hasattr(response, 'content') else str(response)
     
     except Exception as e:
         logger.exception(f"Error procesando consulta de ejercicio: {str(e)}")
