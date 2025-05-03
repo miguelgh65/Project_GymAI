@@ -1,16 +1,23 @@
-# fitness_chatbot/nodes/response_node.py - VERSIÓN SIMPLE
+# fitness_chatbot/nodes/response_node.py
 import logging
+import os
+import json
+import requests
 from typing import Tuple, Dict, Any
 
 from fitness_chatbot.schemas.agent_state import AgentState
 from fitness_chatbot.schemas.memory_schemas import MemoryState
 from fitness_chatbot.configs.llm_config import get_llm
+from fitness_chatbot.utils.prompt_manager import PromptManager
 
 logger = logging.getLogger("fitness_chatbot")
 
 async def generate_final_response(states: Tuple[AgentState, MemoryState]) -> Tuple[AgentState, MemoryState]:
-    """Genera la respuesta final si no existe una generación previa."""
-    logger.info("--- GENERACIÓN DE RESPUESTA FINAL ---")
+    """
+    Genera la respuesta final utilizando el sistema de prompts.
+    Versión optimizada para evitar timeouts.
+    """
+    logger.info("--- GENERACIÓN DE RESPUESTA FINAL OPTIMIZADA ---")
     
     agent_state, memory_state = states
     
@@ -29,19 +36,37 @@ async def generate_final_response(states: Tuple[AgentState, MemoryState]) -> Tup
         logger.info("--- FIN GENERACIÓN DE RESPUESTA ---")
         return agent_state, memory_state
     
-    # Si no hay generación previa, crear una respuesta genérica
+    # Si no hay generación previa, crear una respuesta
     query = agent_state["query"]
     
     try:
-        # Generar respuesta con el LLM
-        messages = [
-            {"role": "system", "content": "Eres un asistente de fitness amigable."},
-            {"role": "user", "content": query}
-        ]
+        # Cargar el prompt adecuado - usar 'general' para respuestas generales
+        logger.info("Cargando prompt 'general' para respuesta")
+        messages = PromptManager.get_prompt_messages("general", query=query)
         
+        # Obtener configuración LLM
         llm = get_llm()
-        response = await llm.ainvoke(messages)
-        generation = response.content.strip()
+        
+        if llm is None:
+            logger.error("LLM no disponible. Usando respuesta genérica")
+            generation = "Lo siento, no puedo responder a tu pregunta en este momento debido a problemas técnicos. Por favor, intenta más tarde."
+        else:
+            logger.info("Configurando LLM para respuesta rápida")
+            
+            # Configurar para respuestas más cortas y rápidas
+            if hasattr(llm, 'with_max_tokens'):
+                llm = llm.with_max_tokens(250)  # Limitar a 250 tokens (~175 palabras)
+            
+            if hasattr(llm, 'with_temperature'):
+                llm = llm.with_temperature(0.3)  # Temperatura más baja para respuestas más determinísticas
+                
+            if hasattr(llm, 'with_timeout'):
+                llm = llm.with_timeout(10)  # Timeout reducido a 10 segundos
+            
+            logger.info("Generando respuesta con LLM optimizado")
+            response = await llm.ainvoke(messages)
+            generation = response.content.strip() if hasattr(response, 'content') else str(response)
+            logger.info(f"Respuesta generada con éxito: {len(generation)} caracteres")
         
         # Actualizar estado
         agent_state["generation"] = generation
@@ -49,12 +74,10 @@ async def generate_final_response(states: Tuple[AgentState, MemoryState]) -> Tup
             "role": "assistant", 
             "content": generation
         })
-        
-        logger.info(f"Respuesta general generada: {len(generation)} caracteres")
     
     except Exception as e:
         logger.error(f"Error generando respuesta: {str(e)}")
-        fallback_message = "Lo siento, no puedo procesar tu consulta en este momento."
+        fallback_message = "Lo siento, estoy teniendo problemas técnicos. Por favor, intenta de nuevo con una pregunta más sencilla."
         
         agent_state["generation"] = fallback_message
         memory_state["messages"].append({
