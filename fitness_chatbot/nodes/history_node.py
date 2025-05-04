@@ -2,21 +2,25 @@ import logging
 import json
 import psycopg2
 import psycopg2.extras
-import os
 from datetime import datetime
-from typing import Tuple, List, Dict, Any
+from typing import Tuple, Dict, Any, List, Optional
 import re
 
 from fitness_chatbot.schemas.agent_state import AgentState
 from fitness_chatbot.schemas.memory_schemas import MemoryState
 from fitness_chatbot.core.db_connector import DatabaseConnector
+from fitness_chatbot.configs.llm_config import get_llm
+from fitness_chatbot.utils.prompt_manager import PromptManager
 
 logger = logging.getLogger("fitness_chatbot")
+
+# Constante para la tabla
+TABLE_NAME = "gym.ejercicios"
 
 async def process_history_query(states: Tuple[AgentState, MemoryState]) -> Tuple[AgentState, MemoryState]:
     """
     Procesa consultas para ver el historial de ejercicios del usuario.
-    Conecta directamente a la base de datos PostgreSQL.
+    Utiliza IA con Chain of Thought para generar la consulta SQL.
     """
     logger.info("--- PROCESAMIENTO DE CONSULTA DE HISTORIAL INICIADO ---")
     
@@ -29,39 +33,48 @@ async def process_history_query(states: Tuple[AgentState, MemoryState]) -> Tuple
     
     logger.info(f"Procesando consulta de historial: '{query}' para usuario {user_id}")
     
-    # Detectar si es consulta sobre ejercicio específico
-    ejercicio_especifico = detect_specific_exercise(query)
-    if ejercicio_especifico:
-        logger.info(f"Ejercicio específico detectado: {ejercicio_especifico}")
-    
-    # Detectar si busca el último ejercicio
-    busca_ultimo = "último" in query.lower() or "ultimo" in query.lower() or "reciente" in query.lower()
-    
     try:
-        # Conectar a la base de datos
-        conn = None
-        try:
-            db_config = DatabaseConnector.get_db_config()
-            logger.info(f"Configuración DB: {db_config}")
-            conn = psycopg2.connect(**db_config)
+        # Obtener LLM
+        llm = get_llm()
+        
+        if not llm:
+            logger.error("LLM no disponible para generar consulta SQL")
+            respuesta = "Lo siento, no puedo procesar tu consulta en este momento. Por favor, intenta más tarde."
+        else:
+            # Usar el LLM para generar la consulta SQL con el sistema de prompt mejorado
+            messages = PromptManager.get_prompt_messages(
+                "history", 
+                query=query,
+                user_id=user_id
+            )
             
-            # Si hay un ejercicio específico
-            if ejercicio_especifico:
-                # Consultar datos de ese ejercicio
-                respuesta = get_specific_exercise_history(conn, user_id, ejercicio_especifico)
-            elif busca_ultimo:
-                # Consultar el último ejercicio
-                respuesta = get_latest_exercise(conn, user_id)
+            # Invocar el LLM
+            logger.info("Generando consulta SQL mediante LLM con Chain of Thought")
+            response = await llm.ainvoke(messages)
+            content = response.content if hasattr(response, 'content') else str(response)
+            
+            # Extraer el JSON de la respuesta
+            sql_data = extract_sql_from_response(content)
+            
+            if not sql_data:
+                logger.error("No se pudo generar una consulta SQL válida")
+                respuesta = "Lo siento, no pude entender completamente tu consulta. ¿Podrías reformularla?"
             else:
-                # Consultar resumen general
-                respuesta = get_general_exercise_history(conn, user_id)
+                # Asegurarse de que la tabla sea correcta (sin confiar en la IA para esto)
+                sql_data["sql"] = ensure_correct_table(sql_data["sql"])
                 
-        except Exception as db_err:
-            logger.error(f"Error de base de datos: {str(db_err)}")
-            respuesta = f"Lo siento, tuve problemas al conectar con la base de datos: {str(db_err)}"
-        finally:
-            if conn:
-                conn.close()
+                # Ejecutar la consulta SQL
+                logger.info(f"Ejecutando SQL: {sql_data['sql']}")
+                logger.info(f"Con parámetros: {sql_data['params']}")
+                
+                results = execute_sql_query(sql_data["sql"], sql_data["params"])
+                
+                # Identificar el tipo de consulta para formatear los resultados adecuadamente
+                tipo_consulta = sql_data.get("tipo_consulta", "")
+                exercise_name = get_exercise_from_params(sql_data["params"])
+                
+                # Formatear los resultados según el tipo de consulta
+                respuesta = format_results(results, exercise_name, tipo_consulta)
     
     except Exception as e:
         logger.exception(f"Error procesando consulta de historial: {str(e)}")
@@ -74,262 +87,346 @@ async def process_history_query(states: Tuple[AgentState, MemoryState]) -> Tuple
     logger.info("--- PROCESAMIENTO DE CONSULTA DE HISTORIAL FINALIZADO ---")
     return agent_state, memory_state
 
-def detect_specific_exercise(query: str) -> str:
+def extract_sql_from_response(content: str) -> Optional[Dict[str, Any]]:
     """
-    Detecta si la consulta menciona un ejercicio específico.
+    Extrae la consulta SQL y los parámetros del contenido generado por el LLM.
+    
+    Args:
+        content: Respuesta del LLM
+        
+    Returns:
+        Diccionario con la consulta SQL y los parámetros, o None si no se pudo extraer
     """
-    query_lower = query.lower()
+    # Buscar un objeto JSON en la respuesta
+    json_match = re.search(r'\{.*\}', content, re.DOTALL)
     
-    # Mapeo de ejercicios comunes
-    exercise_mapping = {
-        "press banca": ["press banca", "press de banca", "bench press", "banca"],
-        "sentadillas": ["sentadilla", "sentadillas", "squat", "squats"],
-        "peso muerto": ["peso muerto", "deadlift"],
-        "dominadas": ["dominada", "dominadas", "pull up", "pull-up", "chin up"],
-        "curl de bíceps": ["curl", "bíceps", "biceps", "curl de biceps", "curl biceps"],
-        "press militar": ["press militar", "military press", "press hombro", "press de hombro"],
-        "fondos": ["fondos", "dips", "fondos de tríceps", "triceps dips"],
-        "remo": ["remo", "row", "remo con barra"]
-    }
+    if not json_match:
+        logger.warning("No se encontró JSON en la respuesta del LLM")
+        return None
     
-    # Buscar coincidencias
-    for standard_name, variations in exercise_mapping.items():
-        for variation in variations:
-            if variation in query_lower:
-                return standard_name
-    
-    return ""
-
-def get_specific_exercise_history(conn, user_id: str, ejercicio: str) -> str:
-    """
-    Obtiene y formatea el historial de un ejercicio específico.
-    """
-    cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    
-    # Consulta SQL para obtener los datos del ejercicio
-    query = """
-    SELECT fecha, ejercicio, repeticiones
-    FROM gym.ejercicios
-    WHERE user_id = %s AND ejercicio ILIKE %s
-    ORDER BY fecha DESC
-    LIMIT 10
-    """
-    
-    cursor.execute(query, (user_id, f"%{ejercicio}%"))
-    ejercicios = cursor.fetchall()
-    
-    if not ejercicios:
-        return f"No encontré registros de **{ejercicio}** en tu historial. ¿Quieres registrar este ejercicio?"
-    
-    # Formatear la respuesta
-    respuesta = f"## 📊 Historial de {ejercicio}\n\n"
-    
-    # Obtener el último ejercicio
-    ultimo_ejercicio = ejercicios[0]
-    ultima_fecha = ultimo_ejercicio["fecha"].strftime("%Y-%m-%d %H:%M")
-    
-    # Parsear el JSON de repeticiones
     try:
-        if isinstance(ultimo_ejercicio["repeticiones"], str):
-            series = json.loads(ultimo_ejercicio["repeticiones"])
-        else:
-            series = ultimo_ejercicio["repeticiones"]
+        sql_data = json.loads(json_match.group(0))
         
-        # Calcular máximos
-        peso_maximo = 0
-        total_reps = 0
-        volumen_total = 0
+        if "sql" not in sql_data or "params" not in sql_data:
+            logger.warning("JSON encontrado pero sin campos sql o params")
+            return None
         
-        for serie in series:
-            peso = float(serie.get("peso", 0))
-            reps = int(serie.get("repeticiones", 0))
-            
-            if peso > peso_maximo:
-                peso_maximo = peso
-                
-            total_reps += reps
-            volumen_total += peso * reps
+        # Validar el número de parámetros vs placeholders %s
+        placeholder_count = sql_data["sql"].count("%s")
+        param_count = len(sql_data["params"])
         
-        # Añadir resumen del último ejercicio
-        respuesta += f"### 💪 Tu último entrenamiento ({ultima_fecha})\n\n"
-        respuesta += f"• **Peso máximo usado:** {peso_maximo} kg\n"
-        respuesta += f"• **Repeticiones totales:** {total_reps}\n"
-        respuesta += f"• **Volumen total:** {volumen_total} kg\n\n"
+        if placeholder_count != param_count:
+            logger.warning(f"Número de placeholders (%s) no coincide con parámetros: {placeholder_count} vs {param_count}")
+            return None
         
-        # Mostrar las series del último entrenamiento
-        respuesta += "**Series:**\n"
-        for i, serie in enumerate(series, 1):
-            peso = float(serie.get("peso", 0))
-            reps = int(serie.get("repeticiones", 0))
-            respuesta += f"• Serie {i}: {reps} repeticiones × {peso} kg\n"
+        # Verificar si hay una explicación del tipo de consulta
+        if "tipo_consulta" not in sql_data:
+            # Intentar inferir el tipo de consulta desde el SQL
+            if "LIMIT 1" in sql_data["sql"]:
+                sql_data["tipo_consulta"] = "última_sesión"
+            elif "LIMIT" in sql_data["sql"]:
+                sql_data["tipo_consulta"] = "múltiples_sesiones"
+            else:
+                sql_data["tipo_consulta"] = "listado_general"
         
-        respuesta += "\n"
-        
-        # Mostrar los últimos entrenamientos (sin el primero que ya mostramos)
-        if len(ejercicios) > 1:
-            respuesta += "### 🏋️ Entrenamientos anteriores\n\n"
-            for i, ej in enumerate(ejercicios[1:5], 1):  # Mostrar solo los siguientes 4
-                fecha = ej["fecha"].strftime("%Y-%m-%d")
-                
-                # Calcular peso máximo de este entrenamiento
-                try:
-                    if isinstance(ej["repeticiones"], str):
-                        series_ant = json.loads(ej["repeticiones"])
-                    else:
-                        series_ant = ej["repeticiones"]
-                        
-                    peso_max_ant = max([float(s.get("peso", 0)) for s in series_ant])
-                    reps_total_ant = sum([int(s.get("repeticiones", 0)) for s in series_ant])
-                    
-                    respuesta += f"**{fecha}**: {peso_max_ant} kg (máximo), {reps_total_ant} repeticiones totales\n"
-                except:
-                    respuesta += f"**{fecha}**: Datos no disponibles\n"
-            
-        respuesta += "\n¿Quieres registrar una nueva sesión de este ejercicio?"
-        
-    except Exception as e:
-        # Si hay error procesando el JSON
-        respuesta += f"Encontré registros de {ejercicio}, pero tuve problemas al procesarlos: {str(e)}\n"
-        respuesta += "\n¿Quieres registrar una nueva sesión de este ejercicio?"
+        return sql_data
+    except json.JSONDecodeError:
+        logger.error("Error decodificando JSON de la respuesta del LLM")
+        return None
+
+def ensure_correct_table(sql: str) -> str:
+    """
+    Asegura que la consulta SQL use la tabla correcta.
     
-    cursor.close()
+    Args:
+        sql: Consulta SQL generada por la IA
+        
+    Returns:
+        Consulta SQL corregida con la tabla correcta
+    """
+    # Reemplazar cualquier tabla por la tabla correcta
+    table_pattern = r'FROM\s+([^\s]+)'
+    match = re.search(table_pattern, sql)
+    
+    if match:
+        current_table = match.group(1)
+        if current_table != TABLE_NAME:
+            logger.warning(f"Tabla incorrecta detectada: {current_table}. Reemplazando por {TABLE_NAME}")
+            return sql.replace(f"FROM {current_table}", f"FROM {TABLE_NAME}")
+    
+    return sql
+
+def get_exercise_from_params(params: List) -> Optional[str]:
+    """
+    Intenta extraer el nombre del ejercicio de los parámetros.
+    
+    Args:
+        params: Lista de parámetros para la consulta SQL
+        
+    Returns:
+        Nombre del ejercicio o None si no se puede detectar
+    """
+    for param in params:
+        if isinstance(param, str) and param.startswith("%") and param.endswith("%"):
+            # Es probablemente un parámetro de ejercicio (ILIKE)
+            exercise = param.strip("%")
+            return exercise
+    
+    return None
+
+def execute_sql_query(sql_query: str, params: List) -> List:
+    """
+    Ejecuta la consulta SQL.
+    
+    Args:
+        sql_query: Consulta SQL a ejecutar
+        params: Parámetros para la consulta
+        
+    Returns:
+        Resultados de la consulta
+    """
+    conn = None
+    try:
+        db_config = DatabaseConnector.get_db_config()
+        logger.info(f"Configuración DB: {db_config}")
+        conn = psycopg2.connect(**db_config)
+        
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cursor.execute(sql_query, params)
+        results = cursor.fetchall()
+        cursor.close()
+        
+        logger.info(f"Consulta ejecutada. Resultados: {len(results)}")
+        return results
+    except Exception as e:
+        logger.error(f"Error ejecutando consulta SQL: {str(e)}")
+        raise e
+    finally:
+        if conn:
+            conn.close()
+
+def format_results(results: List, exercise_name: Optional[str], tipo_consulta: str) -> str:
+    """
+    Formatea los resultados de la consulta en una respuesta para el usuario.
+    
+    Args:
+        results: Resultados de la consulta SQL
+        exercise_name: Nombre del ejercicio (si se detectó)
+        tipo_consulta: Tipo de consulta (última_sesión, múltiples_sesiones, etc.)
+        
+    Returns:
+        Respuesta formateada
+    """
+    # Si no hay resultados
+    if not results:
+        if exercise_name:
+            return f"No encontré registros de **{exercise_name}** en tu historial. ¿Quieres registrar este ejercicio?"
+        else:
+            return "No encontré registros de ejercicios en tu historial. ¿Quieres empezar a registrar tus entrenamientos?"
+    
+    # Formatear según el tipo de consulta
+    if tipo_consulta == "última_sesión" and len(results) > 0:
+        # Si el ejercicio es dominadas y la consulta es sobre repeticiones
+        if exercise_name and "dominada" in exercise_name.lower():
+            return format_dominadas_reps_response(results[0])
+        else:
+            return format_single_session(results[0], exercise_name)
+    elif tipo_consulta == "múltiples_sesiones" and len(results) > 0:
+        return format_session_list(results, exercise_name)
+    else:
+        # Por defecto, resumen de ejercicios o resultado genérico
+        if 'ejercicio' in results[0] and 'total' in results[0]:
+            return format_exercise_summary(results)
+        else:
+            return format_session_list(results, exercise_name)
+
+def format_dominadas_reps_response(result: Dict) -> str:
+    """
+    Formatea una respuesta específica para la consulta de repeticiones de dominadas.
+    
+    Args:
+        result: Resultado de la consulta SQL
+        
+    Returns:
+        Respuesta formateada
+    """
+    fecha = result['fecha'].strftime("%Y-%m-%d %H:%M") if hasattr(result['fecha'], 'strftime') else result['fecha']
+    
+    respuesta = "## 🏋️ Repeticiones en tu última sesión de dominadas\n\n"
+    respuesta += f"En tu sesión del **{fecha}**, hiciste:\n\n"
+    
+    # Procesar repeticiones
+    if 'repeticiones' in result and result['repeticiones']:
+        try:
+            # Convertir a JSON si es string
+            if isinstance(result['repeticiones'], str):
+                series = json.loads(result['repeticiones'])
+            else:
+                series = result['repeticiones']
+            
+            # Solo procesar si es una lista
+            if isinstance(series, list):
+                # Calcular total de repeticiones
+                total_reps = sum(s.get('repeticiones', 0) for s in series if isinstance(s, dict))
+                respuesta += f"**Total: {total_reps} repeticiones**\n\n"
+                
+                # Detallar cada serie
+                respuesta += "**Desglose por series:**\n"
+                for i, serie in enumerate(series, 1):
+                    if isinstance(serie, dict):
+                        reps = serie.get('repeticiones', 0)
+                        peso = serie.get('peso', 0)
+                        
+                        if peso > 0:
+                            respuesta += f"• Serie {i}: **{reps} repeticiones** con {peso} kg de peso\n"
+                        else:
+                            respuesta += f"• Serie {i}: **{reps} repeticiones** con tu peso corporal\n"
+                    else:
+                        respuesta += f"• Serie {i}: {str(serie)}\n"
+            else:
+                respuesta += f"**Datos:** {str(series)}\n"
+        except Exception as e:
+            respuesta += "No pude procesar el formato detallado de las repeticiones.\n"
+    
     return respuesta
 
-def get_latest_exercise(conn, user_id: str) -> str:
+def format_single_session(result: Dict, exercise_name: str) -> str:
     """
-    Obtiene y formatea el último ejercicio registrado.
+    Formatea una respuesta para una sola sesión de ejercicio.
+    
+    Args:
+        result: Resultado de la consulta SQL
+        exercise_name: Nombre del ejercicio
+        
+    Returns:
+        Respuesta formateada
     """
-    cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    ejercicio = result.get('ejercicio', exercise_name) if result.get('ejercicio') else exercise_name
+    fecha = result['fecha'].strftime("%Y-%m-%d %H:%M") if hasattr(result['fecha'], 'strftime') else result['fecha']
     
-    # Consulta SQL para obtener el último ejercicio
-    query = """
-    SELECT fecha, ejercicio, repeticiones
-    FROM gym.ejercicios
-    WHERE user_id = %s
-    ORDER BY fecha DESC
-    LIMIT 1
-    """
-    
-    cursor.execute(query, (user_id,))
-    ultimo = cursor.fetchone()
-    
-    if not ultimo:
-        return "No encontré ningún ejercicio en tu historial. ¿Quieres empezar a registrar tus entrenamientos?"
-    
-    # Formatear la respuesta
-    ejercicio = ultimo["ejercicio"]
-    fecha = ultimo["fecha"].strftime("%Y-%m-%d %H:%M")
-    
-    respuesta = f"## 🏋️ Tu último ejercicio\n\n"
-    respuesta += f"**Ejercicio:** {ejercicio}\n"
+    respuesta = f"## 🏋️ Última sesión de {ejercicio}\n\n"
     respuesta += f"**Fecha:** {fecha}\n\n"
     
-    # Parsear el JSON de repeticiones
-    try:
-        if isinstance(ultimo["repeticiones"], str):
-            series = json.loads(ultimo["repeticiones"])
-        else:
-            series = ultimo["repeticiones"]
-        
-        # Calcular máximos
-        peso_maximo = 0
-        total_reps = 0
-        volumen_total = 0
-        
-        for serie in series:
-            peso = float(serie.get("peso", 0))
-            reps = int(serie.get("repeticiones", 0))
+    # Procesar repeticiones
+    if 'repeticiones' in result and result['repeticiones']:
+        try:
+            # Convertir a JSON si es string
+            if isinstance(result['repeticiones'], str):
+                series = json.loads(result['repeticiones'])
+            else:
+                series = result['repeticiones']
             
-            if peso > peso_maximo:
-                peso_maximo = peso
+            # Solo procesar si es una lista
+            if isinstance(series, list):
+                # Calcular totales
+                total_reps = sum(s.get('repeticiones', 0) for s in series if isinstance(s, dict))
+                max_peso = max((s.get('peso', 0) for s in series if isinstance(s, dict)), default=0)
+                volumen = sum(s.get('repeticiones', 0) * s.get('peso', 0) for s in series if isinstance(s, dict))
                 
-            total_reps += reps
-            volumen_total += peso * reps
-        
-        # Añadir detalles
-        respuesta += f"**Peso máximo:** {peso_maximo} kg\n"
-        respuesta += f"**Repeticiones totales:** {total_reps}\n"
-        respuesta += f"**Volumen total:** {volumen_total} kg\n\n"
-        
-        # Mostrar las series
-        respuesta += "**Series:**\n"
-        for i, serie in enumerate(series, 1):
-            peso = float(serie.get("peso", 0))
-            reps = int(serie.get("repeticiones", 0))
-            respuesta += f"• Serie {i}: {reps} repeticiones × {peso} kg\n"
-        
-    except Exception as e:
-        # Si hay error procesando el JSON
-        respuesta += f"No pude procesar los detalles de las series: {str(e)}\n"
+                respuesta += f"**Total repeticiones:** {total_reps}\n"
+                respuesta += f"**Peso máximo usado:** {max_peso} kg\n"
+                respuesta += f"**Volumen total:** {volumen} kg\n\n"
+                
+                # Detallar cada serie
+                respuesta += "**Series:**\n"
+                for i, serie in enumerate(series, 1):
+                    if isinstance(serie, dict):
+                        reps = serie.get('repeticiones', 0)
+                        peso = serie.get('peso', 0)
+                        respuesta += f"• Serie {i}: {reps} repeticiones × {peso} kg\n"
+                    else:
+                        respuesta += f"• Serie {i}: {str(serie)}\n"
+            else:
+                respuesta += f"**Datos:** {str(series)}\n"
+        except Exception as e:
+            respuesta += "No pude procesar el formato detallado de las repeticiones.\n"
     
-    respuesta += "\n¿Quieres ver más detalles de este ejercicio o registrar uno nuevo?"
-    
-    cursor.close()
     return respuesta
 
-def get_general_exercise_history(conn, user_id: str) -> str:
+def format_session_list(results: List, exercise_name: str) -> str:
     """
-    Obtiene y formatea un resumen general del historial de ejercicios.
+    Formatea una respuesta para múltiples sesiones de ejercicio.
+    
+    Args:
+        results: Resultados de la consulta SQL
+        exercise_name: Nombre del ejercicio
+        
+    Returns:
+        Respuesta formateada
     """
-    cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    # Determinar el ejercicio (tomándolo del primer resultado o usando el proporcionado)
+    ejercicio = results[0].get('ejercicio', exercise_name) if results and 'ejercicio' in results[0] else exercise_name
     
-    # Consulta SQL para obtener ejercicios únicos
-    query_ejercicios = """
-    SELECT DISTINCT ejercicio
-    FROM gym.ejercicios
-    WHERE user_id = %s
+    respuesta = f"## 📊 Historial de {ejercicio}\n\n"
+    respuesta += f"Encontré **{len(results)} sesiones** registradas.\n\n"
+    
+    # Mostrar cada sesión
+    for i, row in enumerate(results):
+        fecha = row['fecha'].strftime("%Y-%m-%d %H:%M") if hasattr(row['fecha'], 'strftime') else row['fecha']
+        
+        respuesta += f"### Sesión {i+1} - {fecha}\n"
+        
+        # Procesar repeticiones
+        if 'repeticiones' in row and row['repeticiones']:
+            try:
+                # Convertir a JSON si es string
+                if isinstance(row['repeticiones'], str):
+                    series = json.loads(row['repeticiones'])
+                else:
+                    series = row['repeticiones']
+                
+                # Solo procesar si es una lista
+                if isinstance(series, list):
+                    # Calcular totales
+                    total_reps = sum(s.get('repeticiones', 0) for s in series if isinstance(s, dict))
+                    max_peso = max((s.get('peso', 0) for s in series if isinstance(s, dict)), default=0)
+                    volumen = sum(s.get('repeticiones', 0) * s.get('peso', 0) for s in series if isinstance(s, dict))
+                    
+                    respuesta += f"**Total repeticiones:** {total_reps}\n"
+                    respuesta += f"**Peso máximo:** {max_peso} kg\n"
+                    respuesta += f"**Volumen total:** {volumen} kg\n"
+                    
+                    # Detallar cada serie
+                    respuesta += "**Series:**\n"
+                    for j, serie in enumerate(series, 1):
+                        if isinstance(serie, dict):
+                            reps = serie.get('repeticiones', 0)
+                            peso = serie.get('peso', 0)
+                            respuesta += f"• Serie {j}: {reps} repeticiones × {peso} kg\n"
+                        else:
+                            respuesta += f"• Serie {j}: {str(serie)}\n"
+                else:
+                    respuesta += f"**Datos:** {str(series)}\n"
+            except Exception as e:
+                respuesta += "No pude procesar el formato detallado.\n"
+        
+        respuesta += "\n"
+    
+    return respuesta
+
+def format_exercise_summary(results: List) -> str:
     """
+    Formatea un resumen de ejercicios con conteo y fechas.
     
-    cursor.execute(query_ejercicios, (user_id,))
-    ejercicios_unicos = [row["ejercicio"] for row in cursor.fetchall()]
-    
-    if not ejercicios_unicos:
-        return "No encontré registros de ejercicios en tu historial. ¿Quieres empezar a registrar tus entrenamientos?"
-    
-    # Formatear la respuesta
+    Args:
+        results: Resultados de la consulta SQL
+        
+    Returns:
+        Respuesta formateada
+    """
     respuesta = "## 📊 Tu Historial de Ejercicios\n\n"
+    respuesta += f"Has realizado **{len(results)} ejercicios diferentes** en tu historial.\n\n"
     
-    # Obtener información de cada ejercicio
-    ejercicios_info = []
-    for ejercicio in ejercicios_unicos:
-        # Consultar último registro y total
-        query_info = """
-        SELECT COUNT(*) as total, MAX(fecha) as ultima_fecha
-        FROM gym.ejercicios
-        WHERE user_id = %s AND ejercicio = %s
-        """
+    # Mostrar cada ejercicio con su conteo y fecha
+    for row in results:
+        ejercicio = row.get('ejercicio', 'Desconocido')
+        total = row.get('total', 0) or row.get('count', 0)
         
-        cursor.execute(query_info, (user_id, ejercicio))
-        info = cursor.fetchone()
-        
-        ejercicios_info.append({
-            "nombre": ejercicio,
-            "total": info["total"],
-            "ultima_fecha": info["ultima_fecha"]
-        })
+        if 'ultima_fecha' in row and row['ultima_fecha']:
+            fecha = row['ultima_fecha'].strftime("%Y-%m-%d") if hasattr(row['ultima_fecha'], 'strftime') else row['ultima_fecha']
+            respuesta += f"• **{ejercicio}** - {total} sesiones (última: {fecha})\n"
+        else:
+            respuesta += f"• **{ejercicio}** - {total} sesiones\n"
     
-    # Ordenar por fecha más reciente
-    ejercicios_info.sort(key=lambda x: x["ultima_fecha"], reverse=True)
-    
-    # Añadir lista de ejercicios
-    respuesta += f"Has realizado **{len(ejercicios_unicos)} ejercicios diferentes** en tu historial:\n\n"
-    
-    # Mostrar ejercicios en forma de lista
-    for info in ejercicios_info:
-        fecha_str = info["ultima_fecha"].strftime("%Y-%m-%d") if info["ultima_fecha"] else "fecha desconocida"
-        respuesta += f"• **{info['nombre']}** - {info['total']} sesiones (última: {fecha_str})\n"
-    
-    # Añadir información sobre el último ejercicio
-    if ejercicios_info:
-        ultimo = ejercicios_info[0]
-        respuesta += f"\nTu ejercicio más reciente fue **{ultimo['nombre']}** el {ultimo['ultima_fecha'].strftime('%Y-%m-%d')}.\n\n"
-    
-    respuesta += "Para ver detalles sobre un ejercicio específico, pregúntame por él. Por ejemplo:\n"
-    respuesta += "- \"¿Cómo va mi progreso en sentadillas?\"\n"
-    respuesta += "- \"Muéstrame mi historial de press banca\"\n"
-    respuesta += "- \"¿Cuál es mi mejor marca en peso muerto?\"\n\n"
-    
-    respuesta += "¿Sobre qué ejercicio te gustaría ver más detalles?"
-    
-    cursor.close()
+    respuesta += "\n¿Quieres ver detalles sobre algún ejercicio específico?"
     return respuesta

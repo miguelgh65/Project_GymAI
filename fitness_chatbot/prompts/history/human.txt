@@ -1,0 +1,6 @@
+<context>
+Usuario actual: user_id="{user_id}"
+</context>
+
+<human>
+Genera la consulta SQL y sus parámetros pa
