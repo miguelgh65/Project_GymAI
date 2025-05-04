@@ -3,6 +3,7 @@ import logging
 import json
 import os
 import requests
+import time
 from typing import Dict, Any, Optional, List, Union
 
 logger = logging.getLogger("fitness_chatbot")
@@ -11,8 +12,11 @@ logger = logging.getLogger("fitness_chatbot")
 # Si estamos en el mismo contenedor, usamos localhost
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost")
 
-# Tiempo de espera para solicitudes
-DEFAULT_TIMEOUT = int(os.getenv("API_TIMEOUT", "10"))
+# Tiempo de espera para solicitudes - AUMENTADO
+DEFAULT_TIMEOUT = int(os.getenv("API_TIMEOUT", "30"))
+
+# Número de reintentos para solicitudes internas
+DEFAULT_RETRIES = int(os.getenv("API_RETRIES", "3"))
 
 # Bandera para detectar si estamos dentro del contexto de una solicitud de chatbot
 # Esto ayudará a evitar bucles infinitos
@@ -34,6 +38,7 @@ def make_api_request(
     json_data: Optional[Dict[str, Any]] = None,
     headers: Optional[Dict[str, str]] = None,
     timeout: int = DEFAULT_TIMEOUT,
+    retries: int = DEFAULT_RETRIES,
     auth_token: Optional[str] = None
 ) -> Dict[str, Any]:
     """
@@ -46,6 +51,7 @@ def make_api_request(
         json_data: Datos JSON para el cuerpo de la solicitud
         headers: Cabeceras HTTP adicionales
         timeout: Tiempo de espera en segundos
+        retries: Número de reintentos para solicitudes fallidas
         auth_token: Token JWT para autenticación
         
     Returns:
@@ -80,6 +86,10 @@ def make_api_request(
     # Esto ayudará al backend a identificar solicitudes internas
     default_headers["X-Internal-Request"] = "true"
     
+    # Fusionar cabeceras personalizadas si se proporcionan
+    if headers:
+        default_headers.update(headers)
+    
     logger.info(f"Realizando solicitud {method} a {url}")
     if params:
         logger.debug(f"Parámetros: {params}")
@@ -88,48 +98,74 @@ def make_api_request(
     if auth_token:
         logger.debug(f"Solicitud autenticada con token: {auth_token[:10]}...")
     
-    try:
-        # Realizar la solicitud con el timeout reducido
-        response = requests.request(
-            method=method.upper(),
-            url=url,
-            params=params,
-            json=json_data,
-            headers=default_headers,
-            timeout=timeout
-        )
-        
-        # Intentar obtener respuesta JSON
-        try:
-            response_data = response.json()
-        except json.JSONDecodeError:
-            logger.warning(f"Respuesta no JSON recibida: {response.text[:200]}")
-            response_data = {"text": response.text}
-        
-        # Añadir información sobre la respuesta
-        response_data["status_code"] = response.status_code
-        response_data["success"] = 200 <= response.status_code < 300
-        
-        if not response_data["success"]:
-            logger.warning(f"API respondió con código {response.status_code}: {response_data.get('detail', '')}")
-        else:
-            logger.info(f"API respondió exitosamente ({response.status_code})")
-        
-        return response_data
+    # Configuración para reintentos
+    retry_count = 0
+    max_retries = retries
     
-    except requests.RequestException as e:
-        logger.error(f"Error en solicitud API: {str(e)}")
-        return {
-            "success": False,
-            "error": str(e),
-            "status_code": getattr(e.response, "status_code", 500) if hasattr(e, "response") else 500
-        }
+    # Si es un endpoint interno, usar reintentos
+    should_retry = endpoint.startswith("internal/")
+    
+    while True:
+        try:
+            # Realizar la solicitud con el timeout especificado
+            response = requests.request(
+                method=method.upper(),
+                url=url,
+                params=params,
+                json=json_data,
+                headers=default_headers,
+                timeout=timeout
+            )
+            
+            # Intentar obtener respuesta JSON
+            try:
+                response_data = response.json()
+            except json.JSONDecodeError:
+                logger.warning(f"Respuesta no JSON recibida: {response.text[:200]}")
+                response_data = {"text": response.text}
+            
+            # Añadir información sobre la respuesta
+            response_data["status_code"] = response.status_code
+            response_data["success"] = 200 <= response.status_code < 300
+            
+            if not response_data["success"]:
+                logger.warning(f"API respondió con código {response.status_code}: {response_data.get('detail', '')}")
+                
+                # Si debemos reintentar y no hemos agotado los reintentos
+                if should_retry and retry_count < max_retries and response.status_code >= 500:
+                    retry_count += 1
+                    retry_delay = 0.5 * (2 ** retry_count)  # Backoff exponencial
+                    logger.info(f"Reintentando en {retry_delay:.2f} segundos... ({retry_count}/{max_retries})")
+                    time.sleep(retry_delay)
+                    continue
+            else:
+                logger.info(f"API respondió exitosamente ({response.status_code})")
+            
+            return response_data
+            
+        except requests.RequestException as e:
+            logger.error(f"Error en solicitud API: {str(e)}")
+            
+            # Si debemos reintentar y no hemos agotado los reintentos
+            if should_retry and retry_count < max_retries:
+                retry_count += 1
+                retry_delay = 0.5 * (2 ** retry_count)  # Backoff exponencial
+                logger.info(f"Reintentando en {retry_delay:.2f} segundos... ({retry_count}/{max_retries})")
+                time.sleep(retry_delay)
+                continue
+            
+            return {
+                "success": False,
+                "error": str(e),
+                "status_code": getattr(e.response, "status_code", 500) if hasattr(e, "response") else 500
+            }
 
 def get_exercise_data(
     user_id: str, 
     exercise: Optional[str] = None, 
     days: int = 30,
-    auth_token: Optional[str] = None
+    auth_token: Optional[str] = None,
+    timeout: int = DEFAULT_TIMEOUT
 ) -> Dict[str, Any]:
     """
     Obtiene datos de ejercicios del usuario.
@@ -139,6 +175,7 @@ def get_exercise_data(
         exercise: Nombre del ejercicio específico (opcional)
         days: Número de días hacia atrás para obtener datos
         auth_token: Token JWT para autenticación
+        timeout: Tiempo de espera personalizado
         
     Returns:
         Dict con datos de ejercicios
@@ -165,14 +202,14 @@ def get_exercise_data(
             }
             
             logger.info(f"Obteniendo estadísticas para ejercicio: {exercise}")
-            return make_api_request(endpoint, params=params, auth_token=auth_token)
+            return make_api_request(endpoint, params=params, auth_token=auth_token, timeout=timeout)
         else:
             # Obtener logs generales de ejercicios
             endpoint = "logs"
             params = {"days": days}
             
             logger.info(f"Obteniendo logs de ejercicios para los últimos {days} días")
-            return make_api_request(endpoint, params=params, auth_token=auth_token)
+            return make_api_request(endpoint, params=params, auth_token=auth_token, timeout=timeout)
     finally:
         # Restaurar el contexto previo
         IN_CHATBOT_CONTEXT = old_context
@@ -180,7 +217,8 @@ def get_exercise_data(
 def log_exercise(
     user_id: str, 
     exercise_data: str,
-    auth_token: Optional[str] = None
+    auth_token: Optional[str] = None,
+    timeout: int = DEFAULT_TIMEOUT
 ) -> Dict[str, Any]:
     """
     Registra un ejercicio en el backend.
@@ -189,6 +227,7 @@ def log_exercise(
         user_id: ID del usuario
         exercise_data: Descripción textual del ejercicio
         auth_token: Token JWT para autenticación
+        timeout: Tiempo de espera personalizado
         
     Returns:
         Dict con resultado del registro
@@ -204,7 +243,7 @@ def log_exercise(
         json_data = {"exercise_data": exercise_data}
         
         logger.info(f"Registrando ejercicio para usuario {user_id}: {exercise_data}")
-        return make_api_request(endpoint, method="POST", json_data=json_data, auth_token=auth_token)
+        return make_api_request(endpoint, method="POST", json_data=json_data, auth_token=auth_token, timeout=timeout)
     finally:
         # Restaurar el contexto previo
         IN_CHATBOT_CONTEXT = old_context
@@ -212,7 +251,8 @@ def log_exercise(
 def get_nutrition_data(
     user_id: str, 
     days: int = 7,
-    auth_token: Optional[str] = None
+    auth_token: Optional[str] = None,
+    timeout: int = DEFAULT_TIMEOUT
 ) -> Dict[str, Any]:
     """
     Obtiene datos de nutrición del usuario.
@@ -221,6 +261,7 @@ def get_nutrition_data(
         user_id: ID del usuario
         days: Número de días hacia atrás para obtener datos
         auth_token: Token JWT para autenticación
+        timeout: Tiempo de espera personalizado
         
     Returns:
         Dict con datos de nutrición
@@ -234,7 +275,7 @@ def get_nutrition_data(
     try:
         endpoint = "nutrition/tracking/week"
         logger.info(f"Obteniendo datos de nutrición para los últimos {days} días")
-        return make_api_request(endpoint, auth_token=auth_token)
+        return make_api_request(endpoint, auth_token=auth_token, timeout=timeout)
     except Exception as e:
         logger.error(f"Error obteniendo datos de nutrición: {e}")
         return {"success": False, "error": str(e)}
@@ -245,7 +286,8 @@ def get_nutrition_data(
 def get_progress_data(
     user_id: str, 
     exercise: Optional[str] = None,
-    auth_token: Optional[str] = None
+    auth_token: Optional[str] = None,
+    timeout: int = DEFAULT_TIMEOUT
 ) -> Dict[str, Any]:
     """
     Obtiene datos de progreso del usuario.
@@ -254,9 +296,10 @@ def get_progress_data(
         user_id: ID del usuario
         exercise: Nombre del ejercicio específico (opcional)
         auth_token: Token JWT para autenticación
+        timeout: Tiempo de espera personalizado
         
     Returns:
         Dict con datos de progreso
     """
     # Usar el mismo endpoint que get_exercise_data pero con más días para ver progreso
-    return get_exercise_data(user_id, exercise, days=90, auth_token=auth_token)
+    return get_exercise_data(user_id, exercise, days=90, auth_token=auth_token, timeout=timeout)

@@ -1,4 +1,5 @@
 # fitness_chatbot/schemas/agent_state.py
+
 from typing import Dict, Any, List, Optional, TypedDict
 
 # Definir tipos de intención
@@ -7,6 +8,7 @@ class IntentType:
     NUTRITION = "nutrition"     # Consultas sobre nutrición
     PROGRESS = "progress"       # Consultas sobre progreso
     LOG_ACTIVITY = "log_activity"  # Registrar actividad (ejercicio, comida, etc.)
+    FITBIT = "fitbit"           # Consultas sobre datos de Fitbit
     GENERAL = "general"         # Consultas generales/fallback
 
 # Estado principal del agente
@@ -24,4 +26,3 @@ class AgentState(TypedDict):
     
     # Respuesta generada
     generation: str             # Respuesta generada para el usuario
-

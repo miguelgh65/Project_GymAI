@@ -1,4 +1,5 @@
 # fitness_chatbot/nodes/router_node.py
+
 import logging
 import json
 import re
@@ -6,7 +7,6 @@ from typing import Tuple, Dict, Any, Optional
 
 from fitness_chatbot.schemas.agent_state import AgentState, IntentType
 from fitness_chatbot.schemas.memory_schemas import MemoryState
-from fitness_chatbot.schemas.prompt_schemas import IntentClassification
 from fitness_chatbot.configs.llm_config import get_llm
 from fitness_chatbot.utils.prompt_manager import PromptManager
 
@@ -48,74 +48,69 @@ async def classify_intent(states: Tuple[AgentState, MemoryState]) -> Tuple[Agent
         # Obtener mensajes de prompt para el router
         messages = PromptManager.get_prompt_messages("router", query=query)
         
-        # Configuración para el LLM
-        temp_llm = get_llm()
-        if temp_llm is None:
-            logger.error("LLM no inicializado correctamente. Usando clasificación por reglas.")
-            normalized_intent = classify_by_rules(query)
-            logger.info(f"Clasificación por reglas (LLM no disponible): {normalized_intent}")
+        # Invocar LLM para clasificación
+        llm = get_llm()
+        
+        if not llm:
+            logger.error("No se pudo obtener el LLM para clasificación")
+            # Asignar intención general como fallback
+            intent = IntentType.GENERAL
         else:
-            if hasattr(temp_llm, 'with_temperature'):
-                llm = temp_llm.with_temperature(0.2)
-            else:
-                llm = temp_llm
+            # Configurar una temperatura más baja para respuestas más consistentes
+            if hasattr(llm, 'with_temperature'):
+                llm = llm.with_temperature(0.1)
             
-            # Intentar configurar el modelo para obtener salida estructurada
+            # Invocar LLM con el prompt optimizado
+            response = await llm.ainvoke(messages)
+            content = response.content if hasattr(response, 'content') else str(response)
+            
+            logger.info(f"Respuesta cruda del LLM: {content[:200]}...")
+            
+            # Intentar extraer el JSON de la respuesta
             try:
-                structured_llm = llm.with_structured_output(IntentClassification)
-                
-                # Llamar al LLM para clasificar
-                classification = await structured_llm.ainvoke(messages)
-                
-                # Extraer la intención
-                intent = classification.intent.lower()
-                
-                # Log para debug
-                logger.info(f"LLM clasificó la intención como: {intent}")
-                
-                # Normalizar la intención
-                normalized_intent = normalize_intent(intent, query)
-                
-                logger.info(f"Intención normalizada final: {normalized_intent}")
-            except Exception as e:
-                logger.error(f"Error con salida estructurada: {e}")
-                # Si falla la salida estructurada, usar llamada normal al LLM
-                try:
-                    response = await llm.ainvoke(messages)
-                    content = response.content if hasattr(response, 'content') else str(response)
+                # Buscar un objeto JSON en la respuesta
+                json_match = re.search(r'\{.*\}', content, re.DOTALL)
+                if json_match:
+                    json_str = json_match.group(0)
+                    json_data = json.loads(json_str)
                     
-                    # Extraer intención del texto
+                    if 'intent' in json_data:
+                        intent = json_data['intent'].lower()
+                        explanation = json_data.get('explanation', '')
+                        logger.info(f"Intención extraída del JSON: {intent}")
+                        logger.info(f"Explicación: {explanation}")
+                    else:
+                        logger.warning("JSON encontrado pero sin campo 'intent'")
+                        intent = IntentType.GENERAL
+                else:
+                    # Fallback: intentar extraer con regex si no hay JSON válido
                     intent_match = re.search(r'intent["\']?\s*:\s*["\']?(\w+)["\']?', content)
                     if intent_match:
                         intent = intent_match.group(1).lower()
-                        normalized_intent = normalize_intent(intent, query)
-                        logger.info(f"Intención extraída del texto: {normalized_intent}")
+                        logger.info(f"Intención extraída por regex: {intent}")
                     else:
-                        # Si no se puede extraer, usar clasificación por reglas
-                        normalized_intent = classify_by_rules(query)
-                        logger.info(f"No se encontró intención en respuesta LLM. Usando reglas: {normalized_intent}")
-                except Exception as inner_e:
-                    logger.error(f"Error en llamada normal al LLM: {inner_e}")
-                    normalized_intent = classify_by_rules(query)
-                    logger.info(f"Fallback a clasificación por reglas: {normalized_intent}")
+                        logger.warning("No se pudo extraer la intención de la respuesta")
+                        intent = IntentType.GENERAL
+            except json.JSONDecodeError as e:
+                logger.warning(f"Error decodificando JSON: {e}")
+                # Intentar extraer con regex
+                intent_match = re.search(r'intent["\']?\s*:\s*["\']?(\w+)["\']?', content)
+                if intent_match:
+                    intent = intent_match.group(1).lower()
+                    logger.info(f"Intención extraída por regex (después de JSON fallido): {intent}")
+                else:
+                    logger.warning("No se pudo extraer la intención")
+                    intent = IntentType.GENERAL
+    
     except Exception as e:
-        logger.error(f"Error en la clasificación con LLM: {str(e)}")
-        
-        # Si falla el LLM, usar un clasificador de reglas como fallback
-        normalized_intent = classify_by_rules(query)
-        logger.info(f"Fallback a clasificación por reglas: {normalized_intent}")
+        logger.error(f"Error en la clasificación de intención: {str(e)}")
+        intent = IntentType.GENERAL
     
-    # En este caso simplificado, solo necesitamos clasificar entre GENERAL y LOG_ACTIVITY
-    # Simplificamos la normalización a estos dos casos
-    if normalized_intent == IntentType.LOG_ACTIVITY:
-        final_intent = IntentType.LOG_ACTIVITY
-    else:
-        final_intent = IntentType.GENERAL
+    # Normalizar la intención a un formato estándar
+    normalized_intent = normalize_intent(intent)
     
-    logger.info(f"Intención simplificada final: {final_intent}")
-    
-    # Actualizar estado con la intención detectada
-    agent_state["intent"] = final_intent
+    # Actualizar estado del agente
+    agent_state["intent"] = normalized_intent
     
     # Actualizar historial de mensajes
     if "messages" not in memory_state:
@@ -123,85 +118,39 @@ async def classify_intent(states: Tuple[AgentState, MemoryState]) -> Tuple[Agent
     
     memory_state["messages"].append({"role": "user", "content": query})
     
-    logger.info(f"RESULTADO FINAL DE CLASIFICACIÓN: {final_intent}")
+    logger.info(f"RESULTADO FINAL DE CLASIFICACIÓN: {normalized_intent}")
     logger.info("--- CLASIFICACIÓN DE INTENCIÓN FINALIZADA ---")
     
     return agent_state, memory_state
 
-def normalize_intent(intent: str, query: str) -> str:
+def normalize_intent(intent: str) -> str:
     """
-    Normaliza la intención detectada y aplica lógica adicional basada en la consulta.
+    Normaliza la intención a uno de los tipos estándar definidos en IntentType.
     
     Args:
         intent: Intención detectada por el LLM
-        query: Consulta original del usuario
         
     Returns:
         Intención normalizada
     """
-    query_lower = query.lower()
+    intent_lower = intent.lower().strip()
     
-    # Palabras clave que indican registro de actividad
-    log_keywords = [
-        "registra", "apunta", "anota", "agrega", "añade", 
-        "he hecho", "hice", "realicé", "terminé"
-    ]
+    # Mapeo de variantes comunes a los tipos estándar
+    intent_map = {
+        IntentType.EXERCISE: ["exercise", "ejercicio", "entrenamiento", "ejercitar"],
+        IntentType.NUTRITION: ["nutrition", "nutricion", "nutrición", "dieta", "alimentacion", "alimentación"],
+        IntentType.PROGRESS: ["progress", "progreso", "evolución", "evolucion", "estadística", "estadistica", "histórico", "historico"],
+        IntentType.LOG_ACTIVITY: ["log_activity", "log", "registrar", "anotar", "registro", "actividad"],
+        IntentType.FITBIT: ["fitbit", "datos", "personal", "salud", "health", "métrica", "metrica", "medición", "medicion"],
+        IntentType.GENERAL: ["general", "otro", "other", "desconocido", "unknown"]
+    }
     
-    # Si la intención es "general" pero la consulta parece ser un registro, cambiar a "log_activity"
-    if (intent == "general" or intent == IntentType.GENERAL):
-        if any(keyword in query_lower for keyword in log_keywords) and \
-           any(exercise in query_lower for exercise in ["press", "banca", "sentadilla", "curl", "dominada"]):
-            logger.info("Reclasificando de 'general' a 'log_activity' basado en palabras clave de registro")
-            return IntentType.LOG_ACTIVITY
+    # Buscar coincidencias en el mapeo
+    for standard_intent, variants in intent_map.items():
+        if any(variant in intent_lower for variant in variants):
+            return standard_intent
     
-    # Normalizar el formato de la intención
-    if any(kw in intent for kw in ["registrar", "anotar", "log", "guardar"]) or intent == "log_activity":
-        return IntentType.LOG_ACTIVITY
-    else:
-        return IntentType.GENERAL
-
-def classify_by_rules(query: str) -> str:
-    """
-    Clasificador de reglas básico como fallback en caso de que falle el LLM.
-    Versión simplificada que solo clasifica entre LOG_ACTIVITY y GENERAL.
-    
-    Args:
-        query: Consulta del usuario
-        
-    Returns:
-        Intención clasificada
-    """
-    query_lower = query.lower()
-    
-    # --- 1. DETECTAR REGISTRO DE EJERCICIO ---
-    registration_keywords = [
-        'registra', 'apunta', 'anota', 'guarda', 'agrega', 'añade', 
-        'he hecho', 'hice', 'realicé', 'terminé'
-    ]
-    exercise_keywords = [
-        'press banca', 'press de banca', 'banca', 'sentadilla', 'sentadillas', 
-        'peso muerto', 'dominada', 'dominadas', 'curl', 'bíceps', 'fondos', 
-        'press militar', 'elevaciones', 'remo', 'extensiones', 'tríceps'
-    ]
-    
-    # Patrones numéricos típicos de ejercicios
-    exercise_patterns = [
-        r'\d+\s*[xX]\s*\d+',        # 10x20, 3x10
-        r'\d+\s*series',            # 3 series
-        r'\d+\s*repeticiones',      # 10 repeticiones
-        r'\d+\s*reps',              # 10 reps
-        r'\d+\s*kg',                # 60 kg
-    ]
-    
-    # Detectar registro de ejercicio
-    has_registration_keyword = any(keyword in query_lower for keyword in registration_keywords)
-    has_exercise_keyword = any(keyword in query_lower for keyword in exercise_keywords)
-    has_exercise_pattern = any(re.search(pattern, query_lower) for pattern in exercise_patterns)
-    
-    if (has_registration_keyword and has_exercise_keyword) or (has_exercise_keyword and has_exercise_pattern):
-        return IntentType.LOG_ACTIVITY
-    
-    # Si no se puede clasificar, devolver general
+    # Si no hay coincidencias, usar general como fallback
     return IntentType.GENERAL
 
 # Función auxiliar para procesar mensajes directamente (API)
@@ -211,7 +160,7 @@ async def process_message(user_id: str, message: str, auth_token: Optional[str] 
     Función auxiliar para compatibilidad con APIs.
     
     Args:
-        user_id: ID del usuario (debe ser Google ID)
+        user_id: ID del usuario
         message: Mensaje del usuario
         auth_token: Token JWT para autenticación con el backend
         
