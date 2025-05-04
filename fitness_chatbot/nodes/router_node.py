@@ -22,18 +22,18 @@ async def classify_intent(states: Tuple[AgentState, MemoryState]) -> Tuple[Agent
     Returns:
         Tupla actualizada con (AgentState, MemoryState)
     """
-    logger.info("--- CLASIFICACIÓN DE INTENCIÓN INICIADA ---")
+    logger.info("🔍 --- CLASIFICACIÓN DE INTENCIÓN INICIADA --- 🔍")
     
     # Desempaquetar estados
     agent_state, memory_state = states
     
     # Obtener la consulta del usuario
     query = agent_state["query"]
-    logger.info(f"Consulta a clasificar: '{query}'")
+    logger.info(f"📝 Consulta a clasificar: '{query}'")
     
     # Comprobar si hay una intención ya definida (para llamadas directas a nodos específicos)
     if agent_state.get("intent"):
-        logger.info(f"Intención ya definida: {agent_state['intent']}")
+        logger.info(f"⚡ Intención ya definida: {agent_state['intent']}")
         
         # Actualizar historial de mensajes
         if "messages" not in memory_state:
@@ -41,6 +41,20 @@ async def classify_intent(states: Tuple[AgentState, MemoryState]) -> Tuple[Agent
         
         memory_state["messages"].append({"role": "user", "content": query})
         
+        return agent_state, memory_state
+    
+    # Verificación MANUAL para log_activity - PRIORIDAD MÁXIMA
+    # Esto es temporal para depuración y forzar la clasificación correcta
+    if should_be_log_activity(query):
+        logger.info(f"⚠️ FORZANDO intent=log_activity para mensaje: {query}")
+        agent_state["intent"] = IntentType.LOG_ACTIVITY
+        
+        # Actualizar historial de mensajes
+        if "messages" not in memory_state:
+            memory_state["messages"] = []
+        memory_state["messages"].append({"role": "user", "content": query})
+        
+        logger.info("✅ ACTIVIDAD DETECTADA: Se redirigirá al nodo log_activity")
         return agent_state, memory_state
     
     # PASO 1: Utilizar el LLM para clasificar la intención
@@ -52,7 +66,7 @@ async def classify_intent(states: Tuple[AgentState, MemoryState]) -> Tuple[Agent
         llm = get_llm()
         
         if not llm:
-            logger.error("No se pudo obtener el LLM para clasificación")
+            logger.error("❌ No se pudo obtener el LLM para clasificación")
             # Asignar intención general como fallback
             intent = IntentType.GENERAL
         else:
@@ -64,7 +78,7 @@ async def classify_intent(states: Tuple[AgentState, MemoryState]) -> Tuple[Agent
             response = await llm.ainvoke(messages)
             content = response.content if hasattr(response, 'content') else str(response)
             
-            logger.info(f"Respuesta cruda del LLM: {content[:200]}...")
+            logger.info(f"📊 Respuesta cruda del LLM:\n{content[:200]}...")
             
             # Intentar extraer el JSON de la respuesta
             try:
@@ -77,37 +91,42 @@ async def classify_intent(states: Tuple[AgentState, MemoryState]) -> Tuple[Agent
                     if 'intent' in json_data:
                         intent = json_data['intent'].lower()
                         explanation = json_data.get('explanation', '')
-                        logger.info(f"Intención extraída del JSON: {intent}")
-                        logger.info(f"Explicación: {explanation}")
+                        logger.info(f"🎯 Intención extraída del JSON: {intent}")
+                        logger.info(f"📋 Explicación: {explanation}")
                     else:
-                        logger.warning("JSON encontrado pero sin campo 'intent'")
+                        logger.warning("⚠️ JSON encontrado pero sin campo 'intent'")
                         intent = IntentType.GENERAL
                 else:
                     # Fallback: intentar extraer con regex si no hay JSON válido
                     intent_match = re.search(r'intent["\']?\s*:\s*["\']?(\w+)["\']?', content)
                     if intent_match:
                         intent = intent_match.group(1).lower()
-                        logger.info(f"Intención extraída por regex: {intent}")
+                        logger.info(f"🔍 Intención extraída por regex: {intent}")
                     else:
-                        logger.warning("No se pudo extraer la intención de la respuesta")
+                        logger.warning("⚠️ No se pudo extraer la intención de la respuesta")
                         intent = IntentType.GENERAL
             except json.JSONDecodeError as e:
-                logger.warning(f"Error decodificando JSON: {e}")
+                logger.warning(f"⚠️ Error decodificando JSON: {e}")
                 # Intentar extraer con regex
                 intent_match = re.search(r'intent["\']?\s*:\s*["\']?(\w+)["\']?', content)
                 if intent_match:
                     intent = intent_match.group(1).lower()
-                    logger.info(f"Intención extraída por regex (después de JSON fallido): {intent}")
+                    logger.info(f"🔄 Intención extraída por regex (después de JSON fallido): {intent}")
                 else:
-                    logger.warning("No se pudo extraer la intención")
+                    logger.warning("❓ No se pudo extraer la intención")
                     intent = IntentType.GENERAL
     
     except Exception as e:
-        logger.error(f"Error en la clasificación de intención: {str(e)}")
+        logger.error(f"❌ Error en la clasificación de intención: {str(e)}")
         intent = IntentType.GENERAL
     
     # Normalizar la intención a un formato estándar
-    normalized_intent = normalize_intent(intent)
+    normalized_intent = normalize_intent(intent, query)
+    
+    # Verificación secundaria para log_activity (por si el LLM falló)
+    if should_be_log_activity(query) and normalized_intent != IntentType.LOG_ACTIVITY:
+        logger.warning(f"⚠️ LLM clasificó como {normalized_intent} pero debería ser LOG_ACTIVITY. Corrigiendo...")
+        normalized_intent = IntentType.LOG_ACTIVITY
     
     # Actualizar estado del agente
     agent_state["intent"] = normalized_intent
@@ -118,22 +137,39 @@ async def classify_intent(states: Tuple[AgentState, MemoryState]) -> Tuple[Agent
     
     memory_state["messages"].append({"role": "user", "content": query})
     
-    logger.info(f"RESULTADO FINAL DE CLASIFICACIÓN: {normalized_intent}")
-    logger.info("--- CLASIFICACIÓN DE INTENCIÓN FINALIZADA ---")
+    # Log con emojis para mejor visibilidad
+    intent_emojis = {
+        IntentType.EXERCISE: "🏋️",
+        IntentType.NUTRITION: "🍎",
+        IntentType.PROGRESS: "📈",
+        IntentType.LOG_ACTIVITY: "✏️",
+        IntentType.FITBIT: "⌚",
+        IntentType.GENERAL: "💬"
+    }
+    emoji = intent_emojis.get(normalized_intent, "❓")
+    
+    logger.info(f"{emoji} RESULTADO FINAL DE CLASIFICACIÓN: {normalized_intent} {emoji}")
+    logger.info("🏁 --- CLASIFICACIÓN DE INTENCIÓN FINALIZADA --- 🏁")
     
     return agent_state, memory_state
 
-def normalize_intent(intent: str) -> str:
+def normalize_intent(intent: str, query: str) -> str:
     """
     Normaliza la intención a uno de los tipos estándar definidos en IntentType.
     
     Args:
         intent: Intención detectada por el LLM
+        query: Consulta original del usuario
         
     Returns:
         Intención normalizada
     """
     intent_lower = intent.lower().strip()
+    
+    # Verificación de seguridad para log_activity
+    if should_be_log_activity(query):
+        logger.info("🔒 Verificación de seguridad: intent=log_activity debido al patrón de registro")
+        return IntentType.LOG_ACTIVITY
     
     # Mapeo de variantes comunes a los tipos estándar
     intent_map = {
@@ -152,6 +188,40 @@ def normalize_intent(intent: str) -> str:
     
     # Si no hay coincidencias, usar general como fallback
     return IntentType.GENERAL
+
+def should_be_log_activity(query: str) -> bool:
+    """
+    Verifica si un mensaje debería clasificarse como log_activity.
+    Este es un detector directo para asegurar que los patrones claros 
+    de registro sean atrapados correctamente.
+    
+    Args:
+        query: Consulta del usuario
+        
+    Returns:
+        True si el mensaje parece un registro de actividad, False en caso contrario
+    """
+    query_lower = query.lower()
+    
+    # Detectar patrones muy claros de log_activity
+    patterns = [
+        # Patrones de ejercicio realizado
+        r'\b(hoy|ayer|acabo|acabé|terminé|he|hice)\s+.*(hecho|realizado)',
+        # Patrones específicos de series x repeticiones x peso
+        r'\b\d+\s*x\s*\d+(\s*,\s*\d+\s*x\s*\d+)*\b',  # 10x10, 10x10, 10x10
+        r'\b\d+\s*series\s*(de)?\s*\d+\s*(repeticiones|reps)',
+        # Patrones de registro explícito
+        r'\b(registra|anota|apunta|guarda)\b',
+        # Combinaciones claras ejercicio + datos numéricos
+        r'\b(press banca|sentadillas|dominadas|curl|fondos|peso muerto|remo)\b.*\d+[\sx]'
+    ]
+    
+    for pattern in patterns:
+        if re.search(pattern, query_lower):
+            logger.info(f"🔍 Patrón de log_activity detectado: '{pattern}'")
+            return True
+    
+    return False
 
 # Función auxiliar para procesar mensajes directamente (API)
 async def process_message(user_id: str, message: str, auth_token: Optional[str] = None) -> Any:
@@ -172,9 +242,9 @@ async def process_message(user_id: str, message: str, auth_token: Optional[str] 
     
     try:
         # Log para depuración
-        logger.info(f"Procesando mensaje con ID de usuario: {user_id}")
-        logger.info(f"Mensaje recibido: '{message}'")
-        logger.info(f"Token de autenticación disponible: {'Sí' if auth_token else 'No'}")
+        logger.info(f"🚀 Procesando mensaje con ID de usuario: {user_id}")
+        logger.info(f"📝 Mensaje recibido: '{message}'")
+        logger.info(f"🔑 Token de autenticación disponible: {'Sí' if auth_token else 'No'}")
         
         # Crear estado inicial - user_id ya debería ser el Google ID
         agent_state = AgentState(
@@ -197,7 +267,7 @@ async def process_message(user_id: str, message: str, auth_token: Optional[str] 
         fitness_graph = create_fitness_graph()
         
         if fitness_graph is None:
-            logger.error("Error: fitness_graph es None. No se pudo crear el grafo.")
+            logger.error("❌ Error: fitness_graph es None. No se pudo crear el grafo.")
             class MessageResponse:
                 def __init__(self, content):
                     self.content = content
@@ -209,7 +279,7 @@ async def process_message(user_id: str, message: str, auth_token: Optional[str] 
         
         # Obtener respuesta generada
         response = final_agent_state.get("generation", "")
-        logger.info(f"Respuesta generada: '{response[:50]}...'")
+        logger.info(f"✉️ Respuesta generada: '{response[:50]}...'")
         
         # Crear objeto de respuesta similar a MessageResponse
         class MessageResponse:
@@ -218,7 +288,7 @@ async def process_message(user_id: str, message: str, auth_token: Optional[str] 
         
         return MessageResponse(response)
     except Exception as e:
-        logger.error(f"Error procesando mensaje: {str(e)}", exc_info=True)
+        logger.error(f"❌ Error procesando mensaje: {str(e)}", exc_info=True)
         # Crear una clase de respuesta para devolver el error
         class MessageResponse:
             def __init__(self, content):
