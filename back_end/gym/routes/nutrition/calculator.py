@@ -6,10 +6,17 @@ from typing import Dict, Optional
 from datetime import datetime
 
 from ...models.calculator_schemas import MacroCalculatorInput, NutritionProfile
-from ...services.auth_service import get_current_user_id
+from back_end.gym.middlewares import get_current_user
 from ...services.db_utils import execute_db_query
 
 router = APIRouter()
+
+# Helper function to extract user_id from user object
+def get_user_id_from_current_user(user = Depends(get_current_user)):
+    """Extrae el ID del usuario actual."""
+    if not user:
+        return None
+    return user.get('id')
 
 # Enumeraciones para los cálculos
 class Goal(Enum):
@@ -133,7 +140,7 @@ def calculate_goal_calories(tdee: float, goal: str, goal_intensity: str) -> int:
 
 # Endpoint principal para calcular macros
 @router.post("/calculate-macros", response_model=NutritionProfile)
-async def calculate_macros(data: MacroCalculatorInput, user_id: int = Depends(get_current_user_id)):
+async def calculate_macros(data: MacroCalculatorInput, user_id = Depends(get_user_id_from_current_user)):
     try:
         # Calcular BMR (Tasa Metabólica Basal)
         bmr = calculate_bmr(
@@ -264,7 +271,7 @@ async def calculate_macros(data: MacroCalculatorInput, user_id: int = Depends(ge
                     """
                     logging.getLogger(__name__).debug(f"Query de actualización: {update_query}")
                     execute_db_query(update_query, profile_data)
-                    logging.getLogger(__name__).info(f"Perfil actualizado para usuario {user_id}")
+                    logging.getLogger(__name__).info(f"✅ Perfil actualizado para usuario {user_id}")
                 else:
                     # Crear nuevo perfil
                     insert_query = """
@@ -280,21 +287,21 @@ async def calculate_macros(data: MacroCalculatorInput, user_id: int = Depends(ge
                     )
                     """
                     execute_db_query(insert_query, profile_data)
-                    logging.getLogger(__name__).info(f"Nuevo perfil creado para usuario {user_id}")
+                    logging.getLogger(__name__).info(f"✅ Nuevo perfil creado para usuario {user_id}")
                 
-                logging.getLogger(__name__).info(f"Perfil nutricional guardado para usuario {user_id}")
+                logging.getLogger(__name__).info(f"✅ Perfil nutricional guardado para usuario {user_id}")
             except Exception as e:
-                logging.getLogger(__name__).error(f"Error al guardar perfil nutricional: {e}")
+                logging.getLogger(__name__).error(f"❌ Error al guardar perfil nutricional: {e}")
                 # No interrumpimos el flujo si falla el guardado, solo logueamos el error
         
         return NutritionProfile(**profile)
     except Exception as e:
-        logging.getLogger(__name__).error(f"Error en el cálculo de macros: {e}")
+        logging.getLogger(__name__).error(f"❌ Error en el cálculo de macros: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Endpoint para obtener el perfil nutricional de un usuario
 @router.get("/profile", response_model=Optional[NutritionProfile])
-async def get_nutrition_profile(user_id: int = Depends(get_current_user_id)):
+async def get_nutrition_profile(user_id = Depends(get_user_id_from_current_user)):
     try:
         query = """
         SELECT 
@@ -312,12 +319,12 @@ async def get_nutrition_profile(user_id: int = Depends(get_current_user_id)):
         
         return NutritionProfile(**result)
     except Exception as e:
-        logging.getLogger(__name__).error(f"Error al obtener perfil nutricional: {e}")
+        logging.getLogger(__name__).error(f"❌ Error al obtener perfil nutricional: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Endpoint para guardar el perfil nutricional de un usuario
 @router.post("/profile", response_model=NutritionProfile)
-async def save_nutrition_profile(data: NutritionProfile, user_id: int = Depends(get_current_user_id)):
+async def save_nutrition_profile(data: NutritionProfile, user_id = Depends(get_user_id_from_current_user)):
     try:
         # Asignar el ID de usuario
         data.user_id = str(user_id)
@@ -376,5 +383,5 @@ async def save_nutrition_profile(data: NutritionProfile, user_id: int = Depends(
         
         return data
     except Exception as e:
-        logging.getLogger(__name__).error(f"Error al guardar perfil nutricional: {e}")
+        logging.getLogger(__name__).error(f"❌ Error al guardar perfil nutricional: {e}")
         raise HTTPException(status_code=500, detail=str(e))

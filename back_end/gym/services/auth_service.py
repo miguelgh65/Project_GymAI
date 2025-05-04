@@ -399,7 +399,22 @@ def get_user_by_email(email):
     except Exception as e:
         print(f"Error en get_user_by_email: {str(e)}")
         return None
+def get_current_user_id(user):
+    """
+    Helper para obtener el ID de usuario del objeto user.
+    Esta función es usada por algunos módulos de nutrición.
     
+    Args:
+        user: Objeto de usuario obtenido de get_current_user
+        
+    Returns:
+        int: ID interno del usuario
+    """
+    if not user:
+        return None
+    
+    return user.get('id')
+ 
 def verify_link_code(code, telegram_id):
     """
     Verifica un código de vinculación y conecta la cuenta de Telegram.
