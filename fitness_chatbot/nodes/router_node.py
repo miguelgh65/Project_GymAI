@@ -14,7 +14,7 @@ logger = logging.getLogger("fitness_chatbot")
 
 async def classify_intent(states: Tuple[AgentState, MemoryState]) -> Tuple[AgentState, MemoryState]:
     """
-    Clasifica la intención del usuario basándose en su consulta.
+    Clasifica la intención del usuario utilizando un enfoque Chain of Thought con LLM.
     
     Args:
         states: Tupla con (AgentState, MemoryState)
@@ -43,32 +43,18 @@ async def classify_intent(states: Tuple[AgentState, MemoryState]) -> Tuple[Agent
         
         return agent_state, memory_state
     
-    # Verificación MANUAL para log_activity - PRIORIDAD MÁXIMA
-    # Esto es temporal para depuración y forzar la clasificación correcta
-    if should_be_log_activity(query):
-        logger.info(f"⚠️ FORZANDO intent=log_activity para mensaje: {query}")
-        agent_state["intent"] = IntentType.LOG_ACTIVITY
-        
-        # Actualizar historial de mensajes
-        if "messages" not in memory_state:
-            memory_state["messages"] = []
-        memory_state["messages"].append({"role": "user", "content": query})
-        
-        logger.info("✅ ACTIVIDAD DETECTADA: Se redirigirá al nodo log_activity")
-        return agent_state, memory_state
-    
-    # PASO 1: Utilizar el LLM para clasificar la intención
     try:
         # Obtener mensajes de prompt para el router
         messages = PromptManager.get_prompt_messages("router", query=query)
         
-        # Invocar LLM para clasificación
+        # Invocar LLM para clasificación con Chain of Thought
         llm = get_llm()
         
         if not llm:
             logger.error("❌ No se pudo obtener el LLM para clasificación")
             # Asignar intención general como fallback
             intent = IntentType.GENERAL
+            explanation = "Error: LLM no disponible"
         else:
             # Configurar una temperatura más baja para respuestas más consistentes
             if hasattr(llm, 'with_temperature'):
@@ -80,53 +66,26 @@ async def classify_intent(states: Tuple[AgentState, MemoryState]) -> Tuple[Agent
             
             logger.info(f"📊 Respuesta cruda del LLM:\n{content[:200]}...")
             
-            # Intentar extraer el JSON de la respuesta
-            try:
-                # Buscar un objeto JSON en la respuesta
-                json_match = re.search(r'\{.*\}', content, re.DOTALL)
-                if json_match:
-                    json_str = json_match.group(0)
-                    json_data = json.loads(json_str)
-                    
-                    if 'intent' in json_data:
-                        intent = json_data['intent'].lower()
-                        explanation = json_data.get('explanation', '')
-                        logger.info(f"🎯 Intención extraída del JSON: {intent}")
-                        logger.info(f"📋 Explicación: {explanation}")
-                    else:
-                        logger.warning("⚠️ JSON encontrado pero sin campo 'intent'")
-                        intent = IntentType.GENERAL
-                else:
-                    # Fallback: intentar extraer con regex si no hay JSON válido
-                    intent_match = re.search(r'intent["\']?\s*:\s*["\']?(\w+)["\']?', content)
-                    if intent_match:
-                        intent = intent_match.group(1).lower()
-                        logger.info(f"🔍 Intención extraída por regex: {intent}")
-                    else:
-                        logger.warning("⚠️ No se pudo extraer la intención de la respuesta")
-                        intent = IntentType.GENERAL
-            except json.JSONDecodeError as e:
-                logger.warning(f"⚠️ Error decodificando JSON: {e}")
-                # Intentar extraer con regex
-                intent_match = re.search(r'intent["\']?\s*:\s*["\']?(\w+)["\']?', content)
-                if intent_match:
-                    intent = intent_match.group(1).lower()
-                    logger.info(f"🔄 Intención extraída por regex (después de JSON fallido): {intent}")
-                else:
-                    logger.warning("❓ No se pudo extraer la intención")
-                    intent = IntentType.GENERAL
+            # Extraer el JSON con la clasificación
+            intent_data = extract_intent_from_response(content)
+            
+            if intent_data and "intent" in intent_data:
+                intent = intent_data["intent"].lower()
+                explanation = intent_data.get("explanation", "")
+                logger.info(f"🎯 Intención extraída del JSON: {intent}")
+                logger.info(f"📋 Explicación: {explanation}")
+            else:
+                logger.warning("⚠️ No se pudo extraer la intención")
+                intent = IntentType.GENERAL
+                explanation = "No se pudo determinar la intención con suficiente confianza"
     
     except Exception as e:
         logger.error(f"❌ Error en la clasificación de intención: {str(e)}")
         intent = IntentType.GENERAL
+        explanation = f"Error durante la clasificación: {str(e)}"
     
     # Normalizar la intención a un formato estándar
-    normalized_intent = normalize_intent(intent, query)
-    
-    # Verificación secundaria para log_activity (por si el LLM falló)
-    if should_be_log_activity(query) and normalized_intent != IntentType.LOG_ACTIVITY:
-        logger.warning(f"⚠️ LLM clasificó como {normalized_intent} pero debería ser LOG_ACTIVITY. Corrigiendo...")
-        normalized_intent = IntentType.LOG_ACTIVITY
+    normalized_intent = normalize_intent(intent)
     
     # Actualizar estado del agente
     agent_state["intent"] = normalized_intent
@@ -142,8 +101,11 @@ async def classify_intent(states: Tuple[AgentState, MemoryState]) -> Tuple[Agent
         IntentType.EXERCISE: "🏋️",
         IntentType.NUTRITION: "🍎",
         IntentType.PROGRESS: "📈",
+        IntentType.HISTORY: "📋",
         IntentType.LOG_ACTIVITY: "✏️",
         IntentType.FITBIT: "⌚",
+        IntentType.TODAY_ROUTINE: "📅",
+        IntentType.EDIT_ROUTINE: "✍️",
         IntentType.GENERAL: "💬"
     }
     emoji = intent_emojis.get(normalized_intent, "❓")
@@ -153,75 +115,95 @@ async def classify_intent(states: Tuple[AgentState, MemoryState]) -> Tuple[Agent
     
     return agent_state, memory_state
 
-def normalize_intent(intent: str, query: str) -> str:
+def extract_intent_from_response(content: str) -> Optional[Dict[str, str]]:
+    """
+    Extrae la intención y explicación de la respuesta del LLM.
+    
+    Args:
+        content: Respuesta del LLM
+        
+    Returns:
+        Dict con intent y explanation, o None si no se pudo extraer
+    """
+    try:
+        # Buscar un objeto JSON en la respuesta
+        json_match = re.search(r'\{.*\}', content, re.DOTALL)
+        
+        if not json_match:
+            logger.warning("No se encontró JSON en la respuesta del LLM")
+            return None
+        
+        json_str = json_match.group(0)
+        intent_data = json.loads(json_str)
+        
+        # Verificar que tenga los campos necesarios
+        if "intent" not in intent_data:
+            logger.warning("JSON encontrado pero sin campo 'intent'")
+            return None
+        
+        return intent_data
+    
+    except json.JSONDecodeError:
+        logger.error("Error decodificando JSON de la respuesta del LLM")
+        
+        # Fallback: intentar extraer con regex si no hay JSON válido
+        try:
+            intent_match = re.search(r'intent["\']?\s*:\s*["\']?(\w+)["\']?', content)
+            if intent_match:
+                intent = intent_match.group(1).lower()
+                
+                # Intentar extraer explicación si está disponible
+                explanation_match = re.search(r'explanation["\']?\s*:\s*["\']?(.*?)["\']?[,}]', content)
+                explanation = explanation_match.group(1) if explanation_match else "Sin explicación disponible"
+                
+                return {
+                    "intent": intent,
+                    "explanation": explanation
+                }
+        except Exception:
+            pass
+        
+        return None
+    except Exception as e:
+        logger.error(f"Error extrayendo intención: {str(e)}")
+        return None
+
+def normalize_intent(intent: str) -> str:
     """
     Normaliza la intención a uno de los tipos estándar definidos en IntentType.
     
     Args:
         intent: Intención detectada por el LLM
-        query: Consulta original del usuario
         
     Returns:
         Intención normalizada
     """
     intent_lower = intent.lower().strip()
     
-    # Verificación de seguridad para log_activity
-    if should_be_log_activity(query):
-        logger.info("🔒 Verificación de seguridad: intent=log_activity debido al patrón de registro")
-        return IntentType.LOG_ACTIVITY
-    
     # Mapeo de variantes comunes a los tipos estándar
     intent_map = {
         IntentType.EXERCISE: ["exercise", "ejercicio", "entrenamiento", "ejercitar"],
         IntentType.NUTRITION: ["nutrition", "nutricion", "nutrición", "dieta", "alimentacion", "alimentación"],
-        IntentType.PROGRESS: ["progress", "progreso", "evolución", "evolucion", "estadística", "estadistica", "histórico", "historico"],
+        IntentType.PROGRESS: ["progress", "progreso", "evolución", "evolucion", "analisis", "análisis", "tendencia"],
+        IntentType.HISTORY: ["history", "historial", "histórico", "historico", "registro", "ver", "mostrar", "último"],
         IntentType.LOG_ACTIVITY: ["log_activity", "log", "registrar", "anotar", "registro", "actividad"],
         IntentType.FITBIT: ["fitbit", "datos", "personal", "salud", "health", "métrica", "metrica", "medición", "medicion"],
+        IntentType.TODAY_ROUTINE: ["today_routine", "rutina_hoy", "hoy", "plan_diario", "día_actual"],
+        IntentType.EDIT_ROUTINE: ["edit_routine", "editar", "modificar", "cambiar", "actualizar"],
         IntentType.GENERAL: ["general", "otro", "other", "desconocido", "unknown"]
     }
     
+    # Si la intención ya coincide exactamente con un tipo estándar
+    if intent_lower in IntentType.__dict__.values():
+        return intent_lower
+    
     # Buscar coincidencias en el mapeo
     for standard_intent, variants in intent_map.items():
-        if any(variant in intent_lower for variant in variants):
+        if any(variant == intent_lower for variant in variants) or any(variant in intent_lower for variant in variants):
             return standard_intent
     
     # Si no hay coincidencias, usar general como fallback
     return IntentType.GENERAL
-
-def should_be_log_activity(query: str) -> bool:
-    """
-    Verifica si un mensaje debería clasificarse como log_activity.
-    Este es un detector directo para asegurar que los patrones claros 
-    de registro sean atrapados correctamente.
-    
-    Args:
-        query: Consulta del usuario
-        
-    Returns:
-        True si el mensaje parece un registro de actividad, False en caso contrario
-    """
-    query_lower = query.lower()
-    
-    # Detectar patrones muy claros de log_activity
-    patterns = [
-        # Patrones de ejercicio realizado
-        r'\b(hoy|ayer|acabo|acabé|terminé|he|hice)\s+.*(hecho|realizado)',
-        # Patrones específicos de series x repeticiones x peso
-        r'\b\d+\s*x\s*\d+(\s*,\s*\d+\s*x\s*\d+)*\b',  # 10x10, 10x10, 10x10
-        r'\b\d+\s*series\s*(de)?\s*\d+\s*(repeticiones|reps)',
-        # Patrones de registro explícito
-        r'\b(registra|anota|apunta|guarda)\b',
-        # Combinaciones claras ejercicio + datos numéricos
-        r'\b(press banca|sentadillas|dominadas|curl|fondos|peso muerto|remo)\b.*\d+[\sx]'
-    ]
-    
-    for pattern in patterns:
-        if re.search(pattern, query_lower):
-            logger.info(f"🔍 Patrón de log_activity detectado: '{pattern}'")
-            return True
-    
-    return False
 
 # Función auxiliar para procesar mensajes directamente (API)
 async def process_message(user_id: str, message: str, auth_token: Optional[str] = None) -> Any:

@@ -1,0 +1,5 @@
+<human>
+Analiza la siguiente solicitud de edición de rutina y extrae los datos estructurados:
+
+{query}
+</human>

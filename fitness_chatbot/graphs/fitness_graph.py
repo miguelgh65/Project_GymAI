@@ -10,11 +10,15 @@ from fitness_chatbot.schemas.memory_schemas import MemoryState
 from fitness_chatbot.nodes.router_node import classify_intent
 from fitness_chatbot.nodes.exercise_node import process_exercise_query
 from fitness_chatbot.nodes.nutrition_node import process_nutrition_query
-# MODIFICADO: Usar history_node en lugar de progress_node
-from fitness_chatbot.nodes.history_node import process_history_query
+from fitness_chatbot.nodes.progress_node import process_progress_query
 from fitness_chatbot.nodes.log_activity_node import log_activity
 from fitness_chatbot.nodes.fitbit_node import process_fitbit_query
 from fitness_chatbot.nodes.response_node import generate_final_response
+# Importar el nodo history
+from fitness_chatbot.nodes.history_node import process_history_query
+# NUEVOS NODOS
+from fitness_chatbot.nodes.today_routine_node import process_today_routine
+from fitness_chatbot.nodes.edit_routine_node import process_edit_routine
 
 logger = logging.getLogger("fitness_chatbot")
 
@@ -32,10 +36,13 @@ def create_fitness_graph():
     graph.add_node("classify_intent", classify_intent)
     graph.add_node("process_exercise", process_exercise_query)
     graph.add_node("process_nutrition", process_nutrition_query)
-    # MODIFICADO: Usar process_history_query en lugar del eliminado process_progress_query
-    graph.add_node("process_progress", process_history_query)
+    graph.add_node("process_progress", process_progress_query)
+    graph.add_node("process_history", process_history_query)  # Añadir nodo de history
     graph.add_node("log_activity", log_activity)
     graph.add_node("process_fitbit", process_fitbit_query)
+    # NUEVOS NODOS
+    graph.add_node("process_today_routine", process_today_routine)
+    graph.add_node("process_edit_routine", process_edit_routine)
     graph.add_node("generate_response", generate_final_response)
     
     # Función para enrutar según la intención
@@ -45,7 +52,6 @@ def create_fitness_graph():
         intent = agent_state.get("intent", IntentType.GENERAL)
         logger.info(f"🔀 Enrutando por intención: {intent}")
         
-        # Ya no necesitamos la redirección especial porque ahora sí tenemos un nodo para PROGRESS
         return intent
     
     # Definir flujos condicionales basados en la intención
@@ -55,10 +61,13 @@ def create_fitness_graph():
         {
             IntentType.EXERCISE: "process_exercise",
             IntentType.NUTRITION: "process_nutrition",
-            # MODIFICADO: Ahora sí direccionamos a process_progress (que utiliza history_node)
             IntentType.PROGRESS: "process_progress",
+            IntentType.HISTORY: "process_history",        # Añadir ruta para history
             IntentType.LOG_ACTIVITY: "log_activity",
             IntentType.FITBIT: "process_fitbit",
+            # NUEVOS FLUJOS
+            IntentType.TODAY_ROUTINE: "process_today_routine",
+            IntentType.EDIT_ROUTINE: "process_edit_routine",
             IntentType.GENERAL: "generate_response"
         }
     )
@@ -66,14 +75,17 @@ def create_fitness_graph():
     # Conexiones entre nodos y respuesta final
     graph.add_edge("process_exercise", "generate_response")
     graph.add_edge("process_nutrition", "generate_response")
-    # MODIFICADO: Esta conexión ahora sí existe
     graph.add_edge("process_progress", "generate_response")
+    graph.add_edge("process_history", "generate_response")  # Añadir conexión para history
     graph.add_edge("log_activity", "generate_response")
     graph.add_edge("process_fitbit", "generate_response")
+    # NUEVAS CONEXIONES
+    graph.add_edge("process_today_routine", "generate_response")
+    graph.add_edge("process_edit_routine", "generate_response")
     graph.add_edge("generate_response", END)
     
     # Definir el punto de entrada
     graph.set_entry_point("classify_intent")
     
-    # Compilar el grafo SIN checkpointer para evitar error
+    # Compilar el grafo
     return graph.compile()
