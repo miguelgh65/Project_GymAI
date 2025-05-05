@@ -18,7 +18,6 @@ from fitness_chatbot.nodes.response_node import generate_final_response
 from fitness_chatbot.nodes.history_node import process_history_query
 # NUEVOS NODOS
 from fitness_chatbot.nodes.today_routine_node import process_today_routine
-from fitness_chatbot.nodes.edit_routine_node import process_edit_routine
 
 logger = logging.getLogger("fitness_chatbot")
 
@@ -42,7 +41,6 @@ def create_fitness_graph():
     graph.add_node("process_fitbit", process_fitbit_query)
     # NUEVOS NODOS
     graph.add_node("process_today_routine", process_today_routine)
-    graph.add_node("process_edit_routine", process_edit_routine)
     graph.add_node("generate_response", generate_final_response)
     
     # Función para enrutar según la intención
@@ -67,7 +65,6 @@ def create_fitness_graph():
             IntentType.FITBIT: "process_fitbit",
             # NUEVOS FLUJOS
             IntentType.TODAY_ROUTINE: "process_today_routine",
-            IntentType.EDIT_ROUTINE: "process_edit_routine",
             IntentType.GENERAL: "generate_response"
         }
     )
@@ -81,7 +78,6 @@ def create_fitness_graph():
     graph.add_edge("process_fitbit", "generate_response")
     # NUEVAS CONEXIONES
     graph.add_edge("process_today_routine", "generate_response")
-    graph.add_edge("process_edit_routine", "generate_response")
     graph.add_edge("generate_response", END)
     
     # Definir el punto de entrada
