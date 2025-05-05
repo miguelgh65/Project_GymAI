@@ -282,7 +282,51 @@ def get_nutrition_data(
     finally:
         # Restaurar el contexto previo
         IN_CHATBOT_CONTEXT = old_context
-
+def get_today_routine(
+    user_id: str, 
+    auth_token: Optional[str] = None,
+    timeout: int = DEFAULT_TIMEOUT
+) -> Dict[str, Any]:
+    """
+    Obtiene la rutina del día actual para el usuario.
+    
+    Args:
+        user_id: ID del usuario
+        auth_token: Token JWT para autenticación
+        timeout: Tiempo de espera personalizado
+        
+    Returns:
+        Dict con datos de la rutina del día
+    """
+    global IN_CHATBOT_CONTEXT
+    
+    # Marcar que estamos en contexto de chatbot
+    old_context = IN_CHATBOT_CONTEXT
+    IN_CHATBOT_CONTEXT = True
+    
+    try:
+        endpoint = "rutina_hoy"
+        params = {"format": "json"}
+        
+        logger.info(f"Obteniendo rutina de hoy para usuario {user_id}")
+        return make_api_request(
+            endpoint=endpoint, 
+            method="GET",
+            params=params, 
+            auth_token=auth_token, 
+            timeout=timeout
+        )
+    except Exception as e:
+        logger.error(f"Error obteniendo rutina del día: {e}")
+        return {
+            "success": False, 
+            "error": str(e),
+            "message": "No se pudo obtener la rutina del día"
+        }
+    finally:
+        # Restaurar el contexto previo
+        IN_CHATBOT_CONTEXT = old_context
+        
 def get_progress_data(
     user_id: str, 
     exercise: Optional[str] = None,
