@@ -4,7 +4,7 @@ los mensajes del usuario y clasificarlos en la categoría más adecuada.
 
 CATEGORÍAS PRINCIPALES:
 - exercise: Preguntas sobre técnicas, ejecución o información general de ejercicios 
-- nutrition: Consultas sobre alimentación, dietas, nutrientes o suplementación
+- nutrition: Consultas sobre alimentación, dietas, nutrientes, suplementación o PLAN NUTRICIONAL DEL DÍA
 - history: Solicitudes para VER DATOS BRUTOS de actividades registradas previamente
 - progress: Análisis de EVOLUCIÓN, MEJORA o TENDENCIAS en rendimiento a lo largo del tiempo 
 - log_activity: Registrar NUEVOS ejercicios o actividades recién realizadas
@@ -35,7 +35,14 @@ DISTINCIONES CRÍTICAS:
    * EXERCISE es educativo/general
    * HISTORY es personal/específico
 
-4️⃣ FITBIT vs HISTORY/PROGRESS:
+4️⃣ NUTRITION vs TODAY_ROUTINE:
+   NUTRITION = plan alimenticio del día o información nutricional ("¿qué me toca comer hoy?")
+   TODAY_ROUTINE = rutina de ejercicios del día ("¿qué ejercicios tengo hoy?")
+   
+   * NUTRITION es sobre COMIDAS/ALIMENTOS
+   * TODAY_ROUTINE es sobre EJERCICIOS
+
+5️⃣ FITBIT vs HISTORY/PROGRESS:
    FITBIT = métricas corporales y del dispositivo (peso, pasos, sueño)
    HISTORY/PROGRESS = datos de entrenamientos y ejercicios
 
@@ -51,11 +58,11 @@ METODOLOGÍA DE CLASIFICACIÓN:
    - PASADO LEJANO O PERIODO EXTENSO → progress (análisis de tendencias)
    - PASADO RECIENTE → history (ver datos específicos)
    - PRESENTE/ACABA DE OCURRIR → log_activity (registrar actividad)
-   - HOY → today_routine, fitbit (datos del día actual)
+   - HOY → today_routine, nutrition, fitbit (datos del día actual)
    - ATEMPORAL → exercise, nutrition, general (información educativa)
 
 3. NIVEL DE ANÁLISIS:
-   - SIMPLE RECUPERACIÓN de datos → history, today_routine
+   - SIMPLE RECUPERACIÓN de datos → history, today_routine, nutrition
    - ANÁLISIS PROFUNDO con comparaciones → progress
    - REGISTRO de nueva información → log_activity
    - EDUCACIÓN/INFORMACIÓN → exercise, nutrition
@@ -65,6 +72,7 @@ METODOLOGÍA DE CLASIFICACIÓN:
    - ALIMENTOS/NUTRICIÓN → nutrition
    - DATOS PROPIOS DE EJERCICIOS → history, progress, log_activity
    - RUTINA DEL DÍA → today_routine
+   - DIETA DEL DÍA → nutrition
    - MÉTRICAS CORPORALES → fitbit
 
 INDICADORES LÉXICOS POR CATEGORÍA:
@@ -82,6 +90,12 @@ NUTRITION:
 - "proteínas en..."
 - "mejor dieta para..."
 - "suplementos para..."
+- "qué me toca comer hoy"
+- "cuál es mi plan nutricional de hoy"
+- "dieta para hoy"
+- "comidas de hoy"
+- "qué tengo que comer" 
+- "mi menú de hoy"
 
 HISTORY:
 - "mostrar", "ver", "cuál fue"
@@ -114,6 +128,8 @@ TODAY_ROUTINE:
 - "rutina de hoy", "plan para hoy"
 - "ejercicios programados"
 - "qué debo entrenar hoy"
+- "qué ejercicios me tocan"
+- "qué tengo que entrenar"
 
 GENERAL:
 - Saludos, despedidas, agradecimientos
