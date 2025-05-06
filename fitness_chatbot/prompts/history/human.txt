@@ -1,6 +1,10 @@
+# fitness_chatbot/prompts/history/human.txt (corregido)
 <context>
 Usuario actual: user_id="{user_id}"
 </context>
 
 <human>
-Genera la consulta SQL y sus parámetros pa
+Genera la consulta SQL y sus parámetros para obtener la siguiente información:
+
+{query}
+</human>

@@ -1,9 +1,10 @@
-# fitness_chatbot/core/services.py
 import logging
 import json
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
+from fitness_chatbot.configs.llm_config import get_llm
+from fitness_chatbot.utils.prompt_manager import PromptManager
 from fitness_chatbot.core.db_connector import DatabaseConnector
 
 logger = logging.getLogger("fitness_chatbot")
@@ -27,29 +28,58 @@ class FitnessDataService:
             # Mejorar el log para depuración
             logger.info(f"Consultando ejercicios para user_id={user_id}")
             
-            # CORREGIDO: Eliminar google_id de la consulta
-            query = """
-            SELECT fecha, ejercicio, repeticiones, duracion
-            FROM gym.ejercicios
-            WHERE user_id = %s OR user_uuid = %s
-            ORDER BY fecha DESC
-            LIMIT %s
-            """
+            # Usar IA para generar la consulta SQL
+            llm = get_llm()
+            if not llm:
+                logger.error("LLM no disponible para generar consulta SQL")
+                return []
+                
+            # Preparar prompt para generar consulta SQL usando el sistema history existente
+            messages = PromptManager.get_prompt_messages(
+                "history",
+                query=f"Obtener los últimos {limit} ejercicios del usuario con ID {user_id}",
+                user_id=user_id
+            )
             
-            # Intentar convertir user_id a int por si es un ID interno
-            user_uuid = None
+            # Generar consulta SQL con LLM
+            response = await llm.ainvoke(messages)
+            content = response.content if hasattr(response, 'content') else str(response)
+            
+            # Extraer SQL y parámetros
+            import re
+            import json
+            json_match = re.search(r'\{.*\}', content, re.DOTALL)
+            if not json_match:
+                logger.error("No se pudo extraer JSON de la respuesta del LLM")
+                return []
+                
             try:
-                user_uuid = int(user_id)
-            except (ValueError, TypeError):
-                pass
+                sql_data = json.loads(json_match.group(0))
+                if "sql" not in sql_data or "params" not in sql_data:
+                    logger.error("JSON extraído no contiene campos sql o params")
+                    return []
+                    
+                sql_query = sql_data["sql"]
+                params = sql_data["params"]
+            except json.JSONDecodeError:
+                logger.error("Error decodificando JSON de la respuesta del LLM")
+                return []
+                
+            # Validar que la consulta no contenga referencias a google_id
+            if "google_id" in sql_query:
+                logger.warning("La consulta generada contiene referencias a google_id, corrigiendo...")
+                sql_query = sql_query.replace("OR google_id = %s", "")
+                # Ajustar parámetros si es necesario
+                params = [p for p in params if p != user_id]
+                params.insert(0, user_id)  # Asegurar que user_id está en los parámetros
+                
+            logger.info(f"SQL generado: {sql_query}")
+            logger.info(f"Parámetros: {params}")
             
-            # Log para ver los parámetros de búsqueda
-            logger.info(f"Parámetros de búsqueda: user_id={user_id}, user_uuid={user_uuid}")
-            
-            # CORREGIDO: Eliminar google_id de los parámetros
+            # Ejecutar la consulta generada
             results = await DatabaseConnector.execute_query(
-                query, 
-                (user_id, user_uuid, limit),
+                sql_query, 
+                params,
                 fetch_all=True
             )
             
@@ -100,25 +130,65 @@ class FitnessDataService:
             Lista con historial del ejercicio
         """
         try:
-            # CORREGIDO: Eliminar google_id de la consulta
-            query = """
-            SELECT fecha, repeticiones
-            FROM gym.ejercicios
-            WHERE (user_id = %s OR user_uuid = %s) AND LOWER(ejercicio) = LOWER(%s)
-            ORDER BY fecha
-            """
+            # Usar IA para generar la consulta SQL
+            llm = get_llm()
+            if not llm:
+                logger.error("LLM no disponible para generar consulta SQL")
+                return []
+                
+            # Preparar prompt para generar consulta SQL
+            messages = PromptManager.get_prompt_messages(
+                "history",
+                query=f"Obtener el historial de ejercicio '{exercise_name}' del usuario con ID {user_id} ordenado por fecha",
+                user_id=user_id
+            )
             
-            # Intentar convertir user_id a int por si es un ID interno
-            user_uuid = None
+            # Generar consulta SQL con LLM
+            response = await llm.ainvoke(messages)
+            content = response.content if hasattr(response, 'content') else str(response)
+            
+            # Extraer SQL y parámetros
+            import re
+            import json
+            json_match = re.search(r'\{.*\}', content, re.DOTALL)
+            if not json_match:
+                logger.error("No se pudo extraer JSON de la respuesta del LLM")
+                return []
+                
             try:
-                user_uuid = int(user_id)
-            except (ValueError, TypeError):
-                pass
+                sql_data = json.loads(json_match.group(0))
+                if "sql" not in sql_data or "params" not in sql_data:
+                    logger.error("JSON extraído no contiene campos sql o params")
+                    return []
+                    
+                sql_query = sql_data["sql"]
+                params = sql_data["params"]
+            except json.JSONDecodeError:
+                logger.error("Error decodificando JSON de la respuesta del LLM")
+                return []
+                
+            # Validar que la consulta no contenga referencias a google_id
+            if "google_id" in sql_query:
+                logger.warning("La consulta generada contiene referencias a google_id, corrigiendo...")
+                sql_query = sql_query.replace("OR google_id = %s", "")
+                # Ajustar parámetros para eliminar el parámetro extra
+                clean_params = []
+                added_user_id = False
+                for p in params:
+                    if p == user_id and not added_user_id:
+                        clean_params.append(p)
+                        added_user_id = True
+                    elif p != user_id or added_user_id:
+                        clean_params.append(p)
+                params = clean_params
+                
+            logger.info(f"SQL generado: {sql_query}")
+            logger.info(f"Parámetros: {params}")
             
-            # CORREGIDO: Eliminar google_id de los parámetros
+            # Ejecutar la consulta generada
             results = await DatabaseConnector.execute_query(
-                query, 
-                (user_id, user_uuid, exercise_name),
+                sql_query, 
+                params,
                 fetch_all=True
             )
             
@@ -161,26 +231,75 @@ class FitnessDataService:
             True si se registró correctamente, False en caso contrario
         """
         try:
+            # Usar IA para generar la consulta SQL
+            llm = get_llm()
+            if not llm:
+                logger.error("LLM no disponible para generar consulta SQL")
+                return False
+                
             # Convertir repeticiones a JSON
             repetitions_json = json.dumps(repetitions)
             
-            # Intentar convertir user_id a int para user_uuid
-            user_uuid = None
+            # Preparar prompt para generar consulta SQL
+            messages = PromptManager.get_prompt_messages(
+                "history",
+                query=f"Insertar un nuevo ejercicio '{exercise_name}' para el usuario con ID {user_id} con las siguientes repeticiones: {repetitions_json}",
+                user_id=user_id
+            )
+            
+            # Generar consulta SQL con LLM
+            response = await llm.ainvoke(messages)
+            content = response.content if hasattr(response, 'content') else str(response)
+            
+            # Extraer SQL y parámetros
+            import re
+            import json
+            json_match = re.search(r'\{.*\}', content, re.DOTALL)
+            if not json_match:
+                logger.error("No se pudo extraer JSON de la respuesta del LLM")
+                return False
+                
             try:
-                user_uuid = int(user_id)
-            except (ValueError, TypeError):
-                pass
+                sql_data = json.loads(json_match.group(0))
+                if "sql" not in sql_data or "params" not in sql_data:
+                    logger.error("JSON extraído no contiene campos sql o params")
+                    return False
+                    
+                sql_query = sql_data["sql"]
+                params = sql_data["params"]
+            except json.JSONDecodeError:
+                logger.error("Error decodificando JSON de la respuesta del LLM")
+                return False
+                
+            # Validar que la consulta no contenga referencias a google_id
+            if "google_id" in sql_query:
+                logger.warning("La consulta generada contiene referencias a google_id, corrigiendo...")
+                sql_query = sql_query.replace(", google_id", "")
+                
+                # Ajustar los placeholders %s
+                count_values = sql_query.count("%s")
+                if count_values > len(params):
+                    # La consulta tiene más %s que parámetros, reducir un %s
+                    pattern = r'\([%s, ]*%s\)'
+                    replacement = lambda m: m.group(0).replace("%s, ", "%s, ", 1)
+                    sql_query = re.sub(pattern, replacement, sql_query, 1)
+                
+            logger.info(f"SQL generado: {sql_query}")
+            logger.info(f"Parámetros: {params}")
             
-            # CORREGIDO: Eliminar google_id de la consulta
-            query = """
-            INSERT INTO gym.ejercicios (fecha, ejercicio, repeticiones, user_id, user_uuid)
-            VALUES (CURRENT_TIMESTAMP, %s, %s, %s, %s)
-            """
+            # Sustituir el ejercicio y repeticiones en los parámetros con los valores proporcionados
+            for i, param in enumerate(params):
+                if param == '%exercise_name%':
+                    params[i] = exercise_name
+                elif param == '%repetitions_json%':
+                    params[i] = repetitions_json
             
-            # CORREGIDO: Eliminar google_id de los parámetros
+            logger.info(f"Parámetros procesados: {params}")
+            
+            # Ejecutar la consulta generada
             await DatabaseConnector.execute_query(
-                query,
-                (exercise_name, repetitions_json, user_id, user_uuid)
+                sql_query,
+                params
             )
             
             return True
@@ -202,19 +321,65 @@ class FitnessDataService:
             Lista de registros nutricionales
         """
         try:
-            # CORREGIDO: Eliminar google_id de la consulta
-            query = """
-            SELECT tracking_date, completed_meals, calorie_note, actual_calories, actual_protein
-            FROM nutrition.daily_tracking
-            WHERE user_id = %s
-              AND tracking_date >= CURRENT_DATE - INTERVAL '%s days'
-            ORDER BY tracking_date DESC
-            """
+            # Usar IA para generar la consulta SQL
+            llm = get_llm()
+            if not llm:
+                logger.error("LLM no disponible para generar consulta SQL")
+                return []
+                
+            # Preparar prompt para generar consulta SQL
+            messages = PromptManager.get_prompt_messages(
+                "history",
+                query=f"Obtener datos nutricionales de los últimos {days} días para el usuario con ID {user_id} de la tabla nutrition.daily_tracking",
+                user_id=user_id
+            )
             
-            # CORREGIDO: Eliminar google_id de los parámetros
+            # Generar consulta SQL con LLM
+            response = await llm.ainvoke(messages)
+            content = response.content if hasattr(response, 'content') else str(response)
+            
+            # Extraer SQL y parámetros
+            import re
+            import json
+            json_match = re.search(r'\{.*\}', content, re.DOTALL)
+            if not json_match:
+                logger.error("No se pudo extraer JSON de la respuesta del LLM")
+                return []
+                
+            try:
+                sql_data = json.loads(json_match.group(0))
+                if "sql" not in sql_data or "params" not in sql_data:
+                    logger.error("JSON extraído no contiene campos sql o params")
+                    return []
+                    
+                sql_query = sql_data["sql"]
+                params = sql_data["params"]
+            except json.JSONDecodeError:
+                logger.error("Error decodificando JSON de la respuesta del LLM")
+                return []
+                
+            # Validar que la consulta no contenga referencias a google_id
+            if "google_id" in sql_query:
+                logger.warning("La consulta generada contiene referencias a google_id, corrigiendo...")
+                sql_query = sql_query.replace("OR google_id = %s", "")
+                # Ajustar parámetros para eliminar el parámetro extra
+                clean_params = []
+                added_user_id = False
+                for p in params:
+                    if p == user_id and not added_user_id:
+                        clean_params.append(p)
+                        added_user_id = True
+                    elif p != user_id or added_user_id:
+                        clean_params.append(p)
+                params = clean_params
+                
+            logger.info(f"SQL generado: {sql_query}")
+            logger.info(f"Parámetros: {params}")
+            
+            # Ejecutar la consulta generada
             results = await DatabaseConnector.execute_query(
-                query, 
-                (user_id, days),
+                sql_query, 
+                params,
                 fetch_all=True
             )
             
@@ -270,35 +435,89 @@ class FitnessDataService:
             True si se registró correctamente, False en caso contrario
         """
         try:
+            # Usar IA para generar la consulta SQL
+            llm = get_llm()
+            if not llm:
+                logger.error("LLM no disponible para generar consulta SQL")
+                return False
+                
             # Crear objeto JSON con la información de la comida
-            completed_meals = {
+            completed_meals_json = json.dumps({
                 meal_type.lower(): True
-            }
-            
-            # CORREGIDO: Eliminar google_id de la consulta
-            query = """
-            INSERT INTO nutrition.daily_tracking 
-            (user_id, tracking_date, completed_meals, calorie_note, actual_calories, actual_protein)
-            VALUES (%s, CURRENT_DATE, %s, %s, %s, %s)
-            ON CONFLICT (user_id, tracking_date) 
-            DO UPDATE SET 
-                completed_meals = nutrition.daily_tracking.completed_meals || %s,
-                calorie_note = CASE WHEN %s IS NOT NULL THEN %s ELSE nutrition.daily_tracking.calorie_note END,
-                actual_calories = CASE WHEN %s IS NOT NULL THEN %s ELSE nutrition.daily_tracking.actual_calories END,
-                actual_protein = CASE WHEN %s IS NOT NULL THEN %s ELSE nutrition.daily_tracking.actual_protein END,
-                updated_at = CURRENT_TIMESTAMP
-            """
+            })
             
             # Crear nota con los alimentos
             calorie_note = ", ".join(foods) if foods else None
             
-            # CORREGIDO: Eliminar google_id de los parámetros
+            # Preparar prompt para generar consulta SQL
+            messages = PromptManager.get_prompt_messages(
+                "history",
+                query=f"Registrar comida de tipo '{meal_type}' para el usuario con ID {user_id} en la tabla nutrition.daily_tracking con la nota '{calorie_note}', calorías {calories} y proteínas {protein}",
+                user_id=user_id
+            )
+            
+            # Generar consulta SQL con LLM
+            response = await llm.ainvoke(messages)
+            content = response.content if hasattr(response, 'content') else str(response)
+            
+            # Extraer SQL y parámetros
+            import re
+            import json
+            json_match = re.search(r'\{.*\}', content, re.DOTALL)
+            if not json_match:
+                logger.error("No se pudo extraer JSON de la respuesta del LLM")
+                return False
+                
+            try:
+                sql_data = json.loads(json_match.group(0))
+                if "sql" not in sql_data or "params" not in sql_data:
+                    logger.error("JSON extraído no contiene campos sql o params")
+                    return False
+                    
+                sql_query = sql_data["sql"]
+                params = sql_data["params"]
+            except json.JSONDecodeError:
+                logger.error("Error decodificando JSON de la respuesta del LLM")
+                return False
+                
+            # Validar que la consulta no contenga referencias a google_id
+            if "google_id" in sql_query:
+                logger.warning("La consulta generada contiene referencias a google_id, corrigiendo...")
+                sql_query = sql_query.replace(", google_id", "")
+                
+                # Ajustar los placeholders %s
+                count_values = sql_query.count("%s")
+                if count_values > len(params):
+                    # La consulta tiene más %s que parámetros, reducir un %s
+                    pattern = r'\([%s, ]*%s\)'
+                    replacement = lambda m: m.group(0).replace("%s, ", "%s, ", 1)
+                    sql_query = re.sub(pattern, replacement, sql_query, 1)
+                
+            logger.info(f"SQL generado: {sql_query}")
+            logger.info(f"Parámetros originales: {params}")
+            
+            # Sustituir valores en los parámetros
+            processed_params = []
+            for param in params:
+                if param == '%user_id%':
+                    processed_params.append(user_id)
+                elif param == '%completed_meals%':
+                    processed_params.append(completed_meals_json)
+                elif param == '%calorie_note%':
+                    processed_params.append(calorie_note)
+                elif param == '%calories%':
+                    processed_params.append(calories)
+                elif param == '%protein%':
+                    processed_params.append(protein)
+                else:
+                    processed_params.append(param)
+            
+            logger.info(f"Parámetros procesados: {processed_params}")
+            
+            # Ejecutar la consulta generada
             await DatabaseConnector.execute_query(
-                query,
-                (
-                    user_id, json.dumps(completed_meals), calorie_note, calories, protein,
-                    json.dumps(completed_meals), calorie_note, calorie_note, calories, calories, protein, protein
-                )
+                sql_query,
+                processed_params
             )
             
             return True

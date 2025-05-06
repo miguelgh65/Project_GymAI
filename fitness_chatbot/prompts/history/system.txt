@@ -9,7 +9,7 @@ INSTRUCCIONES:
 2. Identifica el ejercicio específico que busca (si lo hay)
 3. Determina el tipo de consulta: última sesión, múltiples sesiones, etc.
 4. Genera la consulta SQL correcta usando SIEMPRE la tabla gym.ejercicios
-5. Incluye siempre user_id en tus condiciones de filtro
+5. IMPORTANTE: En la respuesta final, utiliza el valor REAL del user_id proporcionado en el contexto, NO uses la palabra literal "user_id"
 
 ESTRUCTURA DE LA TABLA:
 - gym.ejercicios (tabla principal)
@@ -40,58 +40,53 @@ FROM gym.ejercicios
 WHERE user_id = %s AND ejercicio ILIKE %s 
 ORDER BY fecha DESC 
 LIMIT 1
-```
-Parámetros: [user_id, "%press banca%"]
-
+Parámetros: ["{user_id_value}", "%press banca%"]
 EJEMPLO 2: "Me muestras mis últimas 10 sesiones de press de banca"
-
 Paso 1: Analizar consulta
-- El usuario quiere ver MÚLTIPLES sesiones de press banca
-- Quiere ver las últimas 10 sesiones (número específico)
-- Ejercicio específico: press banca
+
+El usuario quiere ver MÚLTIPLES sesiones de press banca
+Quiere ver las últimas 10 sesiones (número específico)
+Ejercicio específico: press banca
 
 Paso 2: Construir la consulta SQL
-- Debo filtrar por ejercicio ILIKE "%press banca%"
-- Quiere las 10 más recientes → ORDER BY fecha DESC LIMIT 10
-- Debo incluir user_id en el filtro
+
+Debo filtrar por ejercicio ILIKE "%press banca%"
+Quiere las 10 más recientes → ORDER BY fecha DESC LIMIT 10
+Debo incluir user_id en el filtro
 
 Paso 3: SQL final:
-```sql
-SELECT fecha, ejercicio, repeticiones 
+sqlSELECT fecha, ejercicio, repeticiones 
 FROM gym.ejercicios 
 WHERE user_id = %s AND ejercicio ILIKE %s 
 ORDER BY fecha DESC 
 LIMIT 10
-```
-Parámetros: [user_id, "%press banca%"]
-
+Parámetros: ["{user_id_value}", "%press banca%"]
 EJEMPLO 3: "Cuántas repeticiones hice en mi última sesión de dominadas"
-
 Paso 1: Analizar consulta
-- El usuario quiere saber las repeticiones de su última sesión de dominadas
-- Solo necesito la última sesión → LIMIT 1
-- Ejercicio específico: dominadas
+
+El usuario quiere saber las repeticiones de su última sesión de dominadas
+Solo necesito la última sesión → LIMIT 1
+Ejercicio específico: dominadas
 
 Paso 2: Construir la consulta SQL
-- Debo filtrar por ejercicio ILIKE "%dominada%"
-- Solo necesito la última → ORDER BY fecha DESC LIMIT 1
-- Debo incluir user_id en el filtro
+
+Debo filtrar por ejercicio ILIKE "%dominada%"
+Solo necesito la última → ORDER BY fecha DESC LIMIT 1
+Debo incluir user_id en el filtro
 
 Paso 3: SQL final:
-```sql
-SELECT fecha, ejercicio, repeticiones 
+sqlSELECT fecha, ejercicio, repeticiones 
 FROM gym.ejercicios 
 WHERE user_id = %s AND ejercicio ILIKE %s 
 ORDER BY fecha DESC 
 LIMIT 1
-```
-Parámetros: [user_id, "%dominada%"]
-
+Parámetros: ["{user_id_value}", "%dominada%"]
+NOTA IMPORTANTE: En los ejemplos anteriores, "{user_id_value}" es un placeholder. En tu respuesta final, SIEMPRE debes usar el valor real del ID del usuario que se te proporciona en el contexto, por ejemplo, "102238128205785207394".
 RESPUESTA:
 Responde ÚNICAMENTE con un objeto JSON con esta estructura:
 {
-  "sql": "tu consulta SQL aquí",
-  "params": ["user_id", "otros parámetros"],
-  "tipo_consulta": "última_sesión/múltiples_sesiones/etc"
+"sql": "tu consulta SQL aquí",
+"params": ["valor_real_del_user_id", "otros parámetros"],
+"tipo_consulta": "última_sesión/múltiples_sesiones/etc"
 }
 </s>

@@ -66,14 +66,15 @@ class HistoryChain:
             # Asegurarse de que la tabla sea correcta (sin confiar en la IA para esto)
             sql_data["sql"] = HistoryChain._ensure_correct_table(sql_data["sql"])
             
-            # CORRECCIÓN: Eliminar cualquier referencia a google_id en la consulta SQL
+            # Eliminar cualquier referencia a google_id en la consulta SQL
             sql_data["sql"] = HistoryChain._remove_google_id_from_query(sql_data["sql"])
             
             # Ejecutar la consulta SQL
             logger.info(f"Ejecutando SQL: {sql_data['sql']}")
             logger.info(f"Con parámetros: {sql_data['params']}")
             
-            results = HistoryChain._execute_sql_query(sql_data["sql"], sql_data["params"])
+            # Pasar user_id para que pueda sustituir parámetros si es necesario
+            results = HistoryChain._execute_sql_query(sql_data["sql"], sql_data["params"], user_id)
             
             # Identificar el tipo de consulta para formatear los resultados adecuadamente
             tipo_consulta = sql_data.get("tipo_consulta", "")
@@ -117,7 +118,13 @@ class HistoryChain:
             
             if placeholder_count != param_count:
                 logger.warning(f"Número de placeholders (%s) no coincide con parámetros: {placeholder_count} vs {param_count}")
-                return None
+                # Ajustar la lista de parámetros si faltan o sobran
+                if placeholder_count > param_count:
+                    # Agregar más parámetros 'user_id' para completar
+                    sql_data["params"].extend(['user_id'] * (placeholder_count - param_count))
+                elif placeholder_count < param_count:
+                    # Recortar los parámetros excedentes
+                    sql_data["params"] = sql_data["params"][:placeholder_count]
             
             # Verificar si hay una explicación del tipo de consulta
             if "tipo_consulta" not in sql_data:
@@ -192,25 +199,35 @@ class HistoryChain:
         return None
     
     @staticmethod
-    def _execute_sql_query(sql_query: str, params: List) -> List:
+    def _execute_sql_query(sql_query: str, params: List, user_id: str) -> List:
         """
         Ejecuta la consulta SQL.
         
         Args:
             sql_query: Consulta SQL a ejecutar
             params: Parámetros para la consulta
+            user_id: ID del usuario para sustituir parámetros si es necesario
             
         Returns:
             Resultados de la consulta
         """
         conn = None
         try:
+            # Procesar parámetros para sustituir cualquier referencia a 'user_id' por el valor real
+            processed_params = []
+            for param in params:
+                if param == 'user_id':
+                    # Reemplazar con el valor real
+                    processed_params.append(user_id)
+                else:
+                    processed_params.append(param)
+            
             db_config = DatabaseConnector.get_db_config()
             logger.info(f"Configuración DB: {db_config}")
             conn = psycopg2.connect(**db_config)
             
             cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-            cursor.execute(sql_query, params)
+            cursor.execute(sql_query, processed_params)
             results = cursor.fetchall()
             cursor.close()
             
