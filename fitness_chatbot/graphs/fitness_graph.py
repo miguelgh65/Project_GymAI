@@ -21,11 +21,7 @@ logger = logging.getLogger("fitness_chatbot")
 
 def create_fitness_graph():
     """
-    Crea el grafo principal para el chatbot de fitness con ejecución paralela
-    de nodos para consultas complejas como progress.
-    
-    Returns:
-        Un grafo compilado para procesar consultas de fitness
+    Crea el grafo principal para el chatbot de fitness.
     """
     # Inicializar el grafo con el tipo de estado combinado
     graph = StateGraph((AgentState, MemoryState))
@@ -41,67 +37,102 @@ def create_fitness_graph():
     graph.add_node("process_progress", process_progress_query)
     graph.add_node("generate_response", generate_final_response)
     
-    # Función para enrutar según la intención
-    def route_by_intent(states):
-        """Determina el siguiente nodo según la intención detectada."""
+    # Función para el router principal
+    def decide_initial_node(states):
         agent_state, _ = states
         intent = agent_state.get("intent", IntentType.GENERAL)
         logger.info(f"🔀 Enrutando por intención: {intent}")
         
-        # Si es PROGRESS, vamos a ejecutar history y fitbit en paralelo
-        # TODAY_ROUTINE NO forma parte del fan-in/fan-out
         if intent == IntentType.PROGRESS:
-            return ["process_history", "process_fitbit"]
-        
-        # Para otras intenciones, seguimos el flujo normal
-        return intent
+            # Para progress, marcamos un intent especial
+            agent_state["is_progress"] = True
+            # Primero vamos a process_history
+            return "process_history"
+        else:
+            # Rutas normales
+            if intent == IntentType.EXERCISE:
+                return "process_exercise"
+            elif intent == IntentType.NUTRITION:
+                return "process_nutrition"
+            elif intent == IntentType.HISTORY:
+                return "process_history"
+            elif intent == IntentType.LOG_ACTIVITY:
+                return "log_activity"
+            elif intent == IntentType.FITBIT:
+                return "process_fitbit"
+            elif intent == IntentType.TODAY_ROUTINE:
+                return "process_today_routine"
+            else:
+                return "generate_response"
     
-    # Definir flujos condicionales basados en la intención
+    # Añadir edge condicional desde classify_intent
     graph.add_conditional_edges(
         "classify_intent",
-        route_by_intent,
+        decide_initial_node,
         {
-            IntentType.EXERCISE: "process_exercise",
-            IntentType.NUTRITION: "process_nutrition",
-            IntentType.HISTORY: "process_history",
-            IntentType.LOG_ACTIVITY: "log_activity",
-            IntentType.FITBIT: "process_fitbit",
-            IntentType.TODAY_ROUTINE: "process_today_routine",
-            IntentType.GENERAL: "generate_response",
-            # Fan-out para PROGRESS - Solo history y fitbit en paralelo
-            ["process_history", "process_fitbit"]: None  # None significa que usaremos otros edges para dirigir el flujo
+            "process_exercise": "process_exercise",
+            "process_nutrition": "process_nutrition",
+            "process_history": "process_history",
+            "log_activity": "log_activity", 
+            "process_fitbit": "process_fitbit",
+            "process_today_routine": "process_today_routine",
+            "generate_response": "generate_response"
         }
     )
     
-    # Conexiones estándar para nodos simples (non-PROGRESS)
+    # Función para decidir si vamos a progress o a generate_response desde history
+    def from_history_decide_next(states):
+        agent_state, _ = states
+        is_progress = agent_state.get("is_progress", False)
+        
+        if is_progress:
+            # Si es progress, vamos a fitbit
+            return "process_fitbit"
+        else:
+            # Si no es progress, vamos a generate_response
+            return "generate_response"
+    
+    # Añadir edge condicional desde process_history
+    graph.add_conditional_edges(
+        "process_history",
+        from_history_decide_next,
+        {
+            "process_fitbit": "process_fitbit",
+            "generate_response": "generate_response"
+        }
+    )
+    
+    # Función para decidir si vamos a progress o a generate_response desde fitbit
+    def from_fitbit_decide_next(states):
+        agent_state, _ = states
+        is_progress = agent_state.get("is_progress", False)
+        
+        if is_progress:
+            # Si es progress, vamos a process_progress
+            return "process_progress"
+        else:
+            # Si no es progress, vamos a generate_response
+            return "generate_response"
+    
+    # Añadir edge condicional desde process_fitbit
+    graph.add_conditional_edges(
+        "process_fitbit",
+        from_fitbit_decide_next,
+        {
+            "process_progress": "process_progress",
+            "generate_response": "generate_response"
+        }
+    )
+    
+    # Conexiones directas a generate_response
     graph.add_edge("process_exercise", "generate_response")
-    graph.add_edge("process_nutrition", "generate_response")
+    graph.add_edge("process_nutrition", "generate_response") 
     graph.add_edge("process_today_routine", "generate_response")
     graph.add_edge("log_activity", "generate_response")
-    graph.add_edge("generate_response", END)
-    
-    # Para nodos que pueden ejecutarse solos o como parte de PROGRESS
-    # añadimos una edge condicional basada en si son parte de PROGRESS o no
-    def route_to_final_or_join(states: Tuple[AgentState, MemoryState]) -> str:
-        """Determina si el nodo debe ir a generate_response o a process_progress"""
-        agent_state, _ = states
-        intent = agent_state.get("intent", IntentType.GENERAL)
-        
-        # Si el intent es PROGRESS, estos nodos deben ir a process_progress
-        if intent == IntentType.PROGRESS:
-            return "process_progress"
-        
-        # De lo contrario, van directo a generate_response
-        return "generate_response"
-    
-    # Aplicar routing condicional para history y fitbit
-    graph.add_conditional_edges("process_history", route_to_final_or_join, 
-                              ["process_progress", "generate_response"])
-    graph.add_conditional_edges("process_fitbit", route_to_final_or_join, 
-                              ["process_progress", "generate_response"])
-    
-    # Fan-in: El nodo de progress va a generate_response
     graph.add_edge("process_progress", "generate_response")
+    
+    # Conexión final
+    graph.add_edge("generate_response", END)
     
     # Definir el punto de entrada
     graph.set_entry_point("classify_intent")

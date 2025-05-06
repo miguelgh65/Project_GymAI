@@ -13,13 +13,6 @@ logger = logging.getLogger(__name__)
 async def process_fitbit_query(states: Tuple[AgentState, MemoryState]) -> Tuple[AgentState, MemoryState]:
     """
     Procesa consultas relacionadas con datos de Fitbit.
-    Este nodo también guarda datos en user_context para ser utilizados por el nodo de progreso.
-    
-    Args:
-        states: Tupla con (AgentState, MemoryState)
-        
-    Returns:
-        Tupla actualizada con (AgentState, MemoryState)
     """
     logger.info("--- PROCESAMIENTO DE CONSULTA DE FITBIT INICIADO ---")
     
@@ -54,149 +47,107 @@ async def process_fitbit_query(states: Tuple[AgentState, MemoryState]) -> Tuple[
             auth_token = "SIMULADO"
             logger.warning("No se encontró token de autenticación en el contexto, usando simulado")
         
-        # Bloque try-except para la importación
+        from back_end.gym.services.fitbit.auth_service import FitbitAuthService
+        from back_end.gym.services.fitbit.api_service import FitbitApiService
+        
+        # Obtener el token directamente
+        access_token = None
         try:
-            from back_end.gym.services.fitbit.auth_service import FitbitAuthService
-            from back_end.gym.services.fitbit.api_service import FitbitApiService
-            
-            # Obtener el token directamente
-            access_token = None
-            try:
-                access_token = FitbitAuthService.get_valid_access_token("1")
-                logger.info(f"Token obtenido directamente: {'Sí' if access_token else 'No'}")
-            except Exception as e:
-                logger.error(f"Error obteniendo token directo: {e}")
-            
-            if not access_token:
-                respuesta = f"""{fitbit_emoji} **No puedo acceder a tus datos de Fitbit**
+            access_token = FitbitAuthService.get_valid_access_token("1")
+            logger.info(f"Token obtenido directamente: {'Sí' if access_token else 'No'}")
+        except Exception as e:
+            logger.error(f"Error obteniendo token directo: {e}")
+        
+        if not access_token:
+            respuesta = f"""{fitbit_emoji} **No puedo acceder a tus datos de Fitbit**
 
 Para ver tus datos de Fitbit, por favor asegúrate de estar conectado a tu cuenta desde la sección de perfil.
 
 Puedes ir a tu [perfil](/profile) para conectar tu dispositivo Fitbit.
 """
-                # Crear datos ficticios para el nodo de progreso
-                fitbit_data = {"available": False}
-            else:
-                # Tenemos un token, intentar obtener los datos directamente
-                fitbit_data = {}
-                fitbit_data["available"] = True
+        else:
+            # Tenemos un token, intentar obtener los datos directamente
+            fitbit_data = {}
+            
+            try:
+                # Hoy es la única fecha real con datos
+                today = datetime.now().strftime('%Y-%m-%d')
                 
-                try:
-                    # Hoy es la única fecha real con datos
-                    today = datetime.now().strftime('%Y-%m-%d')
-                    
-                    # Obtener datos de perfil (siempre)
-                    profile_data = FitbitApiService.get_data(access_token, 'profile')
-                    fitbit_data['profile'] = profile_data
-                    
-                    # Obtener datos de peso si están disponibles
-                    try:
-                        weight_data = FitbitApiService.get_data(access_token, 'weight_log', date=today)
-                        if weight_data and 'weight' in weight_data:
-                            fitbit_data['weight'] = weight_data['weight']
-                    except Exception as e:
-                        logger.warning(f"Error obteniendo datos de peso: {e}")
-                    
-                    # Obtener datos de actividad
-                    try:
-                        activity_data = FitbitApiService.get_data(access_token, 'activity_summary', date=today)
-                        if activity_data:
-                            fitbit_data['activity_summary'] = activity_data
-                    except Exception as e:
-                        logger.warning(f"Error obteniendo datos de actividad: {e}")
-                    
-                    # Verificar si se solicita una fecha que no es hoy
-                    if target_date != today and date_context != "hoy":
-                        # Para fechas que no son hoy, dar mensaje claro de que no hay datos
-                        respuesta = f"""{fitbit_emoji} **Información sobre {topic_info['topic']} para {date_context}**
+                # Obtener datos de perfil (siempre)
+                profile_data = FitbitApiService.get_data(access_token, 'profile')
+                fitbit_data['profile'] = profile_data
+                
+                # Verificar si se solicita una fecha que no es hoy
+                if target_date != today and date_context != "hoy":
+                    # Para fechas que no son hoy, dar mensaje claro de que no hay datos
+                    respuesta = f"""{fitbit_emoji} **Información sobre {topic_info['topic']} para {date_context}**
 
 Te proporciono la información disponible de Fitbit, pero actualmente solo tengo acceso a los datos de hoy, no de {date_context}.
 
 Para responder a tu pregunta sobre {topic_info['topic']} de {date_context}, necesitaría tener acceso a datos históricos.
 """
+                else:
+                    # Es hoy, obtener datos según lo que se pregunta
+                    
+                    # Si está preguntando específicamente por perfil/peso
+                    if topic_info['topic'] in ['perfil', 'peso', 'altura', 'imc']:
+                        respuesta = generate_profile_response(fitbit_data, topic_info, fitbit_emoji)
+                    elif topic_info['topic'] == 'pasos':
+                        # Obtener datos de actividad
+                        activity_data = FitbitApiService.get_data(access_token, 'activity_summary', date=today)
+                        fitbit_data['activity_summary'] = activity_data
+                        respuesta = generate_steps_response(fitbit_data, topic_info, fitbit_emoji)
+                    elif topic_info['topic'] == 'sueño':
+                        # Obtener datos de sueño
+                        try:
+                            sleep_data = FitbitApiService.get_data(access_token, 'sleep_log', date=today)
+                            fitbit_data['sleep_log'] = sleep_data
+                        except:
+                            logger.warning("No se pudieron obtener datos de sueño")
+                        respuesta = generate_sleep_response(fitbit_data, topic_info, fitbit_emoji)
+                    elif topic_info['topic'] in ['corazón', 'ritmo cardíaco', 'pulso', 'cardio']:
+                        # Obtener datos de cardio
+                        try:
+                            heart_data = FitbitApiService.get_data(access_token, 'heart_rate_intraday', date=today)
+                            fitbit_data['heart_rate_intraday'] = heart_data
+                        except:
+                            logger.warning("No se pudieron obtener datos de ritmo cardíaco")
+                        respuesta = generate_heart_response(fitbit_data, topic_info, fitbit_emoji)
+                    elif topic_info['topic'] in ['calorías']:
+                        # Obtener datos de actividad para calorías
+                        activity_data = FitbitApiService.get_data(access_token, 'activity_summary', date=today)
+                        fitbit_data['activity_summary'] = activity_data
+                        respuesta = generate_calories_response(fitbit_data, topic_info, fitbit_emoji)
+                    elif topic_info['topic'] in ['distancia']:
+                        # Obtener datos de actividad para distancia
+                        activity_data = FitbitApiService.get_data(access_token, 'activity_summary', date=today)
+                        fitbit_data['activity_summary'] = activity_data
+                        respuesta = generate_distance_response(fitbit_data, topic_info, fitbit_emoji)
                     else:
-                        # Es hoy, obtener datos según lo que se pregunta
+                        # Para otras consultas generales, obtener todo
+                        try:
+                            activity_data = FitbitApiService.get_data(access_token, 'activity_summary', date=today)
+                            fitbit_data['activity_summary'] = activity_data
+                            
+                            sleep_data = FitbitApiService.get_data(access_token, 'sleep_log', date=today)
+                            fitbit_data['sleep_log'] = sleep_data
+                            
+                            heart_data = FitbitApiService.get_data(access_token, 'heart_rate_intraday', date=today)
+                            fitbit_data['heart_rate_intraday'] = heart_data
+                        except:
+                            logger.warning("No se pudieron obtener todos los datos")
                         
-                        # Si está preguntando específicamente por perfil/peso
-                        if topic_info['topic'] in ['perfil', 'peso', 'altura', 'imc']:
-                            respuesta = generate_profile_response(fitbit_data, topic_info, fitbit_emoji)
-                        elif topic_info['topic'] == 'pasos':
-                            # Obtener datos de actividad
-                            activity_data = FitbitApiService.get_data(access_token, 'activity_summary', date=today)
-                            fitbit_data['activity_summary'] = activity_data
-                            respuesta = generate_steps_response(fitbit_data, topic_info, fitbit_emoji)
-                        elif topic_info['topic'] == 'sueño':
-                            # Obtener datos de sueño
-                            try:
-                                sleep_data = FitbitApiService.get_data(access_token, 'sleep_log', date=today)
-                                fitbit_data['sleep_log'] = sleep_data
-                            except:
-                                logger.warning("No se pudieron obtener datos de sueño")
-                            respuesta = generate_sleep_response(fitbit_data, topic_info, fitbit_emoji)
-                        elif topic_info['topic'] in ['corazón', 'ritmo cardíaco', 'pulso', 'cardio']:
-                            # Obtener datos de cardio
-                            try:
-                                heart_data = FitbitApiService.get_data(access_token, 'heart_rate_intraday', date=today)
-                                fitbit_data['heart_rate_intraday'] = heart_data
-                            except:
-                                logger.warning("No se pudieron obtener datos de ritmo cardíaco")
-                            respuesta = generate_heart_response(fitbit_data, topic_info, fitbit_emoji)
-                        elif topic_info['topic'] in ['calorías']:
-                            # Obtener datos de actividad para calorías
-                            activity_data = FitbitApiService.get_data(access_token, 'activity_summary', date=today)
-                            fitbit_data['activity_summary'] = activity_data
-                            respuesta = generate_calories_response(fitbit_data, topic_info, fitbit_emoji)
-                        elif topic_info['topic'] in ['distancia']:
-                            # Obtener datos de actividad para distancia
-                            activity_data = FitbitApiService.get_data(access_token, 'activity_summary', date=today)
-                            fitbit_data['activity_summary'] = activity_data
-                            respuesta = generate_distance_response(fitbit_data, topic_info, fitbit_emoji)
-                        else:
-                            # Para otras consultas generales, obtener todo
-                            try:
-                                activity_data = FitbitApiService.get_data(access_token, 'activity_summary', date=today)
-                                fitbit_data['activity_summary'] = activity_data
-                                
-                                sleep_data = FitbitApiService.get_data(access_token, 'sleep_log', date=today)
-                                fitbit_data['sleep_log'] = sleep_data
-                                
-                                heart_data = FitbitApiService.get_data(access_token, 'heart_rate_intraday', date=today)
-                                fitbit_data['heart_rate_intraday'] = heart_data
-                            except:
-                                logger.warning("No se pudieron obtener todos los datos")
-                            
-                            logger.info(f"Datos obtenidos: {list(fitbit_data.keys())}")
-                            
-                            # Respuesta general con enfoque en lo más relevante
-                            respuesta = generate_general_response(fitbit_data, topic_info, fitbit_emoji)
-                except Exception as e:
-                    logger.exception(f"Error obteniendo datos directos: {e}")
-                    respuesta = f"{fitbit_emoji} **Error al obtener datos de Fitbit**\n\nNo pude obtener todos tus datos de Fitbit. Por favor, verifica que tu cuenta esté conectada correctamente desde la sección de perfil."
-                    fitbit_data = {"available": False}
-        except ImportError:
-            logger.error("No se pudieron importar los servicios de Fitbit")
-            respuesta = f"{fitbit_emoji} **Servicios de Fitbit no disponibles**\n\nLos servicios de Fitbit no están disponibles en este momento. Por favor, intenta más tarde."
-            fitbit_data = {"available": False}
-                
-        # Almacenar datos de Fitbit para el nodo de progreso
-        # Asegurar que existe user_context
-        if "user_context" not in agent_state:
-            agent_state["user_context"] = {}
-        
-        # Guardar datos de Fitbit en el contexto
-        agent_state["user_context"]["fitbit_data"] = fitbit_data
-        logger.info(f"Datos de Fitbit almacenados para el nodo de progreso: {list(fitbit_data.keys()) if isinstance(fitbit_data, dict) else 'No disponible'}")
+                        logger.info(f"Datos obtenidos: {list(fitbit_data.keys())}")
+                        
+                        # Respuesta general con enfoque en lo más relevante
+                        respuesta = generate_general_response(fitbit_data, topic_info, fitbit_emoji)
+            except Exception as e:
+                logger.exception(f"Error obteniendo datos directos: {e}")
+                respuesta = f"{fitbit_emoji} **Error al obtener datos de Fitbit**\n\nNo pude obtener todos tus datos de Fitbit. Por favor, verifica que tu cuenta esté conectada correctamente desde la sección de perfil."
                 
     except Exception as e:
         logger.exception(f"Error procesando consulta de Fitbit: {str(e)}")
         respuesta = f"{fitbit_emoji} Lo siento, tuve un problema al procesar tus datos de Fitbit. Inténtalo de nuevo más tarde."
-        
-        # Asegurar que existe user_context incluso en caso de error
-        if "user_context" not in agent_state:
-            agent_state["user_context"] = {}
-        
-        # Establecer datos ficticios para el nodo de progreso
-        agent_state["user_context"]["fitbit_data"] = {"available": False}
     
     # Actualizar estado y memoria
     agent_state["generation"] = respuesta
@@ -205,7 +156,6 @@ Para responder a tu pregunta sobre {topic_info['topic']} de {date_context}, nece
     logger.info("--- PROCESAMIENTO DE CONSULTA DE FITBIT FINALIZADO ---")
     return agent_state, memory_state
 
-# Funciones auxiliares existentes sin cambios
 def extract_date_from_query(query: str) -> Dict[str, Any]:
     """
     Extrae información de fecha de la consulta.
@@ -297,38 +247,407 @@ def identify_query_topic(query: str) -> Dict[str, str]:
     # Si no coincide con ninguno, devolver general para mostrar todos los datos relevantes
     return {"topic": "", "subtopic": ""}
 
-# Funciones para generar respuestas específicas - Mantenerlas pero no modificarlas
 def generate_profile_response(data: Dict[str, Any], topic_info: Dict[str, str], emoji: str) -> str:
     """Genera una respuesta específica sobre el perfil del usuario."""
-    # (código existente sin cambios)
-    return f"{emoji} Información del perfil de usuario de Fitbit"
+    
+    if 'profile' not in data or 'user' not in data['profile']:
+        return f"{emoji} No tengo información sobre tu perfil en Fitbit. Verifica que tu cuenta esté conectada correctamente."
+    
+    user = data['profile']['user']
+    
+    # Si está preguntando específicamente por el peso
+    if topic_info['topic'] == 'peso':
+        if 'weight' not in user:
+            return f"{emoji} No tengo información sobre tu peso en Fitbit. Puedes configurarlo en la aplicación de Fitbit."
+        
+        weight = user.get('weight', 0)
+        height = user.get('height', 0)
+        
+        # Calcular IMC si tenemos altura
+        imc_info = ""
+        if height > 0:
+            height_m = height / 100  # convertir cm a m
+            imc = weight / (height_m * height_m)
+            
+            imc_category = ""
+            if imc < 18.5:
+                imc_category = "bajo peso"
+            elif imc < 25:
+                imc_category = "peso normal"
+            elif imc < 30:
+                imc_category = "sobrepeso"
+            else:
+                imc_category = "obesidad"
+                
+            imc_info = f"\n\n**IMC**: {imc:.1f} ({imc_category})"
+        
+        return f"{emoji} **Información sobre tu peso**\n\n**Peso actual**: {weight} kg{imc_info}"
+    
+    # Si está preguntando por la altura
+    elif topic_info['topic'] == 'altura':
+        if 'height' not in user:
+            return f"{emoji} No tengo información sobre tu altura en Fitbit. Puedes configurarla en la aplicación de Fitbit."
+        
+        height = user.get('height', 0)
+        
+        return f"{emoji} **Información sobre tu altura**\n\n**Altura**: {height} cm"
+    
+    # Si está preguntando por el IMC
+    elif topic_info['topic'] == 'imc':
+        if 'weight' not in user or 'height' not in user:
+            return f"{emoji} No tengo suficiente información para calcular tu IMC. Necesito tu peso y altura, que puedes configurar en la aplicación de Fitbit."
+        
+        weight = user.get('weight', 0)
+        height = user.get('height', 0)
+        
+        # Calcular IMC
+        height_m = height / 100  # convertir cm a m
+        imc = weight / (height_m * height_m)
+        
+        imc_category = ""
+        if imc < 18.5:
+            imc_category = "bajo peso"
+        elif imc < 25:
+            imc_category = "peso normal"
+        elif imc < 30:
+            imc_category = "sobrepeso"
+        else:
+            imc_category = "obesidad"
+        
+        return f"{emoji} **Información sobre tu IMC**\n\n**IMC actual**: {imc:.1f}\n**Categoría**: {imc_category}\n\nEl IMC (Índice de Masa Corporal) es un indicador general que relaciona tu peso y altura, pero no tiene en cuenta la composición corporal (músculo vs grasa)."
+    
+    # Información de perfil general
+    else:
+        # Base de la respuesta
+        response = f"{emoji} **Información de tu perfil de Fitbit**\n\n"
+        
+        # Añadir información disponible
+        if 'firstName' in user or 'lastName' in user:
+            first_name = user.get('firstName', '')
+            last_name = user.get('lastName', '')
+            full_name = f"{first_name} {last_name}".strip()
+            if full_name:
+                response += f"**Nombre**: {full_name}\n"
+        
+        if 'age' in user:
+            response += f"**Edad**: {user['age']} años\n"
+        
+        if 'height' in user:
+            response += f"**Altura**: {user['height']} cm\n"
+        
+        if 'weight' in user:
+            response += f"**Peso**: {user['weight']} kg\n"
+        
+        if 'gender' in user:
+            gender = "Masculino" if user['gender'].lower() == 'male' else "Femenino"
+            response += f"**Género**: {gender}\n"
+        
+        # Calcular IMC si tenemos peso y altura
+        if 'weight' in user and 'height' in user:
+            weight = user['weight']
+            height = user['height'] / 100  # convertir cm a m
+            imc = weight / (height * height)
+            
+            imc_category = ""
+            if imc < 18.5:
+                imc_category = "bajo peso"
+            elif imc < 25:
+                imc_category = "peso normal"
+            elif imc < 30:
+                imc_category = "sobrepeso"
+            else:
+                imc_category = "obesidad"
+                
+            response += f"\n**IMC**: {imc:.1f} ({imc_category})"
+        
+        return response
 
 def generate_steps_response(data: Dict[str, Any], topic_info: Dict[str, str], emoji: str) -> str:
     """Genera una respuesta específica sobre pasos."""
-    # (código existente sin cambios)
-    return f"{emoji} Información de pasos de Fitbit"
+    
+    if 'activity_summary' not in data:
+        return f"{emoji} No tengo información sobre tus pasos hoy. Verifica que tu Fitbit esté sincronizado correctamente."
+    
+    summary = data['activity_summary'].get('summary', {})
+    goals = data['activity_summary'].get('goals', {})
+    
+    if 'steps' not in summary:
+        return f"{emoji} No tengo información sobre tus pasos hoy. Verifica que tu Fitbit esté sincronizado correctamente."
+    
+    steps = summary['steps']
+    
+    # Calcular progreso si hay meta de pasos
+    progress_text = ""
+    if 'steps' in goals:
+        steps_goal = goals['steps']
+        progress = (steps / steps_goal) * 100 if steps_goal > 0 else 0
+        progress_text = f"\n\n**Progreso**: {steps} de {steps_goal} pasos ({progress:.1f}% de tu objetivo diario)"
+    
+    # Obtener distancia si está disponible
+    distance_text = ""
+    if 'distances' in summary:
+        for dist in summary['distances']:
+            if dist.get('activity') == 'total':
+                distance = dist.get('distance', 0)
+                distance_text = f"\n\n**Distancia recorrida**: {distance:.2f} km"
+    
+    # Construir respuesta
+    response = f"{emoji} **Información sobre tus pasos hoy**\n\nHoy has dado **{steps} pasos**{progress_text}{distance_text}"
+    
+    # Añadir alguna interpretación
+    if steps < 5000:
+        response += "\n\nEstás por debajo de la recomendación mínima de 5000 pasos diarios. ¡Aún tienes tiempo para caminar un poco más hoy!"
+    elif steps < 10000:
+        response += "\n\nVas por buen camino. La recomendación general es de 7500-10000 pasos diarios para mantener un estilo de vida activo."
+    else:
+        response += "\n\n¡Excelente! Has superado la recomendación general de 10000 pasos diarios. ¡Sigue así!"
+    
+    return response
 
 def generate_sleep_response(data: Dict[str, Any], topic_info: Dict[str, str], emoji: str) -> str:
     """Genera una respuesta específica sobre sueño."""
-    # (código existente sin cambios)
-    return f"{emoji} Información de sueño de Fitbit"
+    
+    if 'sleep_log' not in data or 'sleep' not in data['sleep_log'] or not data['sleep_log']['sleep']:
+        return f"{emoji} No tengo información sobre tu sueño hoy. Esto puede deberse a que aún no has sincronizado tu dispositivo después de dormir o que no has usado tu Fitbit durante el sueño."
+    
+    sleep_list = data['sleep_log']['sleep']
+    
+    # Buscar el sueño principal
+    main_sleep = None
+    for sleep in sleep_list:
+        if sleep.get('isMainSleep', False):
+            main_sleep = sleep
+            break
+    
+    if not main_sleep and sleep_list:
+        main_sleep = sleep_list[0]
+    
+    if not main_sleep:
+        return f"{emoji} No tengo información detallada sobre tu sueño hoy."
+    
+    # Extraer datos clave
+    minutes_asleep = main_sleep.get('minutesAsleep', 0)
+    hours = minutes_asleep // 60
+    minutes = minutes_asleep % 60
+    efficiency = main_sleep.get('efficiency', 0)
+    
+    # Base de la respuesta
+    response = f"{emoji} **Información sobre tu sueño hoy**\n\n**Tiempo total de sueño**: {hours}h {minutes}m\n**Eficiencia del sueño**: {efficiency}%"
+    
+    # Añadir info de fases si está disponible
+    if 'levels' in main_sleep and 'summary' in main_sleep['levels']:
+        response += "\n\n**Desglose por fases de sueño**:"
+        summary = main_sleep['levels']['summary']
+        
+        # Procesar cada fase si existe
+        phases = [
+            ('deep', 'Sueño profundo'),
+            ('light', 'Sueño ligero'),
+            ('rem', 'Sueño REM'),
+            ('wake', 'Tiempo despierto')
+        ]
+        
+        for phase_key, phase_name in phases:
+            if phase_key in summary and 'minutes' in summary[phase_key]:
+                phase_mins = summary[phase_key]['minutes']
+                if phase_mins > 0:
+                    response += f"\n- **{phase_name}**: {phase_mins} min"
+    
+    # Añadir alguna interpretación
+    if hours < 6:
+        response += "\n\nTu tiempo de sueño está por debajo de las 7-9 horas recomendadas para adultos."
+    elif hours >= 7 and hours <= 9:
+        response += "\n\nTu tiempo de sueño está dentro del rango recomendado de 7-9 horas para adultos."
+    
+    if efficiency < 80:
+        response += "\n\nLa eficiencia de tu sueño está por debajo del 85% considerado óptimo."
+    else:
+        response += "\n\nTu eficiencia del sueño es buena (por encima del 80%)."
+    
+    return response
 
 def generate_heart_response(data: Dict[str, Any], topic_info: Dict[str, str], emoji: str) -> str:
     """Genera una respuesta específica sobre ritmo cardíaco."""
-    # (código existente sin cambios)
-    return f"{emoji} Información de ritmo cardíaco de Fitbit"
+    
+    if 'heart_rate_intraday' not in data or 'activities-heart' not in data['heart_rate_intraday'] or not data['heart_rate_intraday']['activities-heart']:
+        return f"{emoji} No tengo información sobre tu ritmo cardíaco hoy. Verifica que tu Fitbit esté sincronizado correctamente."
+    
+    heart_summary = data['heart_rate_intraday']['activities-heart'][0]
+    
+    if 'value' not in heart_summary:
+        return f"{emoji} No tengo información detallada sobre tu ritmo cardíaco hoy."
+    
+    value = heart_summary['value']
+    
+    # Extraer ritmo cardíaco en reposo
+    resting_rate = value.get('restingHeartRate')
+    
+    if not resting_rate:
+        return f"{emoji} No tengo información sobre tu ritmo cardíaco en reposo hoy."
+    
+    # Base de la respuesta
+    response = f"{emoji} **Información sobre tu ritmo cardíaco hoy**\n\n**Ritmo cardíaco en reposo**: {resting_rate} bpm"
+    
+    # Añadir info de zonas si está disponible
+    if 'heartRateZones' in value:
+        zones = value['heartRateZones']
+        active_zones = [zone for zone in zones if zone.get('minutes', 0) > 0]
+        
+        if active_zones:
+            response += "\n\n**Tiempo en zonas cardíacas**:"
+            for zone in active_zones:
+                zone_name = zone.get('name', 'Desconocida')
+                zone_minutes = zone.get('minutes', 0)
+                response += f"\n- **{zone_name}**: {zone_minutes} min"
+    
+    # Añadir alguna interpretación
+    if resting_rate < 60:
+        response += "\n\nTu ritmo cardíaco en reposo es excelente, típico de personas con buena condición física."
+    elif resting_rate < 70:
+        response += "\n\nTu ritmo cardíaco en reposo está en un buen rango saludable."
+    elif resting_rate < 80:
+        response += "\n\nTu ritmo cardíaco en reposo está dentro del rango normal."
+    else:
+        response += "\n\nTu ritmo cardíaco en reposo está ligeramente elevado. Factores como estrés, cafeína o falta de actividad física pueden influir."
+    
+    return response
 
 def generate_calories_response(data: Dict[str, Any], topic_info: Dict[str, str], emoji: str) -> str:
     """Genera una respuesta específica sobre calorías."""
-    # (código existente sin cambios)
-    return f"{emoji} Información de calorías de Fitbit"
+    
+    if 'activity_summary' not in data:
+        return f"{emoji} No tengo información sobre tus calorías quemadas hoy. Verifica que tu Fitbit esté sincronizado correctamente."
+    
+    summary = data['activity_summary'].get('summary', {})
+    
+    if 'caloriesOut' not in summary:
+        return f"{emoji} No tengo información detallada sobre tus calorías quemadas hoy."
+    
+    calories = summary.get('caloriesOut', 0)
+    
+    # Obtener información de perfil para contexto
+    profile_info = ""
+    if 'profile' in data and 'user' in data['profile']:
+        user = data['profile']['user']
+        if 'age' in user and 'gender' in user:
+            gender = user.get('gender', 'male')
+            age = user.get('age', 30)
+            
+            # Estimación muy básica de metabolismo basal (BMR)
+            if gender.lower() == 'female':
+                bmr_estimate = 1400  # Valor aproximado para mujer de 30 años
+            else:
+                bmr_estimate = 1700  # Valor aproximado para hombre de 30 años
+                
+            if calories > bmr_estimate:
+                profile_info = f" (por encima de tu metabolismo basal estimado de ~{bmr_estimate} calorías)"
+    
+    # Base de la respuesta
+    response = f"{emoji} **Información sobre calorías quemadas hoy**\n\n**Calorías totales quemadas**: {calories} kcal{profile_info}"
+    
+    # Añadir contexto de actividad si está disponible
+    if 'activeMinutes' in summary:
+        active_minutes = summary.get('activeMinutes', 0)
+        response += f"\n\n**Minutos de actividad**: {active_minutes} min"
+        
+    if 'steps' in summary:
+        steps = summary.get('steps', 0)
+        response += f"\n**Pasos dados**: {steps} pasos"
+    
+    return response
 
 def generate_distance_response(data: Dict[str, Any], topic_info: Dict[str, str], emoji: str) -> str:
     """Genera una respuesta específica sobre distancia recorrida."""
-    # (código existente sin cambios)
-    return f"{emoji} Información de distancia de Fitbit"
+    
+    if 'activity_summary' not in data:
+        return f"{emoji} No tengo información sobre la distancia que has recorrido hoy. Verifica que tu Fitbit esté sincronizado correctamente."
+    
+    summary = data['activity_summary'].get('summary', {})
+    
+    if 'distances' not in summary:
+        return f"{emoji} No tengo información detallada sobre la distancia recorrida hoy."
+    
+    # Buscar la distancia total
+    total_distance = 0
+    for dist in summary['distances']:
+        if dist.get('activity') == 'total':
+            total_distance = dist.get('distance', 0)
+            break
+    
+    if total_distance == 0:
+        return f"{emoji} No tengo información sobre la distancia total recorrida hoy."
+    
+    # Obtener pasos para contexto
+    steps_info = ""
+    if 'steps' in summary:
+        steps = summary.get('steps', 0)
+        steps_info = f"\n**Pasos dados**: {steps} pasos"
+    
+    # Base de la respuesta
+    response = f"{emoji} **Información sobre la distancia recorrida hoy**\n\n**Distancia total**: {total_distance:.2f} km{steps_info}"
+    
+    return response
 
 def generate_general_response(data: Dict[str, Any], topic_info: Dict[str, str], emoji: str) -> str:
     """Genera una respuesta general con los datos más relevantes."""
-    # (código existente sin cambios)
-    return f"{emoji} Resumen general de datos de Fitbit"
+    
+    # Base de la respuesta
+    response = f"{emoji} **Resumen de tus datos de Fitbit para hoy**\n\n"
+    
+    # Información de perfil
+    if 'profile' in data and 'user' in data['profile']:
+        user = data['profile']['user']
+        name = f"{user.get('firstName', '')} {user.get('lastName', '')}".strip()
+        
+        if name:
+            response += f"**Usuario**: {name}\n"
+        
+        if 'age' in user:
+            response += f"**Edad**: {user['age']} años\n"
+            
+        if 'height' in user and 'weight' in user:
+            response += f"**Altura**: {user['height']} cm\n"
+            response += f"**Peso**: {user['weight']} kg\n"
+        
+        response += "\n"
+    
+    # Datos de actividad (siempre incluirlos si están disponibles)
+    if 'activity_summary' in data:
+        summary = data['activity_summary'].get('summary', {})
+        goals = data['activity_summary'].get('goals', {})
+        
+        response += "**Actividad Física**:\n"
+        
+        # Pasos
+        if 'steps' in summary:
+            steps = summary['steps']
+            steps_goal = goals.get('steps', 0)
+            
+            if steps_goal > 0:
+                progress = (steps / steps_goal) * 100
+                response += f"- **Pasos**: {steps}/{steps_goal} ({progress:.1f}%)\n"
+            else:
+                response += f"- **Pasos**: {steps}\n"
+        
+        # Calorías
+        if 'caloriesOut' in summary:
+            response += f"- **Calorías quemadas**: {summary['caloriesOut']} kcal\n"
+        
+        # Distancia
+        if 'distances' in summary:
+            for dist in summary['distances']:
+                if dist.get('activity') == 'total':
+                    distance = dist.get('distance', 0)
+                    response += f"- **Distancia**: {distance:.2f} km\n"
+        
+        response += "\n"
+    
+    # Ritmo cardíaco (si está disponible y hay datos interesantes)
+    if 'heart_rate_intraday' in data and 'activities-heart' in data['heart_rate_intraday'] and data['heart_rate_intraday']['activities-heart']:
+        heart_summary = data['heart_rate_intraday']['activities-heart'][0]
+        
+        if 'value' in heart_summary and 'restingHeartRate' in heart_summary['value']:
+            resting_rate = heart_summary['value']['restingHeartRate']
+            response += f"**Ritmo cardíaco en reposo**: {resting_rate} bpm\n\n"
+    
+    return response.strip()

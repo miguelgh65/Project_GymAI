@@ -1,3 +1,4 @@
+# fitness_chatbot/core/services.py
 import logging
 import json
 from datetime import datetime
@@ -16,7 +17,7 @@ class FitnessDataService:
         Obtiene los ejercicios recientes de un usuario.
         
         Args:
-            user_id: ID del usuario (debería ser Google ID principalmente)
+            user_id: ID del usuario
             limit: Número máximo de ejercicios a devolver
                 
         Returns:
@@ -26,11 +27,11 @@ class FitnessDataService:
             # Mejorar el log para depuración
             logger.info(f"Consultando ejercicios para user_id={user_id}")
             
-            # Consulta original con una cláusula adicional para buscar en google_id
+            # CORREGIDO: Eliminar google_id de la consulta
             query = """
             SELECT fecha, ejercicio, repeticiones, duracion
             FROM gym.ejercicios
-            WHERE user_id = %s OR user_uuid = %s OR google_id = %s
+            WHERE user_id = %s OR user_uuid = %s
             ORDER BY fecha DESC
             LIMIT %s
             """
@@ -43,11 +44,12 @@ class FitnessDataService:
                 pass
             
             # Log para ver los parámetros de búsqueda
-            logger.info(f"Parámetros de búsqueda: user_id={user_id}, user_uuid={user_uuid}, google_id={user_id}")
+            logger.info(f"Parámetros de búsqueda: user_id={user_id}, user_uuid={user_uuid}")
             
+            # CORREGIDO: Eliminar google_id de los parámetros
             results = await DatabaseConnector.execute_query(
                 query, 
-                (user_id, user_uuid, user_id, limit),  # user_id se usa también como google_id
+                (user_id, user_uuid, limit),
                 fetch_all=True
             )
             
@@ -98,10 +100,11 @@ class FitnessDataService:
             Lista con historial del ejercicio
         """
         try:
+            # CORREGIDO: Eliminar google_id de la consulta
             query = """
             SELECT fecha, repeticiones
             FROM gym.ejercicios
-            WHERE (user_id = %s OR user_uuid = %s OR google_id = %s) AND LOWER(ejercicio) = LOWER(%s)
+            WHERE (user_id = %s OR user_uuid = %s) AND LOWER(ejercicio) = LOWER(%s)
             ORDER BY fecha
             """
             
@@ -112,9 +115,10 @@ class FitnessDataService:
             except (ValueError, TypeError):
                 pass
             
+            # CORREGIDO: Eliminar google_id de los parámetros
             results = await DatabaseConnector.execute_query(
                 query, 
-                (user_id, user_uuid, user_id, exercise_name),  # Añadido google_id
+                (user_id, user_uuid, exercise_name),
                 fetch_all=True
             )
             
@@ -167,14 +171,16 @@ class FitnessDataService:
             except (ValueError, TypeError):
                 pass
             
+            # CORREGIDO: Eliminar google_id de la consulta
             query = """
-            INSERT INTO gym.ejercicios (fecha, ejercicio, repeticiones, user_id, user_uuid, google_id)
-            VALUES (CURRENT_TIMESTAMP, %s, %s, %s, %s, %s)
+            INSERT INTO gym.ejercicios (fecha, ejercicio, repeticiones, user_id, user_uuid)
+            VALUES (CURRENT_TIMESTAMP, %s, %s, %s, %s)
             """
             
+            # CORREGIDO: Eliminar google_id de los parámetros
             await DatabaseConnector.execute_query(
                 query,
-                (exercise_name, repetitions_json, user_id, user_uuid, user_id)  # Añadido google_id
+                (exercise_name, repetitions_json, user_id, user_uuid)
             )
             
             return True
@@ -196,17 +202,19 @@ class FitnessDataService:
             Lista de registros nutricionales
         """
         try:
+            # CORREGIDO: Eliminar google_id de la consulta
             query = """
             SELECT tracking_date, completed_meals, calorie_note, actual_calories, actual_protein
             FROM nutrition.daily_tracking
-            WHERE user_id = %s OR google_id = %s
+            WHERE user_id = %s
               AND tracking_date >= CURRENT_DATE - INTERVAL '%s days'
             ORDER BY tracking_date DESC
             """
             
+            # CORREGIDO: Eliminar google_id de los parámetros
             results = await DatabaseConnector.execute_query(
                 query, 
-                (user_id, user_id, days),  # Añadido google_id
+                (user_id, days),
                 fetch_all=True
             )
             
@@ -267,10 +275,11 @@ class FitnessDataService:
                 meal_type.lower(): True
             }
             
+            # CORREGIDO: Eliminar google_id de la consulta
             query = """
             INSERT INTO nutrition.daily_tracking 
-            (user_id, google_id, tracking_date, completed_meals, calorie_note, actual_calories, actual_protein)
-            VALUES (%s, %s, CURRENT_DATE, %s, %s, %s, %s)
+            (user_id, tracking_date, completed_meals, calorie_note, actual_calories, actual_protein)
+            VALUES (%s, CURRENT_DATE, %s, %s, %s, %s)
             ON CONFLICT (user_id, tracking_date) 
             DO UPDATE SET 
                 completed_meals = nutrition.daily_tracking.completed_meals || %s,
@@ -283,12 +292,13 @@ class FitnessDataService:
             # Crear nota con los alimentos
             calorie_note = ", ".join(foods) if foods else None
             
+            # CORREGIDO: Eliminar google_id de los parámetros
             await DatabaseConnector.execute_query(
                 query,
                 (
-                    user_id, user_id, json.dumps(completed_meals), calorie_note, calories, protein,
+                    user_id, json.dumps(completed_meals), calorie_note, calories, protein,
                     json.dumps(completed_meals), calorie_note, calorie_note, calories, calories, protein, protein
-                )  # Añadido google_id
+                )
             )
             
             return True

@@ -32,31 +32,39 @@ async def process_history_query(states: Tuple[AgentState, MemoryState]) -> Tuple
     logger.info(f"Procesando consulta de historial: '{query}' para usuario {user_id}")
     
     try:
-        # Llamar a la cadena para el procesamiento real
-        respuesta = await HistoryChain.process_query(user_id, query)
+        # Verificar si estamos en un flujo de progreso
+        is_progress = agent_state.get("is_progress", False)
         
-        # Colectar datos para el nodo de progreso (cuando se usa en paralelo)
-        try:
-            # Asegurar que existe user_context
-            if "user_context" not in agent_state:
-                agent_state["user_context"] = {}
-                
-            # Obtener historial de ejercicios (últimos 100)
-            exercise_data = await FitnessDataService.get_user_exercises(user_id, limit=100)
-            if exercise_data:
-                # Guardar en user_context para que progress_node pueda acceder
-                agent_state["user_context"]["exercise_history"] = exercise_data
-                logger.info(f"Datos de historial almacenados para progress: {len(exercise_data)} registros")
-        except Exception as e:
-            logger.warning(f"No se pudieron almacenar datos para progress: {str(e)}")
+        # Asegurar que existe user_context
+        if "user_context" not in agent_state:
+            agent_state["user_context"] = {}
+        
+        # Obtener historial de ejercicios (últimos 100)
+        exercise_data = await FitnessDataService.get_user_exercises(user_id, limit=100)
+        if exercise_data:
+            # Guardar en user_context para que progress_node pueda acceder
+            agent_state["user_context"]["exercise_history"] = exercise_data
+            logger.info(f"Datos de historial almacenados para progress: {len(exercise_data)} registros")
+        else:
+            logger.warning("No se encontraron datos de historial")
+            agent_state["user_context"]["exercise_history"] = []
+        
+        # Si es consulta normal de historial (no progress), generar respuesta
+        if not is_progress:
+            # Llamar a la cadena para el procesamiento real
+            respuesta = await HistoryChain.process_query(user_id, query)
+            
+            # Actualizar estado y memoria
+            agent_state["generation"] = respuesta
+            memory_state["messages"].append({"role": "assistant", "content": respuesta})
     
     except Exception as e:
         logger.exception(f"Error procesando consulta de historial: {str(e)}")
-        respuesta = "Lo siento, tuve un problema al procesar tu consulta sobre tu historial de ejercicios."
-    
-    # Actualizar estado y memoria
-    agent_state["generation"] = respuesta
-    memory_state["messages"].append({"role": "assistant", "content": respuesta})
+        
+        if not agent_state.get("is_progress", False):
+            respuesta = "Lo siento, tuve un problema al procesar tu consulta sobre tu historial de ejercicios."
+            agent_state["generation"] = respuesta
+            memory_state["messages"].append({"role": "assistant", "content": respuesta})
     
     logger.info("--- PROCESAMIENTO DE CONSULTA DE HISTORIAL FINALIZADO ---")
     return agent_state, memory_state
