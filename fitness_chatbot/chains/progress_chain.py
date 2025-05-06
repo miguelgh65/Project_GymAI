@@ -2,6 +2,7 @@
 import logging
 from typing import Dict, Any, Optional, List
 import json
+from datetime import datetime
 
 from fitness_chatbot.configs.llm_config import get_llm
 from fitness_chatbot.utils.prompt_manager import PromptManager
@@ -20,7 +21,7 @@ async def process_query(user_id: str, query: str, user_context: Dict[str, Any] =
     Returns:
         Respuesta formateada con análisis de progreso
     """
-    logger.info(f"ProgressChain procesando: '{query}' para usuario {user_id}")
+    logger.info(f"🚀 ProgressChain procesando: '{query}' para usuario {user_id}")
     
     if not user_context:
         user_context = {}
@@ -30,23 +31,27 @@ async def process_query(user_id: str, query: str, user_context: Dict[str, Any] =
         has_exercise_history = "exercise_history" in user_context and user_context["exercise_history"]
         has_fitbit_data = "fitbit_data" in user_context and user_context["fitbit_data"].get("available", False)
         
+        logger.info(f"📊 Estado de datos: has_exercise_history={has_exercise_history}, has_fitbit_data={has_fitbit_data}")
+        
         if not has_exercise_history and not has_fitbit_data:
-            logger.warning("No hay datos suficientes para análisis de progreso")
+            logger.warning("⚠️ No hay datos suficientes para análisis de progreso")
             return "No tengo suficientes datos para analizar tu progreso. Necesito tu historial de ejercicios o datos de Fitbit, pero parece que no pude obtenerlos. Por favor, intenta más tarde o asegúrate de tener datos registrados."
         
         # Detectar ejercicio específico en la consulta
         specific_exercise = detect_exercise_in_query(query)
         if specific_exercise:
             user_context["specific_exercise"] = specific_exercise
-            logger.info(f"Ejercicio específico detectado: {specific_exercise}")
+            logger.info(f"🏋️ Ejercicio específico detectado: {specific_exercise}")
         
         # Formatear contexto para la IA
+        logger.info(f"📝 Formateando contexto para el LLM con {len(user_context.get('exercise_history', []))} registros de ejercicios")
         context_text = format_context_for_llm(user_context)
+        logger.info(f"📄 Contexto formateado (primeros 500 caracteres): {context_text[:500]}...")
         
         # Obtener LLM para análisis
         llm = get_llm()
         if not llm:
-            logger.error("LLM no disponible para análisis de progreso")
+            logger.error("❌ LLM no disponible para análisis de progreso")
             return "Lo siento, no puedo analizar tu progreso en este momento debido a un problema técnico. Por favor, intenta más tarde."
         
         # Preparar mensajes usando PromptManager
@@ -64,15 +69,22 @@ async def process_query(user_id: str, query: str, user_context: Dict[str, Any] =
             llm = llm.with_max_tokens(2048)
         
         # Invocar LLM para análisis
-        logger.info("Analizando progreso con IA")
+        logger.info("🧠 Analizando progreso con IA - enviando prompt al LLM")
         response = await llm.ainvoke(messages)
         analysis = response.content if hasattr(response, 'content') else str(response)
         
-        logger.info(f"Análisis generado: {len(analysis)} caracteres")
+        # Verificar si la respuesta es válida
+        if not analysis or len(analysis) < 100:
+            logger.warning(f"⚠️ Respuesta del LLM demasiado corta o vacía: {analysis}")
+            # Proporcionar una respuesta de fallback
+            return f"He analizado tus datos de {specific_exercise if specific_exercise else 'entrenamiento'}, pero necesito más información para darte un análisis completo. Por favor, sigue registrando tus entrenamientos regularmente para obtener un mejor análisis."
+        
+        logger.info(f"✅ Análisis generado: {len(analysis)} caracteres")
+        logger.info(f"📊 Primeros 200 caracteres del análisis: {analysis[:200]}")
         return analysis
         
     except Exception as e:
-        logger.exception(f"Error en ProgressChain: {str(e)}")
+        logger.exception(f"❌ Error en ProgressChain: {str(e)}")
         return "Lo siento, tuve un problema al analizar tu progreso. Por favor, intenta de nuevo más tarde."
 
 def detect_exercise_in_query(query: str) -> str:
@@ -125,14 +137,53 @@ def format_context_for_llm(context: Dict[str, Any]) -> str:
         formatted_text.append("=== HISTORIAL DE EJERCICIOS ===\n")
         
         exercise_history = context["exercise_history"]
+        logger.info(f"🏋️ Formateando {len(exercise_history)} registros de ejercicios")
         
         # Agrupar ejercicios por tipo
         exercise_groups = {}
         for entry in exercise_history:
-            exercise_name = entry.get('ejercicio', 'desconocido')
-            if exercise_name not in exercise_groups:
-                exercise_groups[exercise_name] = []
-            exercise_groups[exercise_name].append(entry)
+            # Verificar la estructura del registro y normalizar
+            if isinstance(entry, dict):
+                # El formato puede variar según la fuente, intentamos normalizarlo
+                exercise_name = entry.get('ejercicio', entry.get('exercise', 'desconocido'))
+                
+                # Asegurarnos de que no sea None
+                if exercise_name is None:
+                    exercise_name = 'desconocido'
+                
+                # Normalizar el campo fecha
+                fecha = entry.get('fecha')
+                if isinstance(fecha, str):
+                    # Ya es un string, lo dejamos así
+                    pass
+                elif hasattr(fecha, 'isoformat'):
+                    # Es un objeto datetime, convertirlo a string
+                    fecha = fecha.isoformat()
+                else:
+                    # Si no tenemos fecha válida, usar fecha actual
+                    fecha = datetime.now().isoformat()
+                
+                # Normalizar el campo repeticiones
+                repeticiones = entry.get('repeticiones', [])
+                if isinstance(repeticiones, str):
+                    try:
+                        repeticiones = json.loads(repeticiones)
+                    except:
+                        repeticiones = []
+                        
+                # Crear entrada normalizada
+                normalized_entry = {
+                    'ejercicio': exercise_name,
+                    'fecha': fecha,
+                    'repeticiones': repeticiones
+                }
+                
+                # Añadir a los grupos
+                if exercise_name not in exercise_groups:
+                    exercise_groups[exercise_name] = []
+                exercise_groups[exercise_name].append(normalized_entry)
+            else:
+                logger.warning(f"⚠️ Entrada de ejercicio con formato inesperado: {type(entry)}")
         
         # Si hay un ejercicio específico en la consulta, priorizarlo
         if "specific_exercise" in context:
@@ -153,12 +204,6 @@ def format_context_for_llm(context: Dict[str, Any]) -> str:
                     formatted_text.append(f"  Sesión {i} - Fecha: {fecha}")
                     
                     if repeticiones:
-                        if isinstance(repeticiones, str):
-                            try:
-                                repeticiones = json.loads(repeticiones)
-                            except:
-                                repeticiones = []
-                        
                         if isinstance(repeticiones, list):
                             for j, serie in enumerate(repeticiones, 1):
                                 if isinstance(serie, dict):
