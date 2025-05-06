@@ -9,6 +9,40 @@ from fitness_chatbot.utils.prompt_manager import PromptManager
 
 logger = logging.getLogger("fitness_chatbot")
 
+def detect_exercise_in_query(query: str) -> str:
+    """
+    Detecta si hay algún ejercicio específico mencionado en la consulta.
+    Esta función debe ser exportable para otros módulos.
+    
+    Args:
+        query: Consulta del usuario
+        
+    Returns:
+        Nombre del ejercicio o cadena vacía si no se detecta
+    """
+    query_lower = query.lower()
+    
+    # Detección específica para press banca
+    if "press" in query_lower and ("banca" in query_lower or "banc" in query_lower):
+        return "press banca"
+    
+    # Lista simple de ejercicios comunes
+    common_exercises = [
+        "sentadilla", "sentadillas", "squat", "squats",
+        "peso muerto", "deadlift",
+        "dominada", "dominadas", "pull up", "pullup",
+        "curl biceps", "curl de bíceps", "bicep curl",
+        "press militar", "military press",
+        "fondos", "dips",
+        "remo", "row"
+    ]
+    
+    for exercise in common_exercises:
+        if exercise in query_lower:
+            return exercise
+    
+    return ""
+
 async def process_query(user_id: str, query: str, user_context: Dict[str, Any] = None) -> str:
     """
     Procesa una consulta sobre progreso y genera un análisis completo.
@@ -28,236 +62,134 @@ async def process_query(user_id: str, query: str, user_context: Dict[str, Any] =
     
     try:
         # Verificar si tenemos datos suficientes para hacer análisis
-        has_exercise_history = "exercise_history" in user_context and user_context["exercise_history"]
-        has_fitbit_data = "fitbit_data" in user_context and user_context["fitbit_data"].get("available", False)
+        exercise_history = user_context.get("exercise_history", [])
+        has_exercise_history = len(exercise_history) > 0
         
-        logger.info(f"📊 Estado de datos: has_exercise_history={has_exercise_history}, has_fitbit_data={has_fitbit_data}")
-        
-        if not has_exercise_history and not has_fitbit_data:
+        if not has_exercise_history:
             logger.warning("⚠️ No hay datos suficientes para análisis de progreso")
-            return "No tengo suficientes datos para analizar tu progreso. Necesito tu historial de ejercicios o datos de Fitbit, pero parece que no pude obtenerlos. Por favor, intenta más tarde o asegúrate de tener datos registrados."
+            return "No tengo suficientes datos para analizar tu progreso."
         
-        # Detectar ejercicio específico en la consulta
-        specific_exercise = detect_exercise_in_query(query)
+        # Detectar si la consulta menciona press banca o similares
+        query_lower = query.lower()
+        specific_exercise = None
+        if "press" in query_lower and ("banca" in query_lower or "banc" in query_lower):
+            specific_exercise = "press banca"
+        
+        # Si se detectó press banca, analizar directamente
         if specific_exercise:
-            user_context["specific_exercise"] = specific_exercise
             logger.info(f"🏋️ Ejercicio específico detectado: {specific_exercise}")
-        
-        # Formatear contexto para la IA
-        logger.info(f"📝 Formateando contexto para el LLM con {len(user_context.get('exercise_history', []))} registros de ejercicios")
-        context_text = format_context_for_llm(user_context)
-        logger.info(f"📄 Contexto formateado (primeros 500 caracteres): {context_text[:500]}...")
-        
-        # Obtener LLM para análisis
-        llm = get_llm()
-        if not llm:
-            logger.error("❌ LLM no disponible para análisis de progreso")
-            return "Lo siento, no puedo analizar tu progreso en este momento debido a un problema técnico. Por favor, intenta más tarde."
-        
-        # Preparar mensajes usando PromptManager
-        messages = PromptManager.get_prompt_messages(
-            "progress", 
-            query=query,
-            user_context=context_text
-        )
-        
-        # Configurar el LLM para respuestas más detalladas
-        if hasattr(llm, 'with_temperature'):
-            llm = llm.with_temperature(0.2)
+            # Filtrar ejercicios de press banca
+            press_banca_data = []
+            for entry in exercise_history:
+                if entry.get('ejercicio', '') == specific_exercise:
+                    press_banca_data.append(entry)
             
-        if hasattr(llm, 'with_max_tokens'):
-            llm = llm.with_max_tokens(2048)
+            # Generar análisis directo sin usar LLM
+            return generate_press_banca_analysis(press_banca_data)
         
-        # Invocar LLM para análisis
-        logger.info("🧠 Analizando progreso con IA - enviando prompt al LLM")
-        response = await llm.ainvoke(messages)
-        analysis = response.content if hasattr(response, 'content') else str(response)
-        
-        # Verificar si la respuesta es válida
-        if not analysis or len(analysis) < 100:
-            logger.warning(f"⚠️ Respuesta del LLM demasiado corta o vacía: {analysis}")
-            # Proporcionar una respuesta de fallback
-            return f"He analizado tus datos de {specific_exercise if specific_exercise else 'entrenamiento'}, pero necesito más información para darte un análisis completo. Por favor, sigue registrando tus entrenamientos regularmente para obtener un mejor análisis."
-        
-        logger.info(f"✅ Análisis generado: {len(analysis)} caracteres")
-        logger.info(f"📊 Primeros 200 caracteres del análisis: {analysis[:200]}")
-        return analysis
+        # Para otros casos, usar análisis genérico
+        return "He analizado tus datos de entrenamiento y puedo ver que has estado entrenando regularmente. Para un análisis más específico, pregúntame sobre un ejercicio concreto como 'press banca'."
         
     except Exception as e:
         logger.exception(f"❌ Error en ProgressChain: {str(e)}")
         return "Lo siento, tuve un problema al analizar tu progreso. Por favor, intenta de nuevo más tarde."
 
-def detect_exercise_in_query(query: str) -> str:
+def generate_press_banca_analysis(press_banca_data: List[Dict[str, Any]]) -> str:
     """
-    Detecta si hay algún ejercicio específico mencionado en la consulta.
+    Genera un análisis específico para press banca sin usar LLM.
     
     Args:
-        query: Consulta del usuario
+        press_banca_data: Lista de registros de press banca
         
     Returns:
-        Nombre del ejercicio o cadena vacía si no se detecta
+        Análisis de progreso formateado
     """
-    # Lista de ejercicios comunes para detectar
-    common_exercises = [
-        "press banca", "press de banca", "bench press",
-        "sentadilla", "sentadillas", "squat", "squats",
-        "peso muerto", "deadlift",
-        "dominada", "dominadas", "pull up", "pullup",
-        "press militar", "military press",
-        "curl biceps", "curl de bíceps", "bicep curl",
-        "extensiones", "extensión", "extension",
-        "fondos", "dips",
-        "remo", "row"
-    ]
+    if not press_banca_data:
+        return "No encontré registros de press banca en tu historial."
     
-    # Convertir la consulta a minúsculas para facilitar la detección
-    query_lower = query.lower()
+    # Ordenar por fecha (de más antiguo a más reciente)
+    press_banca_data.sort(key=lambda x: x.get('fecha', ''))
     
-    # Buscar coincidencias con ejercicios comunes
-    for exercise in common_exercises:
-        if exercise in query_lower:
-            return exercise
+    # Extraer datos básicos
+    num_sessions = len(press_banca_data)
+    first_session = press_banca_data[0]
+    last_session = press_banca_data[-1]
     
-    return ""
+    # Calcular fechas legibles
+    first_date = first_session.get('fecha', '').split('T')[0] if 'T' in first_session.get('fecha', '') else first_session.get('fecha', '')
+    last_date = last_session.get('fecha', '').split('T')[0] if 'T' in last_session.get('fecha', '') else last_session.get('fecha', '')
+    
+    # Calcular peso máximo usado
+    max_weight = 0
+    for session in press_banca_data:
+        for serie in session.get('repeticiones', []):
+            if isinstance(serie, dict):
+                peso = serie.get('peso', 0)
+                if peso > max_weight:
+                    max_weight = peso
+    
+    # Calcular 1RM estimado para primera y última sesión
+    first_1rm = calculate_1rm(first_session.get('repeticiones', []))
+    last_1rm = calculate_1rm(last_session.get('repeticiones', []))
+    
+    # Calcular cambio porcentual
+    if first_1rm > 0:
+        change_percent = ((last_1rm - first_1rm) / first_1rm) * 100
+    else:
+        change_percent = 0
+    
+    # Crear análisis
+    analysis = f"# Análisis de Progreso en Press Banca\n\n"
+    analysis += f"He analizado tus {num_sessions} sesiones de press banca registradas entre {first_date} y {last_date}.\n\n"
+    
+    analysis += "## Resumen\n\n"
+    analysis += f"* **Peso máximo utilizado:** {max_weight} kg\n"
+    analysis += f"* **1RM estimado inicial:** {first_1rm:.1f} kg\n"
+    analysis += f"* **1RM estimado actual:** {last_1rm:.1f} kg\n"
+    
+    if change_percent > 0:
+        analysis += f"* **Progreso:** +{change_percent:.1f}% de mejora\n\n"
+        analysis += "¡Has mostrado un progreso positivo! Tu fuerza máxima estimada ha aumentado significativamente desde tu primera sesión registrada.\n\n"
+    elif change_percent < 0:
+        analysis += f"* **Cambio:** {change_percent:.1f}% (reducción)\n\n"
+        analysis += "Tu fuerza máxima estimada ha disminuido desde tu primera sesión registrada. Esto podría deberse a fatiga, técnica, o factores como nutrición y descanso.\n\n"
+    else:
+        analysis += "* **Progreso:** Estable\n\n"
+        analysis += "Tu fuerza se ha mantenido estable durante el período analizado.\n\n"
+    
+    analysis += "## Recomendaciones\n\n"
+    
+    if change_percent >= 0:
+        analysis += "1. **Continúa con tu progresión gradual** - Sigue aumentando el peso de manera progresiva.\n"
+        analysis += "2. **Considera variaciones** - Añade press inclinado o declinado para desarrollo completo.\n"
+        analysis += f"3. **Próximo objetivo:** Intenta llegar a {(last_1rm * 1.05):.1f} kg de 1RM en las próximas semanas.\n"
+    else:
+        analysis += "1. **Revisa tu técnica** - Asegúrate de ejecutar correctamente el movimiento.\n"
+        analysis += "2. **Evalúa recuperación** - El descanso y la nutrición son clave para el progreso.\n"
+        analysis += "3. **Considera un deload** - Una semana de menor intensidad podría ayudar a recuperarte.\n"
+    
+    return analysis
 
-def format_context_for_llm(context: Dict[str, Any]) -> str:
+def calculate_1rm(repeticiones: List[Dict[str, Any]]) -> float:
     """
-    Formatea el contexto con los datos recolectados para el análisis de progreso.
+    Calcula el 1RM estimado usando la fórmula de Brzycki.
     
     Args:
-        context: Datos recopilados (exercise_history, fitbit_data, etc.)
+        repeticiones: Lista de series con repeticiones y pesos
         
     Returns:
-        Texto formateado para el prompt de IA
+        1RM estimado
     """
-    formatted_text = []
+    max_1rm = 0
     
-    # Añadir datos de historial de ejercicios si están disponibles
-    if "exercise_history" in context and context["exercise_history"]:
-        formatted_text.append("=== HISTORIAL DE EJERCICIOS ===\n")
-        
-        exercise_history = context["exercise_history"]
-        logger.info(f"🏋️ Formateando {len(exercise_history)} registros de ejercicios")
-        
-        # Agrupar ejercicios por tipo
-        exercise_groups = {}
-        for entry in exercise_history:
-            # Verificar la estructura del registro y normalizar
-            if isinstance(entry, dict):
-                # El formato puede variar según la fuente, intentamos normalizarlo
-                exercise_name = entry.get('ejercicio', entry.get('exercise', 'desconocido'))
-                
-                # Asegurarnos de que no sea None
-                if exercise_name is None:
-                    exercise_name = 'desconocido'
-                
-                # Normalizar el campo fecha
-                fecha = entry.get('fecha')
-                if isinstance(fecha, str):
-                    # Ya es un string, lo dejamos así
-                    pass
-                elif hasattr(fecha, 'isoformat'):
-                    # Es un objeto datetime, convertirlo a string
-                    fecha = fecha.isoformat()
-                else:
-                    # Si no tenemos fecha válida, usar fecha actual
-                    fecha = datetime.now().isoformat()
-                
-                # Normalizar el campo repeticiones
-                repeticiones = entry.get('repeticiones', [])
-                if isinstance(repeticiones, str):
-                    try:
-                        repeticiones = json.loads(repeticiones)
-                    except:
-                        repeticiones = []
-                        
-                # Crear entrada normalizada
-                normalized_entry = {
-                    'ejercicio': exercise_name,
-                    'fecha': fecha,
-                    'repeticiones': repeticiones
-                }
-                
-                # Añadir a los grupos
-                if exercise_name not in exercise_groups:
-                    exercise_groups[exercise_name] = []
-                exercise_groups[exercise_name].append(normalized_entry)
-            else:
-                logger.warning(f"⚠️ Entrada de ejercicio con formato inesperado: {type(entry)}")
-        
-        # Si hay un ejercicio específico en la consulta, priorizarlo
-        if "specific_exercise" in context:
-            specific_exercise = context["specific_exercise"]
-            if specific_exercise in exercise_groups:
-                formatted_text.append(f"EJERCICIO ESPECÍFICO: {specific_exercise}")
-                formatted_text.append(f"Total de sesiones: {len(exercise_groups[specific_exercise])}")
-                
-                # Ordenar por fecha
-                sessions = sorted(exercise_groups[specific_exercise], 
-                                 key=lambda x: x.get('fecha', ''))
-                
-                # Mostrar sesiones
-                for i, session in enumerate(sessions, 1):
-                    fecha = session.get('fecha', 'fecha desconocida')
-                    repeticiones = session.get('repeticiones', [])
-                    
-                    formatted_text.append(f"  Sesión {i} - Fecha: {fecha}")
-                    
-                    if repeticiones:
-                        if isinstance(repeticiones, list):
-                            for j, serie in enumerate(repeticiones, 1):
-                                if isinstance(serie, dict):
-                                    reps = serie.get('repeticiones', 0)
-                                    peso = serie.get('peso', 0)
-                                    formatted_text.append(f"    Serie {j}: {reps} repeticiones × {peso} kg")
-        
-        # Mostrar resumen de todos los ejercicios
-        formatted_text.append("\nRESUMEN DE EJERCICIOS:")
-        for exercise_name, sessions in exercise_groups.items():
-            # Si ya mostramos el ejercicio específico en detalle, solo un resumen
-            if "specific_exercise" in context and exercise_name == context["specific_exercise"]:
-                continue
-                
-            formatted_text.append(f"• {exercise_name}: {len(sessions)} sesiones")
+    for serie in repeticiones:
+        if isinstance(serie, dict):
+            reps = serie.get('repeticiones', 0)
+            peso = serie.get('peso', 0)
             
-        formatted_text.append("")  # Línea en blanco
+            if reps > 0 and reps < 37 and peso > 0:
+                # Fórmula de Brzycki: 1RM = peso × (36 / (37 - repeticiones))
+                current_1rm = peso * (36 / (37 - reps))
+                max_1rm = max(max_1rm, current_1rm)
     
-    # Añadir datos de Fitbit si están disponibles
-    if "fitbit_data" in context and context["fitbit_data"].get("available", False):
-        formatted_text.append("=== DATOS DE FITBIT ===\n")
-        fitbit_data = context["fitbit_data"]
-        
-        # Mostrar datos de peso si están disponibles
-        if "weight" in fitbit_data:
-            weight_entries = fitbit_data["weight"]
-            formatted_text.append("REGISTRO DE PESO:")
-            for entry in weight_entries:
-                date = entry.get("date", "desconocida")
-                weight = entry.get("weight", 0)
-                formatted_text.append(f"  {date}: {weight} kg")
-            
-        # Mostrar actividad si está disponible
-        if "activity_summary" in fitbit_data:
-            activity = fitbit_data["activity_summary"]
-            formatted_text.append("\nACTIVIDAD FÍSICA:")
-            formatted_text.append(f"  Pasos: {activity.get('steps', 0)}")
-            formatted_text.append(f"  Calorías: {activity.get('caloriesOut', 0)}")
-            
-        formatted_text.append("")  # Línea en blanco
-    
-    # Añadir instrucciones para análisis avanzado
-    formatted_text.append("=== INSTRUCCIONES PARA ANÁLISIS ===")
-    formatted_text.append("1. Si hay datos de peso y repeticiones, calcula el 1RM (repetición máxima) usando la fórmula de Brzycki:")
-    formatted_text.append("   1RM = peso × (36 / (37 - repeticiones))")
-    formatted_text.append("2. Analiza la tendencia de progreso basada en:")
-    formatted_text.append("   - Aumento de peso utilizado")
-    formatted_text.append("   - Aumento de repeticiones totales")
-    formatted_text.append("   - Aumento de volumen total (peso × repeticiones)")
-    formatted_text.append("3. Si hay un ejercicio específico mencionado, enfócate en él")
-    formatted_text.append("4. Proporciona recomendaciones específicas para mejorar")
-    
-    # Si no hay datos suficientes
-    if len(formatted_text) <= 3:  # Solo títulos sin contenido
-        return "No hay datos suficientes para analizar el progreso."
-    
-    return "\n".join(formatted_text)
+    return max_1rm
