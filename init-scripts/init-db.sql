@@ -1,5 +1,4 @@
--- ./init-scripts/create-tables.sql
--- Script SQL actualizado con separación de esquemas
+-- Script SQL con esquemas bien organizados
 
 -- Crear esquemas si no existen
 CREATE SCHEMA IF NOT EXISTS gym;
@@ -17,16 +16,16 @@ CREATE TABLE IF NOT EXISTS gym.ejercicios (
     ejercicio VARCHAR(255),
     repeticiones JSONB,
     duracion INTEGER,
-    user_id VARCHAR(255), -- ID de Google
-    user_uuid INTEGER REFERENCES users(id) ON DELETE SET NULL, -- Referencia numérica
+    user_id VARCHAR(255),
+    user_uuid INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Tabla de rutinas (AÑADIDO user_id)
+-- Tabla de rutinas
 CREATE TABLE IF NOT EXISTS gym.rutinas (
     id SERIAL PRIMARY KEY,
     user_uuid INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    user_id VARCHAR(255), -- NUEVA COLUMNA para ID de Google
+    user_id VARCHAR(255),
     dia_semana INTEGER NOT NULL CHECK (dia_semana BETWEEN 1 AND 7),
     ejercicios JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -34,23 +33,20 @@ CREATE TABLE IF NOT EXISTS gym.rutinas (
     UNIQUE (user_uuid, dia_semana)
 );
 
--- Si la tabla ya existe y necesitas añadir la columna:
--- ALTER TABLE gym.rutinas ADD COLUMN user_id VARCHAR(255);
-
 -- ----------------------------------------
--- ESQUEMA NUTRITION - Perfiles y Alimentación
+-- ESQUEMA NUTRITION - Todo relacionado con nutrición
 -- ----------------------------------------
 
 -- Tabla de perfiles nutricionales de usuarios
 CREATE TABLE IF NOT EXISTS nutrition.user_nutrition_profiles (
     id SERIAL PRIMARY KEY,
-    user_id VARCHAR(255) NOT NULL, -- ID de Google
+    user_id VARCHAR(255) NOT NULL,
     user_uuid INTEGER REFERENCES users(id) ON DELETE CASCADE,
     formula VARCHAR(50) NOT NULL,
     sex VARCHAR(10) NOT NULL CHECK (sex IN ('male', 'female', 'other')),
     age INTEGER NOT NULL CHECK (age > 0),
-    height DECIMAL(6, 2) NOT NULL CHECK (height > 0), -- en cm
-    weight DECIMAL(5, 2) NOT NULL CHECK (weight > 0), -- en kg
+    height DECIMAL(6, 2) NOT NULL CHECK (height > 0),
+    weight DECIMAL(5, 2) NOT NULL CHECK (weight > 0),
     body_fat_percentage DECIMAL(4, 2) CHECK (body_fat_percentage >= 0 AND body_fat_percentage <= 100),
     activity_level VARCHAR(50) NOT NULL,
     goal VARCHAR(50) NOT NULL,
@@ -108,7 +104,7 @@ CREATE TABLE IF NOT EXISTS nutrition.meal_ingredients (
 -- Tabla para planes de comida
 CREATE TABLE IF NOT EXISTS nutrition.meal_plans (
     id SERIAL PRIMARY KEY,
-    user_id VARCHAR(255) NOT NULL, -- ID de Google
+    user_id VARCHAR(255) NOT NULL,
     user_uuid INTEGER REFERENCES users(id) ON DELETE CASCADE,
     plan_name VARCHAR(255) NOT NULL,
     start_date DATE,
@@ -142,7 +138,7 @@ CREATE TABLE IF NOT EXISTS nutrition.meal_plan_items (
 -- Tabla para seguimiento diario de nutrición
 CREATE TABLE IF NOT EXISTS nutrition.daily_tracking (
     id SERIAL PRIMARY KEY,
-    user_id VARCHAR(255) NOT NULL, -- ID de Google
+    user_id VARCHAR(255) NOT NULL,
     user_uuid INTEGER REFERENCES users(id) ON DELETE CASCADE,
     tracking_date DATE NOT NULL,
     completed_meals JSONB NOT NULL DEFAULT '{}',
@@ -160,7 +156,7 @@ CREATE TABLE IF NOT EXISTS nutrition.daily_tracking (
 -- ----------------------------------------
 
 -- Crear tabla para gestionar usuarios (en esquema public)
-CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE IF NOT EXISTS public.users (
     id SERIAL PRIMARY KEY,
     telegram_id VARCHAR(255) UNIQUE,
     google_id VARCHAR(255) UNIQUE,
@@ -172,7 +168,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- Crear tabla de códigos de vinculación
-CREATE TABLE IF NOT EXISTS link_codes (
+CREATE TABLE IF NOT EXISTS public.link_codes (
     code VARCHAR(10) PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -187,7 +183,7 @@ CREATE TABLE IF NOT EXISTS link_codes (
 -- Tabla para tokens de Fitbit
 CREATE TABLE IF NOT EXISTS config.fitbit_tokens (
     id SERIAL PRIMARY KEY,
-    user_id VARCHAR(255) NOT NULL, -- ID de Google
+    user_id VARCHAR(255) NOT NULL,
     user_uuid INTEGER REFERENCES users(id) ON DELETE CASCADE,
     client_id VARCHAR(255) NOT NULL,
     access_token TEXT NOT NULL,
@@ -210,9 +206,9 @@ CREATE TABLE IF NOT EXISTS config.fitbit_auth_temp (
 -- ÍNDICES PARA OPTIMIZACIÓN
 -- ----------------------------------------
 -- Índices para users
-CREATE INDEX IF NOT EXISTS idx_users_telegram_id ON users(telegram_id);
-CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_telegram_id ON public.users(telegram_id);
+CREATE INDEX IF NOT EXISTS idx_users_google_id ON public.users(google_id);
+CREATE INDEX IF NOT EXISTS idx_users_email ON public.users(email);
 
 -- Índices para ejercicios y rutinas
 CREATE INDEX IF NOT EXISTS idx_ejercicios_user_id ON gym.ejercicios(user_id);
