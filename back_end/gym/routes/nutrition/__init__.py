@@ -43,6 +43,14 @@ except ImportError as e:
     logger.error(f"❌ Error importing meal plans router: {e}")
 
 try:
+    # Meal plan items router
+    from .meal_plan_items import router as meal_plan_items_router
+    router.include_router(meal_plan_items_router)
+    logger.info("✅ Meal plan items router included")
+except ImportError as e:
+    logger.error(f"❌ Error importing meal plan items router: {e}")
+
+try:
     # TRACKING ROUTER - Make sure this is included!
     from .tracking import router as tracking_router
     router.include_router(tracking_router)
