@@ -1,6 +1,7 @@
 # fitness_chatbot/chains/nutrition_chain.py
 import logging
 import json
+import re
 from datetime import datetime
 from typing import Dict, Any, Optional, List
 
@@ -22,7 +23,7 @@ class NutritionChain:
         Procesa una consulta sobre nutrición y devuelve una respuesta formateada.
         
         Args:
-            user_id: ID del usuario
+            user_id: ID del usuario (google_id)
             query: Consulta en lenguaje natural
             
         Returns:
@@ -50,28 +51,96 @@ class NutritionChain:
             response = await llm.ainvoke(messages)
             content = response.content if hasattr(response, 'content') else str(response)
             
+            # Log completo de la respuesta para diagnóstico
+            logger.info(f"Respuesta completa del LLM: {content}")
+            
             # Extraer el JSON de la respuesta
             sql_data = NutritionChain._extract_sql_from_response(content)
             
+            # Obtener el día de la semana actual (1-7, donde 1 es lunes)
+            current_day = str(datetime.now().isoweekday())
+            
+            # Si no se pudo extraer un SQL válido, usar uno predefinido
             if not sql_data:
-                logger.error("No se pudo generar una consulta SQL válida")
-                return "Lo siento, no pude entender completamente tu consulta. ¿Podrías reformularla?"
+                logger.warning("No se pudo extraer SQL válido, usando consulta predefinida")
+                sql_data = {
+                    "sql": """
+                    SELECT mpi.meal_type, m.meal_name 
+                    FROM nutrition.meal_plans mp
+                    JOIN nutrition.meal_plan_items mpi ON mpi.meal_plan_id = mp.id
+                    JOIN nutrition.meals m ON mpi.meal_id = m.id
+                    WHERE mp.user_id = %s
+                      AND mp.is_active = TRUE
+                      AND mpi.day_of_week = %s
+                    """,
+                    "params": [user_id, current_day],
+                    "tipo_consulta": "plan_diario"
+                }
+            else:
+                # Corregir parámetros para asegurar valores correctos
+                corrected_params = []
+                for param in sql_data["params"]:
+                    if param == "user_id_value" or param == "{user_id}":
+                        corrected_params.append(user_id)
+                    elif param in ["current_day_number", "día_actual", "{current_day}"]:
+                        corrected_params.append(current_day)
+                    else:
+                        corrected_params.append(param)
+                
+                # Actualizar los parámetros
+                sql_data["params"] = corrected_params
+                
+                # Verificar si la consulta tiene errores comunes y corregirlos
+                sql_data["sql"] = NutritionChain._correct_common_sql_errors(sql_data["sql"])
             
             # Ejecutar la consulta SQL
             logger.info(f"Ejecutando SQL: {sql_data['sql']}")
             logger.info(f"Con parámetros: {sql_data['params']}")
             
-            # Ejecutar la consulta
-            results = await DatabaseConnector.execute_query(
-                sql_data["sql"], 
-                sql_data["params"],
-                fetch_all=True
-            )
-            
-            # Verificar si tenemos resultados
-            if not results:
-                logger.info("No se encontraron resultados para la consulta")
-                return "No encontré información sobre tu plan nutricional para hoy. ¿Quieres crear un nuevo plan?"
+            try:
+                # Ejecutar la consulta
+                results = await DatabaseConnector.execute_query(
+                    sql_data["sql"], 
+                    sql_data["params"],
+                    fetch_all=True
+                )
+            except Exception as e:
+                # Si falla, intentar con una consulta de fallback más simple
+                logger.error(f"Error ejecutando la consulta: {str(e)}")
+                logger.info("Intentando con consulta SQL de respaldo simplificada")
+                
+                # Utilizar la consulta de respaldo simplificada
+                backup_sql = """
+                SELECT mpi.meal_type, m.meal_name 
+                FROM nutrition.meal_plans mp
+                JOIN nutrition.meal_plan_items mpi ON mpi.meal_plan_id = mp.id
+                JOIN nutrition.meals m ON mpi.meal_id = m.id
+                WHERE mp.user_id = %s
+                """
+                backup_params = [user_id]
+                
+                try:
+                    results = await DatabaseConnector.execute_query(
+                        backup_sql, 
+                        backup_params,
+                        fetch_all=True
+                    )
+                    
+                    # Filtrar los resultados manualmente por día si es posible
+                    filtered_results = []
+                    for row in results:
+                        try:
+                            if 'day_of_week' in row and str(row['day_of_week']) == current_day:
+                                filtered_results.append(row)
+                        except:
+                            # Si hay error al filtrar, incluir la fila
+                            filtered_results.append(row)
+                    
+                    results = filtered_results if filtered_results else results
+                    
+                except Exception as backup_error:
+                    logger.error(f"Error ejecutando consulta de respaldo: {str(backup_error)}")
+                    return "Lo siento, tuve un problema al obtener la información sobre tu plan nutricional. Por favor, intenta de nuevo más tarde."
             
             # Formatear los resultados
             tipo_consulta = sql_data.get("tipo_consulta", "plan_diario")
@@ -93,38 +162,77 @@ class NutritionChain:
             Diccionario con la consulta SQL y los parámetros, o None si no se pudo extraer
         """
         # Buscar un objeto JSON en la respuesta
-        import re
         json_match = re.search(r'\{.*\}', content, re.DOTALL)
         
         if not json_match:
             logger.warning("No se encontró JSON en la respuesta del LLM")
+            
+            # Intentar extraer SQL y params de manera más flexible
+            sql_match = re.search(r'```sql\s*(.*?)\s*```', content, re.DOTALL)
+            if sql_match:
+                sql = sql_match.group(1).strip()
+                logger.info(f"SQL extraído de la respuesta: {sql}")
+                
+                # Construir un objeto SQL manualmente
+                return {
+                    "sql": sql,
+                    "params": [],  # Los parámetros serán corregidos después
+                    "tipo_consulta": "plan_diario"
+                }
+            
             return None
         
         try:
             sql_data = json.loads(json_match.group(0))
             
-            if "sql" not in sql_data or "params" not in sql_data:
-                logger.warning("JSON encontrado pero sin campos sql o params")
+            if "sql" not in sql_data:
+                logger.warning("JSON encontrado pero sin campo sql")
                 return None
             
-            # Validar el número de parámetros vs placeholders %s
-            placeholder_count = sql_data["sql"].count("%s")
-            param_count = len(sql_data["params"])
+            # Si no hay params, agregarlo vacío
+            if "params" not in sql_data:
+                sql_data["params"] = []
             
-            if placeholder_count != param_count:
-                logger.warning(f"Número de placeholders (%s) no coincide con parámetros: {placeholder_count} vs {param_count}")
-                # Ajustar la lista de parámetros si faltan o sobran
-                if placeholder_count > param_count:
-                    # Agregar más parámetros para completar
-                    sql_data["params"].extend([None] * (placeholder_count - param_count))
-                elif placeholder_count < param_count:
-                    # Recortar los parámetros excedentes
-                    sql_data["params"] = sql_data["params"][:placeholder_count]
+            # Si no hay tipo_consulta, establecer un valor por defecto
+            if "tipo_consulta" not in sql_data:
+                sql_data["tipo_consulta"] = "plan_diario"
             
             return sql_data
         except json.JSONDecodeError:
             logger.error("Error decodificando JSON de la respuesta del LLM")
             return None
+    
+    @staticmethod
+    def _correct_common_sql_errors(sql: str) -> str:
+        """
+        Corrige errores comunes en la consulta SQL generada.
+        
+        Args:
+            sql: Consulta SQL a corregir
+            
+        Returns:
+            Consulta SQL corregida
+        """
+        # Corregir error "mp.user_uuid" -> "mp.user_id"
+        sql = sql.replace("mp.user_uuid", "mp.user_id")
+        
+        # Corregir error "u.id = mp.user_uuid" -> "u.google_id = mp.user_id"
+        sql = sql.replace("u.id = mp.user_uuid", "u.google_id = mp.user_id")
+        
+        # Si hay un JOIN con la tabla users pero no es necesario, simplificarlo
+        if "JOIN public.users u" in sql and "u.google_id = %s" in sql:
+            # Reemplazar "u.google_id = %s" con "mp.user_id = %s"
+            sql = sql.replace("u.google_id = %s", "mp.user_id = %s")
+            
+            # Eliminar el JOIN con users
+            sql = re.sub(r'JOIN public\.users u[^\n]+\n', '', sql)
+        
+        # Asegurar que siempre incluya "AND mp.is_active = TRUE"
+        if "mp.is_active" not in sql and "WHERE" in sql:
+            # Agregar la condición después del primer WHERE
+            sql = sql.replace("WHERE", "WHERE mp.is_active = TRUE AND ")
+        
+        return sql
     
     @staticmethod
     def _format_results(results: List[Dict[str, Any]], tipo_consulta: str) -> str:
@@ -146,29 +254,11 @@ class NutritionChain:
         }
         dia_nombre = day_names.get(current_day, f"Día {current_day}")
         
-        if tipo_consulta == "plan_diario":
-            # Formato para plan alimenticio del día
-            return NutritionChain._format_daily_plan(results, dia_nombre)
-        elif tipo_consulta == "resumen_plan":
-            # Formato para resumen general de un plan
-            return NutritionChain._format_plan_summary(results)
-        else:
-            # Formateo genérico
-            return NutritionChain._format_generic_results(results, dia_nombre)
-    
-    @staticmethod
-    def _format_daily_plan(results: List[Dict[str, Any]], dia_nombre: str) -> str:
-        """
-        Formatea los resultados como un plan diario.
+        if not results:
+            return f"No encontré información sobre tu plan nutricional para {dia_nombre}. ¿Quieres que te ayude a crear un plan?"
         
-        Args:
-            results: Resultados de la consulta SQL
-            dia_nombre: Nombre del día
-            
-        Returns:
-            Respuesta formateada
-        """
-        respuesta = f"## 🍽️ Tu plan nutricional para {dia_nombre}\n\n"
+        # Formatear el plan diario
+        respuesta = f"## 🍽️ Tu menú para {dia_nombre}\n\n"
         
         # Agrupar por tipo de comida
         meals_by_type = {}
@@ -176,99 +266,14 @@ class NutritionChain:
             meal_type = item.get('meal_type', '').replace('MealTime.', '')
             if meal_type not in meals_by_type:
                 meals_by_type[meal_type] = []
-            meals_by_type[meal_type].append(item)
+            meals_by_type[meal_type].append(item.get('meal_name', 'Comida sin nombre'))
         
         # Mostrar cada tipo de comida
-        for meal_type, items in meals_by_type.items():
+        for meal_type, meals in meals_by_type.items():
             respuesta += f"### {meal_type}\n\n"
-            
-            for item in items:
-                meal_name = item.get('meal_name', 'Comida sin nombre')
-                respuesta += f"- {meal_name}\n"
-            
+            for meal in meals:
+                respuesta += f"- {meal}\n"
             respuesta += "\n"
         
-        return respuesta
-    
-    @staticmethod
-    def _format_plan_summary(results: List[Dict[str, Any]]) -> str:
-        """
-        Formatea los resultados como un resumen de plan.
-        
-        Args:
-            results: Resultados de la consulta SQL
-            
-        Returns:
-            Respuesta formateada
-        """
-        respuesta = "## 📊 Resumen de tu plan nutricional\n\n"
-        
-        if not results:
-            return "No tienes ningún plan nutricional configurado actualmente."
-        
-        # Obtener información del plan
-        plan = results[0]
-        plan_name = plan.get('plan_name', 'Plan sin nombre')
-        is_active = plan.get('is_active', False)
-        target_calories = plan.get('target_calories', 0)
-        
-        respuesta += f"**Plan**: {plan_name}\n"
-        respuesta += f"**Estado**: {'Activo' if is_active else 'Inactivo'}\n"
-        
-        if target_calories:
-            respuesta += f"**Calorías objetivo**: {target_calories} kcal\n"
-        
-        # Si hay macros
-        target_protein = plan.get('target_protein_g', 0)
-        target_carbs = plan.get('target_carbs_g', 0)
-        target_fat = plan.get('target_fat_g', 0)
-        
-        if any([target_protein, target_carbs, target_fat]):
-            respuesta += "\n**Distribución de macronutrientes**:\n"
-            if target_protein:
-                respuesta += f"- Proteínas: {target_protein}g\n"
-            if target_carbs:
-                respuesta += f"- Carbohidratos: {target_carbs}g\n"
-            if target_fat:
-                respuesta += f"- Grasas: {target_fat}g\n"
-        
-        return respuesta
-    
-    @staticmethod
-    def _format_generic_results(results: List[Dict[str, Any]], dia_nombre: str) -> str:
-        """
-        Formatea los resultados de manera genérica.
-        
-        Args:
-            results: Resultados de la consulta SQL
-            dia_nombre: Nombre del día
-            
-        Returns:
-            Respuesta formateada
-        """
-        respuesta = f"## 🍽️ Resultados de tu consulta nutricional\n\n"
-        
-        # Si no hay resultados
-        if not results:
-            return "No encontré información nutricional para tu consulta."
-        
-        # Ver qué campos tenemos disponibles en los resultados
-        sample = results[0]
-        fields = list(sample.keys())
-        
-        # Mostrar cada registro
-        for i, row in enumerate(results, 1):
-            respuesta += f"### Resultado {i}\n\n"
-            
-            for field in fields:
-                if field in ['id', 'user_id', 'user_uuid']:
-                    continue  # Omitir campos técnicos
-                
-                value = row.get(field)
-                field_name = field.replace('_', ' ').capitalize()
-                
-                respuesta += f"**{field_name}**: {value}\n"
-            
-            respuesta += "\n"
-        
+        respuesta += "¿Necesitas más detalles sobre alguna comida en particular?"
         return respuesta
