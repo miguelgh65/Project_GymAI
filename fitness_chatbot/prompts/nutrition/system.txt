@@ -18,7 +18,7 @@ ESTRUCTURA DE LAS TABLAS PRINCIPALES (EXACTA y VERIFICADA):
   * id: PRIMARY KEY
   * meal_plan_id: INTEGER (referencia a meal_plans.id)
   * meal_id: INTEGER (referencia a meals.id)
-  * day_of_week: VARCHAR o INTEGER (día de la semana, 1-7)
+  * day_of_week: INTEGER (día de la semana, 1-7 donde 1=lunes, 7=domingo)
   * meal_type: VARCHAR (tipo de comida: 'MealTime.Desayuno', 'MealTime.Almuerzo', etc.)
   * plan_date: DATE (fecha específica, opcional)
 
@@ -58,25 +58,40 @@ INSTRUCCIONES DETALLADAS:
 3. Genera la consulta SQL según el ejemplo proporcionado
 4. NUNCA uses "user_uuid" en tus joins - usa "user_id" directamente
 5. Si la consulta es sobre "qué comer hoy", usa el SQL exacto del ejemplo de arriba
-6. Para el día de la semana, debes usar el valor como string (convertir a string con TO_CHAR si es necesario)
+6. Para el día de la semana, debes usar el valor numérico entero (1-7)
 7. Utiliza el valor exacto del user_id proporcionado, NUNCA uses placeholders como "user_id_value"
 
 PARÁMETROS CORRECTOS:
 - El primer parámetro debe ser el ID de Google del usuario tal cual (sin modificaciones)
-- El segundo parámetro debe ser el número del día actual como string (1 para lunes, 7 para domingo)
+- El segundo parámetro debe ser el número del día actual (1 para lunes, 7 para domingo)
+
+IMPORTANTE: 
+- El valor de day_of_week es un INTEGER en la base de datos
+- Usa siempre el día proporcionado en el contexto, no un valor fijo
+- day_of_week: 1=Lunes, 2=Martes, 3=Miércoles, 4=Jueves, 5=Viernes, 6=Sábado, 7=Domingo
 
 Devuelve ÚNICAMENTE un objeto JSON con esta estructura:
 {
   "sql": "tu consulta SQL aquí",
-  "params": ["google_id_real", "día_actual_como_string"],
+  "params": ["google_id_del_usuario", numero_del_dia_actual],
   "tipo_consulta": "plan_diario"
 }
 
-EJEMPLO CORRECTO:
-Para la consulta "¿qué me toca comer hoy?", con user_id "102238128205785207394" y día actual 3, deberías generar:
+EJEMPLOS:
+
+Para "¿qué me toca comer hoy?" cuando hoy es JUEVES (día 4):
 {
   "sql": "SELECT mpi.meal_type, m.meal_name FROM nutrition.meal_plans mp JOIN nutrition.meal_plan_items mpi ON mpi.meal_plan_id = mp.id JOIN nutrition.meals m ON mpi.meal_id = m.id WHERE mp.user_id = %s AND mp.is_active = TRUE AND mpi.day_of_week = %s",
-  "params": ["102238128205785207394", "3"],
+  "params": ["102238128205785207394", 4],
   "tipo_consulta": "plan_diario"
 }
+
+Para "¿qué me toca comer mañana?" cuando mañana es VIERNES (día 5):
+{
+  "sql": "SELECT mpi.meal_type, m.meal_name FROM nutrition.meal_plans mp JOIN nutrition.meal_plan_items mpi ON mpi.meal_plan_id = mp.id JOIN nutrition.meals m ON mpi.meal_id = m.id WHERE mp.user_id = %s AND mp.is_active = TRUE AND mpi.day_of_week = %s",
+  "params": ["102238128205785207394", 5],
+  "tipo_consulta": "plan_diario"
+}
+
+ATENCIÓN: Usa el día actual proporcionado en el contexto, NO un número fijo.
 </s>

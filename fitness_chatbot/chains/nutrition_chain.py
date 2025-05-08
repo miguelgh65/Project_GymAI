@@ -2,7 +2,7 @@
 import logging
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List
 
 from fitness_chatbot.configs.llm_config import get_llm
@@ -12,23 +12,11 @@ from fitness_chatbot.core.db_connector import DatabaseConnector
 logger = logging.getLogger("fitness_chatbot")
 
 class NutritionChain:
-    """
-    Cadena para procesar consultas sobre nutrición y planes alimenticios.
-    Utiliza LLM para generar consultas SQL y formatear respuestas.
-    """
+    """Cadena para procesar consultas sobre nutrición y planes alimenticios."""
     
     @staticmethod
     async def process_query(user_id: str, query: str) -> str:
-        """
-        Procesa una consulta sobre nutrición y devuelve una respuesta formateada.
-        
-        Args:
-            user_id: ID del usuario (google_id)
-            query: Consulta en lenguaje natural
-            
-        Returns:
-            Respuesta formateada para el usuario
-        """
+        """Procesa una consulta sobre nutrición y devuelve una respuesta formateada."""
         logger.info(f"NutritionChain procesando: '{query}' para usuario {user_id}")
         
         try:
@@ -39,11 +27,39 @@ class NutritionChain:
                 logger.error("LLM no disponible para generar consulta SQL")
                 return "Lo siento, no puedo procesar tu consulta en este momento. Por favor, intenta más tarde."
             
-            # Usar el LLM para generar la consulta SQL con el sistema de prompt
+            # Calcular el día correctamente
+            query_lower = query.lower()
+            if "mañana" in query_lower:
+                # Mañana = día actual + 1
+                current_day = (datetime.now() + timedelta(days=1)).isoweekday()
+                query_type = "mañana"
+            else:
+                # Hoy = día actual
+                current_day = datetime.now().isoweekday()
+                query_type = "hoy"
+            
+            # Ajustar día 8 a día 1 (si es domingo+1=lunes)
+            if current_day > 7:
+                current_day = 1
+            
+            # Mapear días
+            day_names = {
+                1: "Lunes", 2: "Martes", 3: "Miércoles", 
+                4: "Jueves", 5: "Viernes", 6: "Sábado", 7: "Domingo"
+            }
+            day_name = day_names.get(current_day, f"Día {current_day}")
+            
+            # Preparar user_context y variables para el prompt
+            user_context = f"El usuario {user_id} quiere consultar su plan nutricional para {query_type}"
+            
+            # Usar el LLM para generar la consulta SQL
             messages = PromptManager.get_prompt_messages(
                 "nutrition", 
                 query=query,
-                user_id=user_id
+                user_context=user_context,
+                user_id=user_id,
+                current_day=current_day,  # Pasamos el día actual
+                day_name=day_name         # Pasamos el nombre del día
             )
             
             # Invocar el LLM
@@ -51,16 +67,13 @@ class NutritionChain:
             response = await llm.ainvoke(messages)
             content = response.content if hasattr(response, 'content') else str(response)
             
-            # Log completo de la respuesta para diagnóstico
+            # Log completo para debug
             logger.info(f"Respuesta completa del LLM: {content}")
             
             # Extraer el JSON de la respuesta
             sql_data = NutritionChain._extract_sql_from_response(content)
             
-            # Obtener el día de la semana actual (1-7, donde 1 es lunes)
-            current_day = str(datetime.now().isoweekday())
-            
-            # Si no se pudo extraer un SQL válido, usar uno predefinido
+            # Si no se pudo extraer SQL válido, usar uno predefinido
             if not sql_data:
                 logger.warning("No se pudo extraer SQL válido, usando consulta predefinida")
                 sql_data = {
@@ -73,24 +86,22 @@ class NutritionChain:
                       AND mp.is_active = TRUE
                       AND mpi.day_of_week = %s
                     """,
-                    "params": [user_id, current_day],
+                    "params": [user_id, current_day],  # Usar como INTEGER directamente
                     "tipo_consulta": "plan_diario"
                 }
             else:
-                # Corregir parámetros para asegurar valores correctos
+                # Asegurar que los parámetros usan el día actual y el user_id correcto
                 corrected_params = []
                 for param in sql_data["params"]:
                     if param == "user_id_value" or param == "{user_id}":
                         corrected_params.append(user_id)
-                    elif param in ["current_day_number", "día_actual", "{current_day}"]:
-                        corrected_params.append(current_day)
                     else:
+                        # Usar el parámetro tal cual, el LLM debería generar el día correcto ahora
                         corrected_params.append(param)
                 
-                # Actualizar los parámetros
                 sql_data["params"] = corrected_params
                 
-                # Verificar si la consulta tiene errores comunes y corregirlos
+                # Corregir errores comunes en SQL
                 sql_data["sql"] = NutritionChain._correct_common_sql_errors(sql_data["sql"])
             
             # Ejecutar la consulta SQL
@@ -98,26 +109,33 @@ class NutritionChain:
             logger.info(f"Con parámetros: {sql_data['params']}")
             
             try:
-                # Ejecutar la consulta
                 results = await DatabaseConnector.execute_query(
                     sql_data["sql"], 
                     sql_data["params"],
                     fetch_all=True
                 )
-            except Exception as e:
-                # Si falla, intentar con una consulta de fallback más simple
-                logger.error(f"Error ejecutando la consulta: {str(e)}")
-                logger.info("Intentando con consulta SQL de respaldo simplificada")
                 
-                # Utilizar la consulta de respaldo simplificada
+                # Log de resultados para debug
+                logger.info(f"Resultados obtenidos: {len(results)} filas")
+                if results:
+                    for i, row in enumerate(results):
+                        logger.info(f"Fila {i+1}: {row}")
+                
+            except Exception as e:
+                # Fallback con consulta simplificada
+                logger.error(f"Error ejecutando la consulta: {str(e)}")
+                logger.info("Intentando con consulta SQL de respaldo")
+                
+                # Consulta básica
                 backup_sql = """
-                SELECT mpi.meal_type, m.meal_name 
+                SELECT mpi.meal_type, m.meal_name, mpi.day_of_week
                 FROM nutrition.meal_plans mp
                 JOIN nutrition.meal_plan_items mpi ON mpi.meal_plan_id = mp.id
                 JOIN nutrition.meals m ON mpi.meal_id = m.id
-                WHERE mp.user_id = %s
+                WHERE mp.user_id = %s AND mp.is_active = TRUE
+                  AND mpi.day_of_week = %s
                 """
-                backup_params = [user_id]
+                backup_params = [user_id, current_day]
                 
                 try:
                     results = await DatabaseConnector.execute_query(
@@ -125,26 +143,12 @@ class NutritionChain:
                         backup_params,
                         fetch_all=True
                     )
-                    
-                    # Filtrar los resultados manualmente por día si es posible
-                    filtered_results = []
-                    for row in results:
-                        try:
-                            if 'day_of_week' in row and str(row['day_of_week']) == current_day:
-                                filtered_results.append(row)
-                        except:
-                            # Si hay error al filtrar, incluir la fila
-                            filtered_results.append(row)
-                    
-                    results = filtered_results if filtered_results else results
-                    
                 except Exception as backup_error:
                     logger.error(f"Error ejecutando consulta de respaldo: {str(backup_error)}")
                     return "Lo siento, tuve un problema al obtener la información sobre tu plan nutricional. Por favor, intenta de nuevo más tarde."
             
-            # Formatear los resultados
-            tipo_consulta = sql_data.get("tipo_consulta", "plan_diario")
-            return NutritionChain._format_results(results, tipo_consulta)
+            # Formatear los resultados con el día correcto
+            return NutritionChain._format_results(results, day_name, query_type)
         
         except Exception as e:
             logger.exception(f"Error en NutritionChain: {str(e)}")
@@ -152,15 +156,7 @@ class NutritionChain:
     
     @staticmethod
     def _extract_sql_from_response(content: str) -> Optional[Dict[str, Any]]:
-        """
-        Extrae la consulta SQL y los parámetros del contenido generado por el LLM.
-        
-        Args:
-            content: Respuesta del LLM
-            
-        Returns:
-            Diccionario con la consulta SQL y los parámetros, o None si no se pudo extraer
-        """
+        """Extrae la consulta SQL y los parámetros del contenido generado por el LLM."""
         # Buscar un objeto JSON en la respuesta
         json_match = re.search(r'\{.*\}', content, re.DOTALL)
         
@@ -173,7 +169,7 @@ class NutritionChain:
                 sql = sql_match.group(1).strip()
                 logger.info(f"SQL extraído de la respuesta: {sql}")
                 
-                # Construir un objeto SQL manualmente
+                # Crear objeto SQL manualmente
                 return {
                     "sql": sql,
                     "params": [],  # Los parámetros serán corregidos después
@@ -204,15 +200,7 @@ class NutritionChain:
     
     @staticmethod
     def _correct_common_sql_errors(sql: str) -> str:
-        """
-        Corrige errores comunes en la consulta SQL generada.
-        
-        Args:
-            sql: Consulta SQL a corregir
-            
-        Returns:
-            Consulta SQL corregida
-        """
+        """Corrige errores comunes en la consulta SQL generada."""
         # Corregir error "mp.user_uuid" -> "mp.user_id"
         sql = sql.replace("mp.user_uuid", "mp.user_id")
         
@@ -227,7 +215,7 @@ class NutritionChain:
             # Eliminar el JOIN con users
             sql = re.sub(r'JOIN public\.users u[^\n]+\n', '', sql)
         
-        # Asegurar que siempre incluya "AND mp.is_active = TRUE"
+        # Asegurar que siempre incluye "AND mp.is_active = TRUE"
         if "mp.is_active" not in sql and "WHERE" in sql:
             # Agregar la condición después del primer WHERE
             sql = sql.replace("WHERE", "WHERE mp.is_active = TRUE AND ")
@@ -235,45 +223,72 @@ class NutritionChain:
         return sql
     
     @staticmethod
-    def _format_results(results: List[Dict[str, Any]], tipo_consulta: str) -> str:
-        """
-        Formatea los resultados de la consulta en una respuesta para el usuario.
+    def _format_results(results: List[Dict[str, Any]], day_name: str, query_type: str) -> str:
+        """Formatea los resultados de la consulta en una respuesta para el usuario."""
         
-        Args:
-            results: Resultados de la consulta SQL
-            tipo_consulta: Tipo de consulta (plan_diario, etc.)
-            
-        Returns:
-            Respuesta formateada
-        """
-        # Obtener el día actual
-        current_day = datetime.now().isoweekday()
-        day_names = {
-            1: "Lunes", 2: "Martes", 3: "Miércoles", 
-            4: "Jueves", 5: "Viernes", 6: "Sábado", 7: "Domingo"
-        }
-        dia_nombre = day_names.get(current_day, f"Día {current_day}")
+        # LOG: Mostrar resultados recibidos
+        logger.info(f"Formateando {len(results)} resultados para {day_name}")
+        for i, result in enumerate(results):
+            logger.info(f"Resultado {i+1}: {result}")
         
         if not results:
-            return f"No encontré información sobre tu plan nutricional para {dia_nombre}. ¿Quieres que te ayude a crear un plan?"
+            # Respuesta mejorada cuando no hay datos
+            tiempo = "mañana" if query_type == "mañana" else "hoy"
+            respuesta = f"🍽️ **No encuentro tu plan nutricional para {tiempo} ({day_name})**\n\n"
+            respuesta += "Esto puede deberse a:\n"
+            respuesta += f"• No tienes comidas programadas para {tiempo}\n"
+            respuesta += "• Tu plan no está activo\n\n"
+            respuesta += "**¿Te gustaría que...**\n"
+            respuesta += f"1. ✨ Te sugiera comidas saludables para {tiempo}\n"
+            respuesta += "2. 📋 Te muestre un plan de comidas ejemplo\n"
+            respuesta += "3. 📝 Configure un plan nutricional personalizado\n\n"
+            respuesta += "Solo dime qué prefieres y te ayudo 😊"
+            return respuesta
         
         # Formatear el plan diario
-        respuesta = f"## 🍽️ Tu menú para {dia_nombre}\n\n"
+        respuesta = f"## 🍽️ Tu menú para {day_name}\n\n"
         
         # Agrupar por tipo de comida
         meals_by_type = {}
         for item in results:
             meal_type = item.get('meal_type', '').replace('MealTime.', '')
+            meal_name = item.get('meal_name', 'Comida sin nombre')
+            
             if meal_type not in meals_by_type:
                 meals_by_type[meal_type] = []
-            meals_by_type[meal_type].append(item.get('meal_name', 'Comida sin nombre'))
+            
+            # Evitar duplicados
+            if meal_name not in meals_by_type[meal_type]:
+                meals_by_type[meal_type].append(meal_name)
         
-        # Mostrar cada tipo de comida
-        for meal_type, meals in meals_by_type.items():
-            respuesta += f"### {meal_type}\n\n"
-            for meal in meals:
-                respuesta += f"- {meal}\n"
-            respuesta += "\n"
+        # LOG: Mostrar agrupamiento
+        logger.info(f"Comidas agrupadas por tipo: {meals_by_type}")
         
-        respuesta += "¿Necesitas más detalles sobre alguna comida en particular?"
+        # Agregar emojis para cada tipo de comida
+        meal_type_emojis = {
+            'Desayuno': '🌅',
+            'Almuerzo': '🌞',
+            'Merienda': '☕',
+            'Cena': '🌜',
+            'Snack': '🍎'
+        }
+        
+        # Ordenar los tipos de comida en orden lógico
+        meal_order = ['Desayuno', 'Almuerzo', 'Merienda', 'Cena', 'Snack']
+        
+        # Mostrar cada tipo de comida en orden
+        for meal_type in meal_order:
+            if meal_type in meals_by_type:
+                emoji = meal_type_emojis.get(meal_type, '🍴')
+                respuesta += f"### {emoji} {meal_type}\n\n"
+                for meal in meals_by_type[meal_type]:
+                    respuesta += f"• **{meal}**\n"
+                respuesta += "\n"
+        
+        # Agregar sugerencias adicionales
+        respuesta += "💡 **Consejos:**\n"
+        respuesta += "• Mantente hidratado durante el día\n"
+        respuesta += "• Puedes sustituir si necesitas\n"
+        respuesta += "• ¿Quieres ver las calorías?\n\n"
+        respuesta += "¿Necesitas más detalles?"
         return respuesta

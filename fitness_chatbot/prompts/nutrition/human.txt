@@ -1,5 +1,10 @@
 <context>
 {user_context}
+
+INFORMACIÓN DE FECHA:
+- Hoy es {day_name}
+- Día de la semana: {current_day} (1=Lunes, 2=Martes, 3=Miércoles, 4=Jueves, 5=Viernes, 6=Sábado, 7=Domingo)
+- Usuario ID: {user_id}
 </context>
 
 <human>
