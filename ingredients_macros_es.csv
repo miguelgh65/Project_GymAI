@@ -1,0 +1,340 @@
+ingredient_name,calories,proteins,carbohydrates,fats
+Espaguetis,3,0.13,0.747,0.0151
+Pilases,0,0.0,0.0,0.0
+Aceitunas negras,1,0.0084,0.0604,0.109
+Harina,3,0.103,0.763,0.0098
+Manteca,7,0.0085,0.0006,0.8109999999999999
+Queso,4,0.2289999999999999,0.0337,0.3329999999999999
+Queso parmesano,3,0.358,0.0322,0.25
+Tomates de ciruela,0,0.0088,0.0389,0.002
+Miel,3,0.003,0.8240000000000001,0.0
+Frijoles de mantequilla,1,0.0684,0.2019999999999999,0.0086
+Tomates,0,0.0088,0.0389,0.002
+Muslos de pollo,2,0.165,0.0025,0.166
+Pimienta de cayena,3,0.12,0.5660000000000001,0.173
+Yogurt griego,0,0.073,0.033,0.053
+Comino,3,0.178,0.442,0.223
+Azúcar,3,0.0,1.0,0.0
+Cebolla,0,0.011,0.0934,0.001
+sueco,0,0.0108,0.0862,0.0016
+Sal,0,0.0,0.0,0.0
+Pan rallado,3,0.134,0.72,0.053
+Agua,0,0.0,0.0,0.0
+Azúcar muscovado,3,0.0012,0.981,0.0
+Harina lisa,3,0.103,0.763,0.0098
+Almendras,5,0.212,0.216,0.499
+Cordero,6,0.0626999999999999,0.0,0.6890000000000001
+Arroz,3,0.0661,0.793,0.0058
+Caldo de pollo,0,0.0252,0.0353,0.012
+aceite de oliva,8,0.0,0.0,1.0
+bolas de mozzarella,2,0.222,0.024,0.221
+tomates de ciruela bebé,0,0.0088,0.0389,0.002
+farfalle,3,0.13,0.747,0.0151
+Aceitunas verdes,1,0.0103,0.0384,0.153
+atún,1,0.244,0.0,0.0049
+Extracto de vainilla,2,0.0006,0.126,0.0006
+Arroz de sushi,3,0.0661,0.793,0.0058
+Vino de arroz,1,0.005,0.05,0.0
+Galletas de maní,4,0.0525,0.6586,0.2208
+Ricota,1,0.0754,0.0727,0.102
+Manteca de cacahuete,5,0.222,0.223,0.514
+Jarabe dorado,3,0.0,0.8390000000000001,0.0
+Leche,0,0.0315,0.048,0.0325
+Crema doble,3,0.0283999999999999,0.0283999999999999,0.361
+Hojaldre,5,0.073,0.451,0.381
+Azúcar de colcha,3,0.0,1.0,0.0
+Harina de maíz,3,0.0846,0.766,0.0369
+Leche entera,0,0.0315,0.048,0.0325
+Aceite de girasol,8,0.0,0.0,1.0
+Espinaca,0,0.0286,0.0363,0.0039
+Hotsauce,0,0.0,0.0,0.0
+Chocolate a la altura,4,0.042,0.639,0.3
+Azúcar granulada,3,0.0,1.0,0.0
+Vino tinto,0,0.0007,0.0260999999999999,0.0
+Albahaca,0,0.0315,0.0265,0.0064
+Mejorana,2,0.127,0.606,0.0704
+Tomates cortados en cubitos,0,0.0079,0.0347,0.0025
+Papas,0,0.0204999999999999,0.175,0.0009
+Hazlenuts,0,0.0,0.0,0.0
+Moros,0,0.0139,0.0960999999999999,0.0049
+Yogur,0,0.0347,0.0466,0.0325
+Miseria,5,0.258,0.161,0.492
+Chile,0,0.0187,0.0881,0.0044
+Langostinos,0,0.136,0.0091,0.0101
+Repollo,0,0.0128,0.0579999999999999,0.001
+Brócoli chino,0,0.0282,0.0664,0.0037
+Garbanzos,3,0.205,0.63,0.0604
+Paprika,2,0.141,0.54,0.129
+CCrea agria,1,0.0244,0.0463,0.1939999999999999
+Zanahorias,0,0.0093,0.0958,0.0024
+Pase,0,0.0165,0.0898,0.0021
+Tahini,5,0.17,0.212,0.538
+Judías verdes,0,0.0183,0.0697,0.0022
+Salsa de pato,2,0.0036,0.6070000000000001,0.0013
+Ajo,1,0.0636,0.331,0.005
+Jengibre,0,0.0182,0.178,0.0075
+Calabaza,0,0.01,0.1169999999999999,0.001
+Pasta de linguin,3,0.13,0.747,0.0151
+Chile rojo,0,0.0187,0.0881,0.0044
+Queso crema,3,0.0615,0.0552,0.344
+Fideos udon,3,0.13,0.747,0.0151
+Langostinos de tigre,0,0.136,0.0091,0.0101
+Vino blanco seco,0,0.0007,0.026,0.0
+Tomates picados,0,0.0088,0.0389,0.002
+Caldo de pescado,0,0.0226,0.0,0.0081
+Harina blanca,3,0.103,0.763,0.0098
+Levadura,3,0.4039999999999999,0.412,0.0761
+Aceite vegetal,8,0.0,0.0,1.0
+Azúcar morena,3,0.0012,0.981,0.0
+Fruta seca,2,0.0361,0.613,0.0076
+Aceite,8,0.0,0.0,1.0
+Mantequilla sin sal,7,0.0085,0.0006,0.8109999999999999
+Caldo de carne de res,0,0.0197,0.012,0.0009
+Gruyère,4,0.298,0.0036,0.3229999999999999
+extracto de almendras,2,0.0006,0.126,0.0006
+Harina auto creciente,3,0.103,0.763,0.0098
+Sebo,8,0.015,0.0,0.94
+Mermelada de frambuesa,2,0.0037,0.6890000000000001,0.0007
+Carne de cerdo picada,1,0.197,0.0,0.126
+Caldo de verduras,0,0.00030342269,0.0015030717699999,0.00037668371
+Pastelería,5,0.073,0.451,0.381
+Tocino,3,0.1369999999999999,0.0,0.371
+garam masala,2,0.0609,0.721,0.0868999999999999
+Quinoa,3,0.141,0.642,0.0607
+Pechuga de pollo,1,0.225,0.0,0.0262
+Feta,2,0.142,0.0388,0.215
+Pimienta de Jamaica,2,0.0609,0.721,0.0868999999999999
+Pimienta,2,0.104,0.64,0.0326
+Tomates cherry,0,0.0088,0.0389,0.002
+Salmón,2,0.204,0.0,0.134
+Hongos,0,0.0309,0.0326,0.0034
+Castañas,1,0.0163,0.442,0.0125
+Hongos salvajes,0,0.0149,0.0686,0.0053
+Vino blanco,0,0.0007,0.026,0.0
+Hojas de lasaña,3,0.13,0.747,0.0151
+Cerdo,1,0.197,0.0,0.126
+Salsa de soja,0,0.0814,0.0493,0.0056999999999999
+Almidón,3,0.0026,0.913,0.0005
+Puré de tomate,0,0.0163999999999999,0.0729,0.0028
+Vinagre,0,0.0,0.0004,0.0
+Cilantro,2,0.124,0.55,0.178
+Galletas digestivas,4,0.069,0.741,0.138
+Leche condensada,3,0.0791,0.544,0.087
+Azúcar en polvo,3,0.0,0.998,0.0
+Canela,2,0.0399,0.8059999999999999,0.0124
+Puré de tomate,0,0.0165,0.0898,0.0021
+Harissa Spice,0,0.009,0.039,0.006
+Cubo de caldo de verduras,0,0.00030342269,0.0015030717699999,0.00037668371
+Lentejas,3,0.246,0.634,0.0106
+Grosellas,2,0.0343,0.77,0.0022
+Maíz tierno,0,0.0327,0.187,0.0135
+macarrones,3,0.13,0.747,0.0151
+crema espesa,3,0.0283999999999999,0.0283999999999999,0.361
+queso cheddar,4,0.2289999999999999,0.0337,0.3329999999999999
+Pasta de jengibre,0,0.0182,0.178,0.0075
+Polvo de cúrcuma,3,0.0968,0.6709999999999999,0.0325
+Polvo de chile,2,0.135,0.497,0.143
+Aceite de semilla de sésamo,8,0.0,0.0,1.0
+Apio,0,0.0069,0.0297,0.0017
+Manzanas Braeburn,0,0.0026,0.138,0.0017
+Azúcar demerara,3,0.0012,0.981,0.0
+Semilla de sésamo,5,0.177,0.2339999999999999,0.497
+Beneficio,1,0.005,0.05,0.0
+Almidón de papa,3,0.0026,0.913,0.0005
+Limón,0,0.011,0.0932,0.003
+Pimentón ahumado,2,0.141,0.54,0.129
+Polvo de chile,2,0.135,0.497,0.143
+Cacao,2,0.196,0.579,0.1369999999999999
+Sal marina,0,0.0,0.0,0.0
+Anacardos,5,0.182,0.302,0.438
+Vinagre de manzana,0,0.0,0.0093,0.0
+Hombro de cordero,2,0.166,0.0,0.214
+Chocolate oscuro,5,0.0779,0.459,0.426
+Chocolate con leche,5,0.0765,0.594,0.297
+Mantequilla salada,7,0.0085,0.0006,0.8109999999999999
+Azúcar suave marrón claro,3,0.0,1.0,0.0
+Frambuesas,0,0.012,0.119,0.0065
+Ajo picado,1,0.0636,0.331,0.005
+Brotes de frijoles,0,0.0304,0.0594,0.0018
+Cebolletas,0,0.0183,0.0734,0.0019
+Tomatos de estampado,0,0.0088,0.0389,0.002
+Pollo,2,0.186,0.0,0.151
+Queso gruyere,4,0.298,0.0036,0.3229999999999999
+Frijoles,3,0.236,0.6,0.0083
+Nueces,6,0.152,0.1369999999999999,0.652
+Levadura en polvo,0,0.001,0.241,0.0
+Crema fraiche,1,0.0244,0.0463,0.1939999999999999
+leche de coco,1,0.0202,0.0281,0.213
+Arroz basmati,3,0.0713,0.8,0.0066
+Eglefino ahumado,1,0.252,0.0,0.0096
+Hongos de la oreja de madera,0,0.0309,0.0326,0.0034
+queso Brie,3,0.208,0.0045,0.277
+pimienta negra,2,0.104,0.64,0.0326
+Jamón,1,0.166,0.0363,0.088
+Agua fría,0,0.0,0.0,0.0
+Eglefino,0,0.163,0.0,0.0045
+Mirin,1,0.005,0.05,0.0
+Guisantes congelados,0,0.0521999999999999,0.136,0.004
+Langostinos rey crudos,0,0.136,0.0091,0.0101
+Perejil recién picado,0,0.0297,0.0633,0.0079
+Jarabe de arce,2,0.0004,0.67,0.0006
+Azúcar suave de marrón oscuro,3,0.0,1.0,0.0
+Nueces de nuez,6,0.0917,0.139,0.72
+Chips de chocolate negro,5,0.0779,0.459,0.426
+Melaza,0,0.0,0.0,0.0
+Avena,3,0.132,0.677,0.0652
+Natilla,1,0.0501999999999999,0.11,0.0458
+Coco desecado,3,0.0333,0.152,0.335
+Almendras,5,0.212,0.216,0.499
+Guisantes,0,0.0542,0.144,0.004
+Polvo de curry,3,0.143,0.5579999999999999,0.14
+Carne picada,1,0.216,0.0012,0.0481
+Cebollas,0,0.011,0.0934,0.001
+Carne de res,1,0.216,0.0012,0.0481
+Riñón de cordero,0,0.157,0.0081999999999999,0.0295
+Salsa de Worcestershire,0,0.0,0.192,0.0
+Cola de buey,2,0.198,0.0,0.154
+Habas,0,0.0559999999999999,0.1169999999999999,0.006
+Patatas harinías,0,0.0204999999999999,0.175,0.0009
+Bicarbonato de sosa,0,0.0,0.0,0.0
+Pavo picante,1,0.197,0.0,0.0766
+Frijoles cannellini,3,0.2339999999999999,0.603,0.0085
+Perejil,0,0.0297,0.0633,0.0079
+Crema única,1,0.0313,0.043,0.115
+Fideos,3,0.142,0.713,0.0444
+Albaricoque,0,0.0139999999999999,0.111,0.0039
+Nuez moscada,5,0.0584,0.493,0.363
+Polvo de mostaza,5,0.261,0.281,0.362
+parmesano,3,0.358,0.0322,0.25
+Fresas,0,0.0067,0.0768,0.003
+Moras,0,0.0139,0.0960999999999999,0.0049
+Grosellas rojas,0,0.0,0.0,0.0
+Mulukhiyah,0,0.0,0.0,0.0
+Cereza de glace,0,0.0106,0.16,0.002
+papas charlotte,0,0.0204999999999999,0.175,0.0009
+Pata de cordero,2,0.185,0.0,0.144
+Tomillo,1,0.0556,0.244,0.0168
+Salsa de pescado,0,0.0506,0.0364,0.0001
+Leche semi-skimmed,0,0.0315,0.048,0.0325
+Filetes de pescado blanco,0,0.201,0.0,0.017
+Alcachofas de Jerusalén,0,0.02,0.174,0.0001
+Trigo bulgur,3,0.123,0.7590000000000001,0.0133
+Carne picada de cordero,2,0.166,0.0,0.2339999999999999
+Hoja de laurel,3,0.0761,0.75,0.0836
+Clavo,2,0.0596999999999999,0.655,0.13
+Mostaza inglesa,0,0.0374,0.0583,0.0334
+Copos de pimiento rojo,3,0.106,0.6990000000000001,0.0581
+Celeriaco,0,0.015,0.092,0.003
+jengibre cordial,3,0.001,0.322,0.003
+Fechas de medjool,2,0.0181,0.75,0.0015
+Zumo de limón,0,0.0034999999999999,0.069,0.0024
+Vinagre de vino tinto,0,0.0004,0.0027,0.0
+Pino,6,0.1369999999999999,0.131,0.684
+rigatoni,3,0.13,0.747,0.0151
+Tofu,0,0.0904,0.0285,0.0417
+Bacalao,2,0.628,0.0,0.0237
+Ackee,0,0.0083,0.165,0.0044
+Salsa de Tabasco,0,0.0129,0.008,0.0076
+Cerveza negra,0,0.0046,0.0355,0.0
+queso Mozzarella,2,0.222,0.024,0.221
+Alforfón,3,0.132,0.715,0.034
+Col rizada,0,0.0292,0.0442,0.0149
+Anacardos,5,0.182,0.302,0.438
+Cáscara mixta,2,0.003,0.663,0.0
+Mascarpone,3,0.0615,0.0552,0.344
+Semillas de comino,3,0.178,0.442,0.223
+Polvo de chile rojo,2,0.135,0.497,0.143
+Biryani masala,2,0.0609,0.721,0.0868999999999999
+Mayonesa,6,0.0,0.0,0.77
+Calabaza,0,0.01,0.065,0.001
+Chorizo,2,0.136,0.0378,0.251
+Crema,3,0.0283999999999999,0.0283999999999999,0.361
+mantequilla vegana,8,0.0,0.0,1.0
+leche de soja,0,0.0165,0.072,0.0062
+Acortamiento,8,0.0,0.0,1.0
+Espinilla de carne,1,0.218,0.0,0.0385
+Chalecos,0,0.0,0.0,0.0
+Champiñón,0,0.0309,0.0326,0.0034
+Guisantes de azúcar,0,0.0279999999999999,0.0755,0.002
+Pasas,2,0.033,0.793,0.0025
+Tomate,0,0.0088,0.0389,0.002
+Pretzels,3,0.1,0.804,0.0293
+Caramelo,3,0.046,0.77,0.081
+Crema coagulada,3,0.0283999999999999,0.0283999999999999,0.361
+Fettuccina,3,0.13,0.747,0.0151
+Budín navideño,0,0.0,0.0,0.0
+Crema de coco,3,0.0363,0.0665,0.347
+Pasta de tamarindo,2,0.0279999999999999,0.625,0.006
+Pasta de curry massaman,1,0.05189076751,0.1734765629,0.05533137828
+Castaña de agua,0,0.0139999999999999,0.239,0.001
+Cuscús,3,0.128,0.774,0.0064
+Orégano seco,2,0.09,0.6890000000000001,0.0428
+Cebolla roja,0,0.011,0.0934,0.001
+perejil picado,0,0.0297,0.0633,0.0079
+Arándanos,0,0.0074,0.145,0.0033
+Bacalao,0,0.178,0.0,0.0067
+Calamar,0,0.156,0.0308,0.0138
+Almejas,0,0.147,0.0357,0.0096
+Mejillones,0,0.119,0.0369,0.0224
+Junquillo,2,0.108,0.519,0.0242
+azúcar morena suave y oscura,3,0.0012,0.981,0.0
+avena enrollada,3,0.1369999999999999,0.682,0.0687
+Pimiento rojo,0,0.0099,0.0603,0.003
+polvo de ajo,3,0.166,0.7270000000000001,0.0073
+Huevos,1,0.126,0.0072,0.0951
+Chips de chocolate blanco,5,0.0587,0.5920000000000001,0.321
+Naranja,0,0.0094,0.118,0.0012
+Frijoles horneados,0,0.0475,0.211,0.0037
+Sidra,0,0.001,0.113,0.0013
+Queso stilton,3,0.214,0.0234,0.287
+Filete de carne,2,0.198,0.0,0.179
+Hojas de albahaca,0,0.0315,0.0265,0.0064
+Maíz,0,0.0327,0.187,0.0135
+fideos de arroz,3,0.0595,0.802,0.0056
+langostinos,0,0.136,0.0091,0.0101
+Manteca de cerdo,9,0.0,0.0,1.0
+Cebolla picada,0,0.011,0.0934,0.001
+Ruibarbo,0,0.009,0.0454,0.002
+Maicena,3,0.0026,0.913,0.0005
+Pecorino,3,0.318,0.0363,0.269
+Carne picada,1,0.012,0.42,0.008
+Huevo,1,0.126,0.0072,0.0951
+Toor dal,1,0.072,0.239,0.0163999999999999
+Ghee,8,0.0028,0.0,0.995
+Jugo de pepinillo,0,0.0071428571428571,0.0,0.0035714285714285
+Bollos de hamburguesas de semillas de sésamo,2,0.0977,0.501,0.0391
+Limones,0,0.011,0.0932,0.003
+Frijoles haricot,3,0.2339999999999999,0.603,0.0085
+Vegetales asados,0,0.0333,0.135,0.0052
+Cal,0,0.0069999999999999,0.105,0.002
+carne picada de carne picada,1,0.216,0.0012,0.0481
+caldo de carne caliente,0,0.0197,0.012,0.0009
+Plantas de huevo,0,0.0098,0.0588,0.0018
+Comino,3,0.178,0.442,0.223
+azúcar de coco,3,0.0,1.0,0.0
+leche de almendras,0,0.0059,0.0115,0.011
+vainilla,2,0.0006,0.126,0.0006
+Carne de cabra,1,0.206,0.0,0.0231
+Chile verde,0,0.02,0.0946,0.002
+Paneer,0,0.111,0.0338,0.043
+sultanas,3,0.0327999999999999,0.8,0.002
+Manzanas de Bramley,0,0.0026,0.138,0.0017
+Cáscara confitada,2,0.003,0.663,0.0
+Papas fritas,0,0.0,0.0,0.0
+Carne donante,1,0.216,0.0012,0.0481
+Queso gouda,3,0.249,0.0222,0.2739999999999999
+Mostaza,0,0.0374,0.0583,0.0334
+Cubo de caldo de pollo,0,0.0252,0.0353,0.012
+Pasta paccheri,3,0.13,0.747,0.0151
+Podas,2,0.0218,0.639,0.0038
+Calabacines,0,0.0121,0.0311,0.0032
+Arroz krispies,3,0.0675,0.8505,0.0204999999999999
+Fideos,3,0.13,0.747,0.0151
+Hinojo,0,0.0124,0.073,0.002
+Anís estrellado,3,0.176,0.5,0.159
+Pez blanco,0,0.201,0.0,0.017
+Jerez,1,0.002,0.1169999999999999,0.0
+Sardinas,1,0.204,0.0,0.0484
+Pan,2,0.107,0.475,0.0453
+Carne molida,2,0.172,0.0,0.2
+espárragos,0,0.022,0.0388,0.0012

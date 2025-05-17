@@ -8,7 +8,13 @@ services:
       POSTGRES_DB: ${DB_NAME}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+      # Montamos todos los scripts en el directorio de inicialización
+      - ./init-scripts/01-schemas.sql:/docker-entrypoint-initdb.d/01-schemas.sql
+      - ./init-scripts/02-users.sql:/docker-entrypoint-initdb.d/02-users.sql
+      - ./init-scripts/03-gym.sql:/docker-entrypoint-initdb.d/03-gym.sql
+      - ./init-scripts/04-nutrition.sql:/docker-entrypoint-initdb.d/04-nutrition.sql
+      - ./init-scripts/05-config.sql:/docker-entrypoint-initdb.d/05-config.sql
+      - ./init-scripts/06-indexes.sql:/docker-entrypoint-initdb.d/06-indexes.sql
     ports:
       - "5438:5432" # Puerto externo:interno
     restart: unless-stopped
@@ -29,13 +35,10 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@gym-postgres:5432/${DB_NAME} # Usa el nombre del servicio 'gym-postgres' y su puerto interno 5432
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@gym-postgres:5432/${DB_NAME}
       - PYTHONPATH=/app
       - TZ=Europe/Madrid
-      # --- LÍNEA AÑADIDA ---
-      - API_BASE_URL=http://localhost:5050 # Especifica la URL base interna con el puerto correcto
-      # ---------------------
-      # Otras variables de entorno que necesites (ej. secretos, claves API)
+      - API_BASE_URL=http://localhost:5050
       - SECRET_KEY=${SECRET_KEY}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
@@ -46,50 +49,47 @@ services:
       - VERTEX_AI_PROJECT_ID=${VERTEX_AI_PROJECT_ID}
       - VERTEX_AI_LOCATION=${VERTEX_AI_LOCATION}
     volumes:
-      - ./:/app # Monta el código local en el contenedor
-      # Si tienes directorios específicos que no deben sobreescribirse, especifícalos:
-      # - ./fitness_chatbot:/app/fitness_chatbot
+      - ./:/app
     ports:
-      - "5050:5050" # Puerto externo:interno (asegúrate que uvicorn corre en 5050 dentro)
+      - "5050:5050"
     depends_on:
       gym-postgres:
-        condition: service_healthy # Espera a que la BD esté lista
+        condition: service_healthy
     restart: unless-stopped
     working_dir: /app
-    command: sh -c "/app/start.sh" # Script que inicia uvicorn en el puerto 5050
+    command: sh -c "/app/start.sh"
     networks:
       - gymnet
     healthcheck:
-      # Verifica que la API responde en el puerto interno 5050
       test: ["CMD-SHELL", "curl -s http://localhost:5050/docs > /dev/null || exit 0"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s # Tiempo antes de empezar el healthcheck
+      start_period: 30s
 
   gym-react-frontend:
     container_name: gym-react-frontend
     build:
-      context: ./front_end_react # Directorio del frontend
+      context: ./front_end_react
       dockerfile: Dockerfile
     ports:
-      - "80:80" # Puerto externo:interno (nginx/apache/servidor de desarrollo suele usar 80)
+      - "80:80"
     volumes:
-      - ./front_end_react:/app # Monta el código fuente del frontend
-      - /app/node_modules # Evita sobreescribir node_modules del contenedor
+      - ./front_end_react:/app
+      - /app/node_modules
     environment:
-      - REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL} # URL para que el frontend llame al backend (desde el navegador)
+      - REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL}
       - REACT_APP_PROJECT_NAME=${REACT_APP_PROJECT_NAME}
-      - REACT_APP_GOOGLE_CLIENT_ID=${REACT_APP_GOOGLE_CLIENT_ID} # ID de cliente para Google Login
+      - REACT_APP_GOOGLE_CLIENT_ID=${REACT_APP_GOOGLE_CLIENT_ID}
     depends_on:
-      - gym-fastapi-backend # Espera a que el backend esté listo (no garantiza que esté completamente funcional)
+      - gym-fastapi-backend
     restart: unless-stopped
     networks:
       - gymnet
 
 networks:
   gymnet:
-    driver: bridge # Red interna para que los contenedores se comuniquen
+    driver: bridge
 
 volumes:
-  postgres_data: {} # Volumen persistente para los datos de PostgreSQL
+  postgres_data: {}

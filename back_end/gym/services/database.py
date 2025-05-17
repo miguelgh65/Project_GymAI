@@ -38,65 +38,92 @@ logger = logging.getLogger(__name__) # Configura un logger
 
 def insert_into_db(json_data, user_id) -> bool:
     """
-    Inserta los datos de ejercicios en la base de datos utilizando solo user_id.
+    Inserta los datos de ejercicios en la base de datos.
 
     Args:
         json_data (dict): Datos de ejercicios en formato JSON.
-        user_id (str): ID de Google del usuario.
+        user_id (str): ID del usuario.
 
     Returns:
         bool: True si la inserción fue exitosa, False en caso contrario.
     """
     conn = None
-    # --- CORRECCIÓN: Convertir a string aquí es suficiente ---
+    # Convertir user_id a string si no lo es ya
     user_id_str = str(user_id)
-    # --- FIN CORRECCIÓN ---
+    
     try:
-        logger.debug("\n🔍 Recibido JSON para inserción:")
+        # Validar y procesar los datos recibidos
+        logger.debug("\n🔍 Preparando datos para inserción en BD")
         parsed = ExerciseData.model_validate(json_data)
         exercises = parsed.get_exercises()
-        logger.info(f"Intentando insertar {len(exercises)} ejercicios para usuario {user_id_str}.")
+        
+        if not exercises:
+            logger.warning(f"No hay ejercicios válidos para insertar para usuario {user_id_str}")
+            return False
+            
+        logger.info(f"Preparando inserción de {len(exercises)} ejercicios para usuario {user_id_str}")
 
+        # Conectar a la base de datos
         conn = psycopg2.connect(**DB_CONFIG)
         cur = conn.cursor()
         cur.execute("SET search_path TO gym, public;")
 
+        # Procesar cada ejercicio
         for exercise in exercises:
             nombre_ejercicio = exercise.ejercicio
-            logger.debug(f"Preparando inserción para {nombre_ejercicio}")
+            comentarios = exercise.comentarios
+            rir = exercise.rir
+            
+            logger.debug(f"Procesando ejercicio: {nombre_ejercicio}")
+            logger.debug(f"  - Comentarios: {comentarios}")
+            logger.debug(f"  - RIR general: {rir}")
 
             if exercise.series is not None:
+                # Ejercicio de fuerza con series
                 series_json = json.dumps([s.model_dump() for s in exercise.series])
-                # Pasar user_id_str directamente (ya es string)
+                logger.debug(f"  - Series: {series_json}")
+                
+                # Insertar en la base de datos
                 cur.execute(
                     """
-                    INSERT INTO gym.ejercicios (fecha, ejercicio, repeticiones, user_id)
-                    VALUES (NOW(), %s, %s::jsonb, %s)
+                    INSERT INTO gym.ejercicios (fecha, ejercicio, repeticiones, user_id, comentarios, rir)
+                    VALUES (NOW(), %s, %s::jsonb, %s, %s, %s)
                     """,
-                    (nombre_ejercicio, series_json, user_id_str)
+                    (nombre_ejercicio, series_json, user_id_str, comentarios, rir)
                 )
             elif exercise.duracion is not None:
-                 # Pasar user_id_str directamente (ya es string)
+                # Ejercicio de cardio con duración
+                logger.debug(f"  - Duración: {exercise.duracion} minutos")
+                
+                # Insertar en la base de datos
                 cur.execute(
                     """
-                    INSERT INTO gym.ejercicios (fecha, ejercicio, duracion, user_id)
-                    VALUES (NOW(), %s, %s, %s)
+                    INSERT INTO gym.ejercicios (fecha, ejercicio, duracion, user_id, comentarios, rir)
+                    VALUES (NOW(), %s, %s, %s, %s, %s)
                     """,
-                    (nombre_ejercicio, exercise.duracion, user_id_str)
+                    (nombre_ejercicio, exercise.duracion, user_id_str, comentarios, rir)
                 )
 
+        # Confirmar la transacción
         conn.commit()
-        logger.info(f"✅ Inserción exitosa para usuario {user_id_str}.")
+        logger.info(f"✅ Inserción exitosa para usuario {user_id_str}")
         return True
+        
     except Exception as e:
+        # Registrar error y hacer rollback
         logger.error(f"❌ Error al insertar en la base de datos para usuario {user_id_str}: {e}", exc_info=True)
-        if conn: conn.rollback()
-        return False
-    finally:
         if conn:
-            try: conn.close()
-            except Exception as close_error: logger.error(f"Error al cerrar la conexión: {close_error}")
-
+            conn.rollback()
+        return False
+        
+    finally:
+        # Cerrar conexión
+        if conn:
+            try:
+                conn.close()
+            except Exception as close_error:
+                logger.error(f"Error al cerrar la conexión: {close_error}")
+                
 def get_exercise_logs(user_id, days=7):
     """
     Obtiene los logs de ejercicios de un usuario usando su ID de Google.
