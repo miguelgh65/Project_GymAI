@@ -65,6 +65,7 @@ async def process_query(user_id: str, query: str, user_context: Dict[str, Any] =
         exercise_history = user_context.get("exercise_history", [])
         has_exercise_history = len(exercise_history) > 0
         
+        # Los datos de Fitbit son opcionales, no un requisito para el análisis
         fitbit_data = user_context.get("fitbit_data", {})
         has_fitbit_data = fitbit_data.get("available", False)
         
@@ -82,6 +83,14 @@ async def process_query(user_id: str, query: str, user_context: Dict[str, Any] =
             if filtered_exercises:
                 logger.info(f"Se encontraron {len(filtered_exercises)} registros para {specific_exercise}")
                 exercise_history = filtered_exercises
+                
+                # Asegurarse de que hay suficientes registros para analizar
+                if len(filtered_exercises) < 2:
+                    logger.warning(f"⚠️ Solo se encontró {len(filtered_exercises)} registro para {specific_exercise}, se necesitan al menos 2 para analizar progreso")
+                    return f"He encontrado {len(filtered_exercises)} sesión de {specific_exercise}, pero necesito al menos 2 para poder analizar tu progreso. Sigue registrando tus entrenamientos y pronto podré darte un análisis detallado."
+            else:
+                logger.warning(f"⚠️ No se encontraron registros para {specific_exercise}")
+                return f"No encontré ningún registro de '{specific_exercise}' en tu historial. ¿Quieres que te ayude a registrar este ejercicio?"
         
         # Estructurar datos para el LLM
         progress_data = {
@@ -108,9 +117,16 @@ async def process_query(user_id: str, query: str, user_context: Dict[str, Any] =
         )
         
         # Invocar el LLM
+        logger.info("🧠 Enviando datos al LLM para análisis de progreso")
         response = await llm.ainvoke(messages)
         content = response.content if hasattr(response, 'content') else str(response)
         
+        # Verificar si la respuesta es válida
+        if not content or len(content.strip()) < 50:
+            logger.warning(f"⚠️ Respuesta del LLM demasiado corta o vacía: '{content}'")
+            return "Lo siento, tuve un problema al analizar tu progreso. Los datos están disponibles pero no pude generar un análisis detallado. Por favor, intenta de nuevo más tarde."
+        
+        logger.info(f"✅ Análisis generado exitosamente ({len(content)} caracteres)")
         return content
     
     except Exception as e:
@@ -137,54 +153,106 @@ def prepare_analysis_context(progress_data: Dict[str, Any]) -> str:
     if specific_exercise and any(e.get('ejercicio') == specific_exercise for e in exercise_history):
         specific_exercises = [e for e in exercise_history if e.get('ejercicio') == specific_exercise]
         context += f"EJERCICIO ESPECÍFICO: {specific_exercise}\n"
-        context += f"Total de sesiones: {len(specific_exercises)}\n"
+        context += f"Total de sesiones: {len(specific_exercises)}\n\n"
         
-        # Mostrar detalles de cada sesión (limitado a las últimas 5-10)
+        # Mostrar detalles de cada sesión (limitado a las últimas 10)
         for i, session in enumerate(specific_exercises[:10]):
-            date = session.get('fecha', '').split('T')[0] if 'T' in session.get('fecha', '') else session.get('fecha', '')
-            context += f"  Sesión {i+1} - Fecha: {date}\n"
+            # Formato de fecha mejorado
+            date_str = ""
+            if 'fecha' in session:
+                date_raw = session.get('fecha', '')
+                if isinstance(date_raw, str):
+                    if 'T' in date_raw:
+                        date_str = date_raw.split('T')[0]
+                    else:
+                        date_str = date_raw
+                else:
+                    # Si es un objeto datetime
+                    try:
+                        date_str = date_raw.strftime("%Y-%m-%d")
+                    except:
+                        date_str = str(date_raw)
             
-            # Intentar extraer detalles de series
-            series_data = []
+            context += f"  Sesión {i+1} - Fecha: {date_str}\n"
             
-            # Primero intentar con series_json
-            if 'series_json' in session and session['series_json']:
-                try:
+            # Intentar extraer detalles de series con manejo mejorado de errores
+            try:
+                # Primero intentar con series_json (formato nuevo)
+                if 'series_json' in session and session['series_json']:
+                    series_data = []
+                    
+                    # Manejar diferentes formatos de series_json
                     if isinstance(session['series_json'], str):
-                        series_data = json.loads(session['series_json'])
+                        try:
+                            series_data = json.loads(session['series_json'])
+                        except json.JSONDecodeError:
+                            logger.warning(f"❌ Error decodificando series_json: {session['series_json'][:100]}")
+                            series_data = []
                     else:
                         series_data = session['series_json']
-                except:
-                    series_data = []
-            # Luego intentar con repeticiones
-            elif 'repeticiones' in session:
-                if isinstance(session['repeticiones'], int):
-                    context += f"    Total repeticiones: {session['repeticiones']}\n"
-                    series_data = []  # No hay detalles de series
-                else:
-                    try:
-                        if isinstance(session['repeticiones'], str):
-                            series_data = json.loads(session['repeticiones'])
-                        else:
-                            series_data = session['repeticiones']
-                    except:
-                        series_data = []
-            
-            # Mostrar detalles de cada serie
-            if series_data and isinstance(series_data, list):
-                for j, serie in enumerate(series_data):
-                    if isinstance(serie, dict):
-                        reps = serie.get('repeticiones', 0)
-                        peso = serie.get('peso', 0)
-                        rir = serie.get('rir', None)
+                    
+                    # Procesar series
+                    if isinstance(series_data, list):
+                        for j, serie in enumerate(series_data):
+                            if isinstance(serie, dict):
+                                reps = serie.get('repeticiones', 0)
+                                peso = serie.get('peso', 0)
+                                rir = serie.get('rir', None)
+                                
+                                serie_txt = f"    Serie {j+1}: {reps} repeticiones × {peso} kg"
+                                if rir is not None:
+                                    serie_txt += f" (RIR: {rir})"
+                                context += serie_txt + "\n"
+                            else:
+                                context += f"    Serie {j+1}: {str(serie)}\n"
+                
+                # Si no hay series_json, intentar con repeticiones (formato antiguo)
+                elif 'repeticiones' in session:
+                    repetitions_data = session['repeticiones']
+                    
+                    # Manejar diferentes formatos de repeticiones
+                    if isinstance(repetitions_data, int) or (isinstance(repetitions_data, str) and repetitions_data.isdigit()):
+                        context += f"    Total repeticiones: {repetitions_data}\n"
+                    elif repetitions_data:
+                        rep_data = []
                         
-                        serie_txt = f"    Serie {j+1}: {reps} repeticiones × {peso} kg"
-                        if rir is not None:
-                            serie_txt += f" (RIR: {rir})"
-                        context += serie_txt + "\n"
+                        # Intentar decodificar JSON si es string
+                        if isinstance(repetitions_data, str):
+                            try:
+                                rep_data = json.loads(repetitions_data)
+                            except json.JSONDecodeError:
+                                logger.warning(f"❌ Error decodificando repeticiones: {repetitions_data[:100]}")
+                                rep_data = []
+                        else:
+                            rep_data = repetitions_data
+                        
+                        # Procesar repeticiones como series
+                        if isinstance(rep_data, list):
+                            for j, rep in enumerate(rep_data):
+                                if isinstance(rep, dict):
+                                    reps = rep.get('repeticiones', 0)
+                                    peso = rep.get('peso', 0)
+                                    rir = rep.get('rir', None)
+                                    
+                                    rep_txt = f"    Serie {j+1}: {reps} repeticiones × {peso} kg"
+                                    if rir is not None:
+                                        rep_txt += f" (RIR: {rir})"
+                                    context += rep_txt + "\n"
+                                else:
+                                    context += f"    Serie {j+1}: {str(rep)}\n"
+            except Exception as e:
+                logger.warning(f"❌ Error procesando series para sesión {i+1}: {str(e)}")
+                context += f"    [Error procesando detalles de series]\n"
+            
+            # Añadir comentarios si están disponibles
+            if 'comentarios' in session and session['comentarios']:
+                context += f"    Comentarios: {session['comentarios']}\n"
+            
+            # Separador entre sesiones
+            context += "\n"
     
     # Siempre incluir un resumen general
-    context += "\nRESUMEN DE EJERCICIOS:\n"
+    context += "RESUMEN DE EJERCICIOS:\n"
     exercise_counts = {}
     for e in exercise_history:
         name = e.get('ejercicio', 'desconocido')
@@ -218,6 +286,9 @@ def prepare_analysis_context(progress_data: Dict[str, Any]) -> str:
             hours = minutes // 60
             mins = minutes % 60
             context += f"\nSUEÑO: {hours}h {mins}m\n"
+    else:
+        context += "\n=== DATOS DE FITBIT ===\n"
+        context += "No hay datos de Fitbit disponibles.\n"
     
     # Añadir instrucciones para el análisis
     context += "\n=== INSTRUCCIONES PARA ANÁLISIS ===\n"
