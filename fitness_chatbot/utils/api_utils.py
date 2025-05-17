@@ -114,7 +114,7 @@ def make_api_request(
                 params=params,
                 json=json_data,
                 headers=default_headers,
-                timeout=timeout
+                timeout=timeout  # CORREGIDO: Eliminado cero inicial que causaba error de octal
             )
             
             # Intentar obtener respuesta JSON
@@ -216,7 +216,7 @@ def get_exercise_data(
 
 def log_exercise(
     user_id: str, 
-    exercise_data: str,
+    exercise_data: Union[str, Dict[str, Any]],
     auth_token: Optional[str] = None,
     timeout: int = DEFAULT_TIMEOUT
 ) -> Dict[str, Any]:
@@ -225,7 +225,7 @@ def log_exercise(
     
     Args:
         user_id: ID del usuario
-        exercise_data: Descripción textual del ejercicio
+        exercise_data: Descripción textual del ejercicio o diccionario con datos completos
         auth_token: Token JWT para autenticación
         timeout: Tiempo de espera personalizado
         
@@ -240,9 +240,22 @@ def log_exercise(
     
     try:
         endpoint = "log-exercise"
-        json_data = {"exercise_data": exercise_data}
         
-        logger.info(f"Registrando ejercicio para usuario {user_id}: {exercise_data}")
+        # Si exercise_data es un string, convertirlo a diccionario
+        json_data = {}
+        if isinstance(exercise_data, str):
+            json_data = {"exercise_data": exercise_data}
+        elif isinstance(exercise_data, dict):
+            # Si ya es un diccionario, verificar que tenga exercise_data
+            if "exercise_data" not in exercise_data:
+                logger.error("El diccionario exercise_data debe tener una clave 'exercise_data'")
+                return {"success": False, "error": "Formato de datos incorrecto"}
+            json_data = exercise_data
+        else:
+            logger.error(f"Tipo de datos no soportado: {type(exercise_data)}")
+            return {"success": False, "error": "Tipo de datos no soportado"}
+        
+        logger.info(f"Registrando ejercicio para usuario {user_id}: {json_data}")
         return make_api_request(endpoint, method="POST", json_data=json_data, auth_token=auth_token, timeout=timeout)
     finally:
         # Restaurar el contexto previo

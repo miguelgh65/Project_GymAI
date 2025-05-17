@@ -28,13 +28,6 @@ for path in possible_paths:
             print(f"Added {path} to Python path")
 
 print("Updated Python Path:", sys.path)
-# Verificar si ahora podemos importar fitness_agent
-try:
-    import fitness_agent
-    print(f"✅ fitness_agent module found at: {fitness_agent.__file__}")
-except ImportError as e:
-    print(f"❌ Still cannot import fitness_agent: {e}")
-# ---- FIN NUEVO CÓDIGO ----
 
 # --- Importaciones Corregidas ---
 try:
@@ -143,7 +136,7 @@ try:
     from .routes.nutrition import router as nutrition_router
 
     logger.info("Incluyendo routers...")
-    app.include_router(login_routes.router)
+    #app.include_router(login_routes.router)
     app.include_router(main_routes.router)
     app.include_router(routine_routes.router)
     app.include_router(dashboard_routes.router)

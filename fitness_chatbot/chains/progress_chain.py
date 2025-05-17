@@ -170,6 +170,8 @@ def generate_press_banca_analysis(press_banca_data: List[Dict[str, Any]]) -> str
     
     return analysis
 
+# fitness_chatbot/chains/progress_chain.py (sección modificada)
+
 def calculate_1rm(repeticiones: List[Dict[str, Any]]) -> float:
     """
     Calcula el 1RM estimado usando la fórmula de Brzycki.
@@ -182,14 +184,138 @@ def calculate_1rm(repeticiones: List[Dict[str, Any]]) -> float:
     """
     max_1rm = 0
     
-    for serie in repeticiones:
-        if isinstance(serie, dict):
-            reps = serie.get('repeticiones', 0)
-            peso = serie.get('peso', 0)
-            
-            if reps > 0 and reps < 37 and peso > 0:
-                # Fórmula de Brzycki: 1RM = peso × (36 / (37 - repeticiones))
-                current_1rm = peso * (36 / (37 - reps))
-                max_1rm = max(max_1rm, current_1rm)
+    # Verificar si es el formato nuevo (series_json) o antiguo (repeticiones)
+    if isinstance(repeticiones, list):
+        for serie in repeticiones:
+            if isinstance(serie, dict):
+                # Buscar los campos correspondientes según el formato
+                if "repeticiones" in serie and "peso" in serie:
+                    # Formato nuevo (series_json)
+                    reps = serie.get('repeticiones', 0)
+                    peso = serie.get('peso', 0)
+                elif "reps" in serie and "weight" in serie:
+                    # Formato antiguo 
+                    reps = serie.get('reps', 0)
+                    peso = serie.get('weight', 0)
+                else:
+                    # Formato desconocido
+                    continue
+                
+                if reps > 0 and reps < 37 and peso > 0:
+                    # Fórmula de Brzycki: 1RM = peso × (36 / (37 - repeticiones))
+                    current_1rm = peso * (36 / (37 - reps))
+                    max_1rm = max(max_1rm, current_1rm)
     
     return max_1rm
+
+def generate_press_banca_analysis(press_banca_data: List[Dict[str, Any]]) -> str:
+    """
+    Genera un análisis específico para press banca sin usar LLM.
+    
+    Args:
+        press_banca_data: Lista de registros de press banca
+        
+    Returns:
+        Análisis de progreso formateado
+    """
+    if not press_banca_data:
+        return "No encontré registros de press banca en tu historial."
+    
+    # Ordenar por fecha (de más antiguo a más reciente)
+    press_banca_data.sort(key=lambda x: x.get('fecha', ''))
+    
+    # Extraer datos básicos
+    num_sessions = len(press_banca_data)
+    first_session = press_banca_data[0]
+    last_session = press_banca_data[-1]
+    
+    # Calcular fechas legibles
+    first_date = first_session.get('fecha', '').split('T')[0] if 'T' in first_session.get('fecha', '') else first_session.get('fecha', '')
+    last_date = last_session.get('fecha', '').split('T')[0] if 'T' in last_session.get('fecha', '') else last_session.get('fecha', '')
+    
+    # Calcular peso máximo usado
+    max_weight = 0
+    
+    # MODIFICADO: Verificar si estamos usando series_json o repeticiones
+    for session in press_banca_data:
+        # Verificar primero el formato nuevo (series_json)
+        if 'series_json' in session and session['series_json']:
+            series_data = session['series_json']
+            # Convertir a JSON si es string
+            if isinstance(series_data, str):
+                try:
+                    series_data = json.loads(series_data)
+                except:
+                    series_data = []
+                    
+            # Extraer peso máximo
+            for serie in series_data:
+                if isinstance(serie, dict):
+                    peso = serie.get('peso', 0)
+                    if peso > max_weight:
+                        max_weight = peso
+        
+        # Verificar el formato antiguo (repeticiones)
+        elif 'repeticiones' in session and session['repeticiones']:
+            series = session.get('repeticiones', [])
+            # Convertir a JSON si es string
+            if isinstance(series, str):
+                try:
+                    series = json.loads(series)
+                except:
+                    series = []
+            
+            # Extraer peso máximo
+            for serie in series:
+                if isinstance(serie, dict):
+                    peso = serie.get('peso', 0)
+                    if peso > max_weight:
+                        max_weight = peso
+    
+    # Calcular 1RM estimado para primera y última sesión
+    # MODIFICADO: Extraer series de series_json si existe, o de repeticiones si no
+    first_series = None
+    last_series = None
+    
+    if 'series_json' in first_session and first_session['series_json']:
+        if isinstance(first_session['series_json'], str):
+            try:
+                first_series = json.loads(first_session['series_json'])
+            except:
+                pass
+        else:
+            first_series = first_session['series_json']
+    elif 'repeticiones' in first_session:
+        if isinstance(first_session['repeticiones'], str):
+            try:
+                first_series = json.loads(first_session['repeticiones'])
+            except:
+                pass
+        else:
+            first_series = first_session['repeticiones']
+    
+    if 'series_json' in last_session and last_session['series_json']:
+        if isinstance(last_session['series_json'], str):
+            try:
+                last_series = json.loads(last_session['series_json'])
+            except:
+                pass
+        else:
+            last_series = last_session['series_json']
+    elif 'repeticiones' in last_session:
+        if isinstance(last_session['repeticiones'], str):
+            try:
+                last_series = json.loads(last_session['repeticiones'])
+            except:
+                pass
+        else:
+            last_series = last_session['repeticiones']
+    
+    first_1rm = calculate_1rm(first_series) if first_series else 0
+    last_1rm = calculate_1rm(last_series) if last_series else 0
+    
+    # Calcular cambio porcentual
+    if first_1rm > 0:
+        change_percent = ((last_1rm - first_1rm) / first_1rm) * 100
+    else:
+        change_percent = 0

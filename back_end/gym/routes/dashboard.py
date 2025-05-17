@@ -75,7 +75,6 @@ async def get_ejercicios_stats(
         # Si no se especifica un ejercicio, devolver solo la lista de ejercicios disponibles
         if not ejercicio:
             # Obtener solo ejercicios que tienen datos
-            # No filtrar por repeticiones o series_json no nulas
             query = """
                 SELECT DISTINCT ejercicio 
                 FROM gym.ejercicios 
@@ -105,20 +104,25 @@ async def get_ejercicios_stats(
         # Construir la parte de la consulta para filtros de fecha
         date_filter = ""
         if desde:
-            date_filter += " AND fecha >= %s"
+            date_filter += " AND fecha::date >= %s::date"
             query_params.append(desde)
         if hasta:
-            date_filter += " AND fecha <= %s"
+            date_filter += " AND fecha::date <= %s::date"
             query_params.append(hasta)
         
-        # Consulta principal - Adaptada para el nuevo esquema
-        # NO FILTRAR por repeticiones o series_json no nulas para depuración
+        # Consulta principal - ACTUALIZADA para el nuevo esquema
         data_query = f"""
             SELECT fecha, repeticiones, ejercicio, series_json, comentarios, rir
             FROM gym.ejercicios
             WHERE user_id = %s AND ejercicio = %s{date_filter}
             ORDER BY fecha
         """
+        
+        # DEBUG: Imprimir la consulta completa con los parámetros
+        debug_query = data_query
+        for param in query_params:
+            debug_query = debug_query.replace("%s", f"'{param}'", 1)
+        logger.info(f"DEBUG - Consulta completa: {debug_query}")
         
         logger.info(f"Consulta para datos de ejercicio: {data_query}")
         logger.info(f"Parámetros: {query_params}")
@@ -128,7 +132,7 @@ async def get_ejercicios_stats(
         
         logger.info(f"Filas devueltas para {ejercicio}: {len(rows)}")
         for i, row in enumerate(rows):
-            logger.info(f"Fila {i+1}: {row}")
+            logger.debug(f"Fila {i+1}: {row}")
         
         # Estructuras para procesar los datos
         processed_data = []
@@ -143,13 +147,12 @@ async def get_ejercicios_stats(
             fecha = row[0]
             total_repeticiones = row[1]  # Ahora es INTEGER directamente
             ejercicio_nombre = row[2]
-            series_json_raw = row[3]  # JSONB con detalles
+            series_json_raw = row[3]  # JSON con detalles de series
             comentarios = row[4]
             rir = row[5]
             
             logger.info(f"Procesando: fecha={fecha}, rep={total_repeticiones}, ejercicio={ejercicio_nombre}")
             logger.info(f"Series JSON: {series_json_raw}")
-            logger.info(f"Tipo de series_json: {type(series_json_raw)}")
             
             # Inicializar valores
             max_peso = 0
@@ -161,97 +164,74 @@ async def get_ejercicios_stats(
             series_list = []
             try:
                 if series_json_raw:
-                    # Convertir de string a objeto si es necesario
+                    # Asegurar que series_json_raw sea un objeto dict o list
                     if isinstance(series_json_raw, str):
                         try:
-                            logger.info(f"Convirtiendo series_json desde string")
                             series_json = json.loads(series_json_raw)
-                            logger.info("Series JSON parseado correctamente desde string")
                         except json.JSONDecodeError as e:
                             logger.error(f"Error al parsear JSON: {e}")
-                            series_json = None
+                            series_json = []
                     else:
                         series_json = series_json_raw
-                        logger.info("Usando series_json en formato no-string")
                     
-                    logger.info(f"Series JSON parseado: {series_json}")
-                    logger.info(f"Tipo de dato series_json: {type(series_json)}")
-                    
-                    # Asegurar que sea una lista o convertirlo a una
+                    # Asegurar que sea una lista
                     if isinstance(series_json, list):
                         series_list = series_json
-                        logger.info(f"series_json es una lista con {len(series_list)} elementos")
                     elif isinstance(series_json, dict):
                         series_list = [series_json]
-                        logger.info("series_json es un diccionario, lo convertimos a lista de un elemento")
-                    else:
-                        logger.warning(f"series_json no es lista ni diccionario: {type(series_json)}")
-                        
+                    
                     # Extraer pesos y repeticiones
-                    if series_list:
-                        pesos = []
-                        reps = []
-                        
-                        for serie in series_list:
-                            if isinstance(serie, dict):
-                                peso = serie.get('peso', 0)
-                                rep = serie.get('repeticiones', 0)
+                    pesos = []
+                    reps = []
+                    
+                    for serie in series_list:
+                        if isinstance(serie, dict):
+                            peso = serie.get('peso', 0)
+                            rep = serie.get('repeticiones', 0)
+                            
+                            # Validar y convertir tipos
+                            try:
+                                peso = float(peso) if peso is not None else 0
+                                rep = int(rep) if rep is not None else 0
                                 
-                                # Validar y convertir tipos si es necesario
-                                try:
-                                    peso = float(peso) if peso is not None else 0
-                                    rep = int(rep) if rep is not None else 0
-                                    
-                                    if peso > 0 and rep > 0:
-                                        pesos.append(peso)
-                                        reps.append(rep)
-                                except (TypeError, ValueError) as e:
-                                    logger.error(f"Error al convertir peso={peso} o rep={rep}: {e}")
-                        
-                        logger.info(f"Pesos extraídos: {pesos}")
-                        logger.info(f"Reps extraídas: {reps}")
-                        
-                        if pesos:
-                            max_peso = max(pesos)
-                            avg_peso = sum(pesos) / len(pesos)
-                            
-                            # Para estadísticas globales
-                            if max_peso > peso_max_ever:
-                                peso_max_ever = max_peso
-                            
-                            # Registrar primer y último peso para calcular progreso
-                            if first_weight is None:
-                                first_weight = max_peso
-                            last_weight = max_peso
-                            
-                            # Calcular volumen (peso × reps)
-                            total_volume = sum(peso * rep for peso, rep in zip(pesos, reps))
-                            if total_volume > volumen_max_session:
-                                volumen_max_session = total_volume
-                            
-                            # Calcular e1RM 
-                            for peso, rep in zip(pesos, reps):
                                 if peso > 0 and rep > 0:
-                                    e1rm = calculate_e1rm_brzycki(peso, rep)
-                                    if e1rm > max_e1rm:
-                                        max_e1rm = e1rm
-                                    if e1rm > e1rm_max_ever:
-                                        e1rm_max_ever = e1rm
+                                    pesos.append(peso)
+                                    reps.append(rep)
+                            except (TypeError, ValueError) as e:
+                                logger.error(f"Error al convertir peso={peso} o rep={rep}: {e}")
+                    
+                    if pesos:
+                        max_peso = max(pesos)
+                        avg_peso = sum(pesos) / len(pesos)
+                        
+                        # Para estadísticas globales
+                        if max_peso > peso_max_ever:
+                            peso_max_ever = max_peso
+                        
+                        # Registrar primer y último peso para calcular progreso
+                        if first_weight is None:
+                            first_weight = max_peso
+                        last_weight = max_peso
+                        
+                        # Calcular volumen (peso × reps)
+                        total_volume = sum(peso * rep for peso, rep in zip(pesos, reps))
+                        if total_volume > volumen_max_session:
+                            volumen_max_session = total_volume
+                        
+                        # Calcular e1RM 
+                        for peso, rep in zip(pesos, reps):
+                            if peso > 0 and rep > 0:
+                                e1rm = calculate_e1rm_brzycki(peso, rep)
+                                if e1rm > max_e1rm:
+                                    max_e1rm = e1rm
+                                if e1rm > e1rm_max_ever:
+                                    e1rm_max_ever = e1rm
             except Exception as e:
                 logger.error(f"Error procesando series_json: {e}", exc_info=True)
-                # Continuar con los valores por defecto
             
-            # Si repeticiones no viene en la entrada o es NULL, calcular a partir de series
+            # Si total_repeticiones no está disponible, calcularlo desde las series
             if total_repeticiones is None and series_list:
-                total_repeticiones = 0
-                for serie in series_list:
-                    try:
-                        reps = serie.get('repeticiones', 0)
-                        total_repeticiones += int(reps) if reps is not None else 0
-                    except (TypeError, ValueError) as e:
-                        logger.error(f"Error al sumar repeticiones: {e}")
-            
-            logger.info(f"Valores calculados: max_peso={max_peso}, avg_peso={avg_peso}, total_volume={total_volume}, max_e1rm={max_e1rm}")
+                total_repeticiones = sum(serie.get('repeticiones', 0) for serie in series_list if isinstance(serie, dict))
             
             # Crear entrada para este registro
             entry = {
@@ -266,15 +246,12 @@ async def get_ejercicios_stats(
                 'rir': rir
             }
             
-            logger.info(f"Entrada procesada: {entry}")
             processed_data.append(entry)
         
         # Calcular porcentaje de progreso
         progress_percent = 0
         if first_weight and last_weight and first_weight > 0:
-            logger.info(f"Progreso: {first_weight} -> {last_weight}")
             progress_percent = ((last_weight - first_weight) / first_weight) * 100
-            logger.info(f"Porcentaje de progreso calculado: {progress_percent}%")
         
         # Crear resumen
         summary = {
@@ -284,8 +261,6 @@ async def get_ejercicios_stats(
             'progress_percent': round(progress_percent, 2),
             'max_e1rm_ever': round(e1rm_max_ever, 2)
         }
-        
-        logger.info(f"Resumen calculado: {summary}")
         
         # Cerrar conexión
         cur.close()
@@ -298,7 +273,6 @@ async def get_ejercicios_stats(
             "datos": processed_data,
             "resumen": summary
         }
-        logger.info(f"Devolviendo {len(processed_data)} registros procesados")
         
         return response
     
@@ -312,7 +286,6 @@ async def get_ejercicios_stats(
             "datos": [],
             "resumen": {}
         }
-
 
 # Ruta para obtener datos del mapa de calor
 @router.get("/calendar_heatmap")
@@ -336,7 +309,7 @@ async def get_calendar_heatmap(
         conn = psycopg2.connect(**DB_CONFIG)
         cur = conn.cursor()
         
-        # Consulta para obtener conteo de ejercicios por día
+        # Consulta actualizada para usar fecha::date
         query = """
             SELECT fecha::date as day, COUNT(*) as count
             FROM gym.ejercicios

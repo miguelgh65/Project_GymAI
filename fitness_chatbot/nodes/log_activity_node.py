@@ -36,12 +36,24 @@ async def log_activity(states: Tuple[AgentState, MemoryState]) -> Tuple[AgentSta
         auth_token = agent_state.get("user_context", {}).get("auth_token")
         logger.info(f"Token de autenticación disponible: {'Sí' if auth_token else 'No'}")
         
-        # Hacer llamada a la API del backend con el texto original
-        result = log_exercise(user_id, query, auth_token=auth_token)
+        # Extraer información RIR si está presente
+        rir_value = extract_rir(query)
+        if rir_value is not None:
+            logger.info(f"RIR extraído del mensaje: {rir_value}")
         
-        # CAMBIO PRINCIPAL: Siempre devolver un mensaje de éxito
-        # Sabemos que el backend eventualmente registra el ejercicio correctamente
-        # aunque la API devuelva un error de timeout
+        # Extraer comentarios si están presentes
+        comentarios = extract_comentarios(query)
+        if comentarios:
+            logger.info(f"Comentarios extraídos: {comentarios}")
+        
+        # Hacer llamada a la API del backend con el texto original y datos adicionales
+        exercise_data = {
+            "exercise_data": query,
+            "rir": rir_value,
+            "comentarios": comentarios
+        }
+        
+        result = log_exercise(user_id, exercise_data, auth_token=auth_token)
         
         # Extraer información básica para personalizar el mensaje
         exercise_name = extract_exercise_name(query)
@@ -83,12 +95,93 @@ def extract_exercise_name(text: str) -> Optional[str]:
         (r'curl\s+(?:de\s+)?b[ií]ceps', 'curl de bíceps'),
         (r'press\s+militar', 'press militar'),
         (r'fondos', 'fondos'),
-        (r'remo', 'remo')
+        (r'remo', 'remo'),
+        (r'press\s+militar', 'press militar'),
+        (r'extensiones\s+(?:de\s+)?tr[ií]ceps', 'extensiones de tríceps'),
+        (r'elevaciones\s+laterales', 'elevaciones laterales'),
+        (r'desplantes', 'desplantes'),
+        (r'zancadas', 'zancadas'),
+        (r'prensa', 'prensa'),
+        (r'jalones', 'jalones'),
+        (r'crunches', 'crunches'),
+        (r'plancha[s]?', 'planchas')
     ]
     
     text_lower = text.lower()
     for pattern, name in patterns:
         if re.search(pattern, text_lower):
             return name
+    
+    return None
+
+def extract_rir(text: str) -> Optional[int]:
+    """
+    Extrae el valor RIR (Repetitions In Reserve) de un texto.
+    
+    Args:
+        text: Texto con descripción del ejercicio
+        
+    Returns:
+        Valor RIR o None si no se menciona
+    """
+    # Patrones para detectar RIR
+    rir_patterns = [
+        r'(?:con|y)\s+(?:un\s+)?RIR\s+(?:de\s+)?(\d+)',
+        r'RIR\s+(?:de\s+)?(\d+)',
+        r'(?:con|y)\s+(?:un\s+)?(?:rir|RIR)\s+(?:de\s+)?(\d+)',
+        r'(?:rir|RIR)(?:\s+|\:)(\d+)',
+        r'(?:rir|RIR)\s*=\s*(\d+)',
+        r'(?:rir|RIR)(?:\s+|\:)(\d+)'
+    ]
+    
+    for pattern in rir_patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            try:
+                return int(match.group(1))
+            except (ValueError, IndexError):
+                pass
+    
+    return None
+
+def extract_comentarios(text: str) -> Optional[str]:
+    """
+    Extrae comentarios o notas sobre el ejercicio.
+    
+    Args:
+        text: Texto con descripción del ejercicio
+        
+    Returns:
+        Comentarios o None si no hay
+    """
+    # Patrones para detectar comentarios
+    comentario_patterns = [
+        r'(?:nota|comentario|comentarios)\s*(?::|=)\s*(.*?)(?:$|\.|\n)',
+        r'(?:con\s+)?(?:la\s+)?(?:nota|comentario)\s+(?:de\s+que\s+)?(.*?)(?:$|\.|\n)',
+        r'(?:me\s+)?(?:fue|sentí|siento)\s+(.*?)(?:$|\.|\n)',
+        r'(?:hoy|día)\s+(?:muy|bastante)?\s+(duro|difícil|fácil|intenso|ligero|pesado)(?:$|\.|\n)',
+        r'(?:la\s+)?sensación\s+(?:fue|es)\s+(.*?)(?:$|\.|\n)'
+    ]
+    
+    for pattern in comentario_patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            comentario = match.group(1).strip()
+            if comentario and len(comentario) > 3:  # Al menos 4 caracteres
+                return comentario
+    
+    # Buscar frases completas después de la descripción del ejercicio
+    exercise_info_pattern = r'(?:hice|he\s+hecho|realicé|hago|logré)\s+[^\.]*?\d+\s*(?:series|repeticiones|reps)'
+    match = re.search(exercise_info_pattern, text, re.IGNORECASE)
+    
+    if match:
+        # Si hay información de ejercicio, buscar texto después
+        info_end = match.end()
+        if info_end < len(text) - 20:  # Al menos 20 caracteres después
+            comentario = text[info_end:].strip()
+            # Limpiar y normalizar
+            comentario = re.sub(r'^[,\.\s]*', '', comentario)  # Quitar puntuación inicial
+            if comentario and len(comentario) > 5:  # Al menos 6 caracteres
+                return comentario
     
     return None

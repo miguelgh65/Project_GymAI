@@ -292,14 +292,14 @@ class HistoryChain:
         respuesta = "## 🏋️ Repeticiones en tu última sesión de dominadas\n\n"
         respuesta += f"En tu sesión del **{fecha}**, hiciste:\n\n"
         
-        # Procesar repeticiones
-        if 'repeticiones' in result and result['repeticiones']:
+        # Procesar series_json (NUEVO FORMATO)
+        if 'series_json' in result and result['series_json']:
             try:
                 # Convertir a JSON si es string
-                if isinstance(result['repeticiones'], str):
-                    series = json.loads(result['repeticiones'])
+                if isinstance(result['series_json'], str):
+                    series = json.loads(result['series_json'])
                 else:
-                    series = result['repeticiones']
+                    series = result['series_json']
                 
                 # Solo procesar si es una lista
                 if isinstance(series, list):
@@ -313,17 +313,78 @@ class HistoryChain:
                         if isinstance(serie, dict):
                             reps = serie.get('repeticiones', 0)
                             peso = serie.get('peso', 0)
+                            rir = serie.get('rir', None)
                             
                             if peso > 0:
-                                respuesta += f"• Serie {i}: **{reps} repeticiones** con {peso} kg de peso\n"
+                                respuesta += f"• Serie {i}: **{reps} repeticiones** con {peso} kg de peso"
                             else:
-                                respuesta += f"• Serie {i}: **{reps} repeticiones** con tu peso corporal\n"
+                                respuesta += f"• Serie {i}: **{reps} repeticiones** con tu peso corporal"
+                            
+                            # Añadir RIR si está disponible
+                            if rir is not None:
+                                respuesta += f" (RIR: {rir})"
+                            
+                            respuesta += "\n"
                         else:
                             respuesta += f"• Serie {i}: {str(serie)}\n"
                 else:
                     respuesta += f"**Datos:** {str(series)}\n"
             except Exception as e:
+                logger.error(f"Error procesando series_json: {e}")
                 respuesta += "No pude procesar el formato detallado de las repeticiones.\n"
+        
+        # Intentar con el formato antiguo si no hay series_json
+        elif 'repeticiones' in result and result['repeticiones']:
+            try:
+                # Verificar si repeticiones es un número (nuevo formato) o JSON (antiguo formato)
+                if isinstance(result['repeticiones'], int) or (isinstance(result['repeticiones'], str) and result['repeticiones'].isdigit()):
+                    # En el nuevo formato, repeticiones es el total
+                    respuesta += f"**Total: {result['repeticiones']} repeticiones**\n\n"
+                    respuesta += "No tengo el detalle de cada serie.\n"
+                else:
+                    # Convertir a JSON si es string
+                    if isinstance(result['repeticiones'], str):
+                        series = json.loads(result['repeticiones'])
+                    else:
+                        series = result['repeticiones']
+                    
+                    # Solo procesar si es una lista
+                    if isinstance(series, list):
+                        # Calcular total de repeticiones
+                        total_reps = sum(s.get('repeticiones', 0) for s in series if isinstance(s, dict))
+                        respuesta += f"**Total: {total_reps} repeticiones**\n\n"
+                        
+                        # Detallar cada serie
+                        respuesta += "**Desglose por series:**\n"
+                        for i, serie in enumerate(series, 1):
+                            if isinstance(serie, dict):
+                                reps = serie.get('repeticiones', 0)
+                                peso = serie.get('peso', 0)
+                                
+                                if peso > 0:
+                                    respuesta += f"• Serie {i}: **{reps} repeticiones** con {peso} kg de peso\n"
+                                else:
+                                    respuesta += f"• Serie {i}: **{reps} repeticiones** con tu peso corporal\n"
+                            else:
+                                respuesta += f"• Serie {i}: {str(serie)}\n"
+                    else:
+                        respuesta += f"**Datos:** {str(series)}\n"
+            except Exception as e:
+                logger.error(f"Error procesando repeticiones (formato antiguo): {e}")
+                # Si falla el parsing, podría ser que repeticiones ahora sea un número total
+                try:
+                    respuesta += f"**Total: {int(result['repeticiones'])} repeticiones**\n\n"
+                    respuesta += "No tengo el detalle de cada serie.\n"
+                except:
+                    respuesta += "No pude procesar el formato detallado de las repeticiones.\n"
+        
+        # Añadir comentarios si están disponibles
+        if 'comentarios' in result and result['comentarios']:
+            respuesta += f"\n**Notas:** {result['comentarios']}\n"
+        
+        # Añadir RIR global si está disponible
+        if 'rir' in result and result['rir'] is not None:
+            respuesta += f"\n**RIR global:** {result['rir']}\n"
         
         return respuesta
     
@@ -345,14 +406,22 @@ class HistoryChain:
         respuesta = f"## 🏋️ Última sesión de {ejercicio}\n\n"
         respuesta += f"**Fecha:** {fecha}\n\n"
         
-        # Procesar repeticiones
-        if 'repeticiones' in result and result['repeticiones']:
+        # Añadir comentarios si están disponibles
+        if 'comentarios' in result and result['comentarios']:
+            respuesta += f"**Notas:** {result['comentarios']}\n\n"
+        
+        # Añadir RIR global si está disponible
+        if 'rir' in result and result['rir'] is not None:
+            respuesta += f"**RIR global:** {result['rir']}\n\n"
+        
+        # Procesar series_json (NUEVO FORMATO)
+        if 'series_json' in result and result['series_json']:
             try:
                 # Convertir a JSON si es string
-                if isinstance(result['repeticiones'], str):
-                    series = json.loads(result['repeticiones'])
+                if isinstance(result['series_json'], str):
+                    series = json.loads(result['series_json'])
                 else:
-                    series = result['repeticiones']
+                    series = result['series_json']
                 
                 # Solo procesar si es una lista
                 if isinstance(series, list):
@@ -371,13 +440,68 @@ class HistoryChain:
                         if isinstance(serie, dict):
                             reps = serie.get('repeticiones', 0)
                             peso = serie.get('peso', 0)
-                            respuesta += f"• Serie {i}: {reps} repeticiones × {peso} kg\n"
+                            rir = serie.get('rir', None)
+                            
+                            serie_texto = f"• Serie {i}: {reps} repeticiones × {peso} kg"
+                            
+                            # Añadir RIR si está disponible
+                            if rir is not None:
+                                serie_texto += f" (RIR: {rir})"
+                            
+                            respuesta += serie_texto + "\n"
                         else:
                             respuesta += f"• Serie {i}: {str(serie)}\n"
                 else:
                     respuesta += f"**Datos:** {str(series)}\n"
             except Exception as e:
+                logger.error(f"Error procesando series_json: {e}")
                 respuesta += "No pude procesar el formato detallado de las repeticiones.\n"
+        
+        # Intentar con el formato antiguo si no hay series_json
+        elif 'repeticiones' in result and result['repeticiones']:
+            try:
+                # Verificar si repeticiones es un número (nuevo formato) o JSON (antiguo formato)
+                if isinstance(result['repeticiones'], int) or (isinstance(result['repeticiones'], str) and result['repeticiones'].isdigit()):
+                    # En el nuevo formato, repeticiones es el total
+                    respuesta += f"**Total repeticiones:** {result['repeticiones']}\n"
+                    respuesta += "No tengo el detalle de cada serie.\n"
+                else:
+                    # Convertir a JSON si es string
+                    if isinstance(result['repeticiones'], str):
+                        series = json.loads(result['repeticiones'])
+                    else:
+                        series = result['repeticiones']
+                    
+                    # Solo procesar si es una lista
+                    if isinstance(series, list):
+                        # Calcular totales
+                        total_reps = sum(s.get('repeticiones', 0) for s in series if isinstance(s, dict))
+                        max_peso = max((s.get('peso', 0) for s in series if isinstance(s, dict)), default=0)
+                        volumen = sum(s.get('repeticiones', 0) * s.get('peso', 0) for s in series if isinstance(s, dict))
+                        
+                        respuesta += f"**Total repeticiones:** {total_reps}\n"
+                        respuesta += f"**Peso máximo usado:** {max_peso} kg\n"
+                        respuesta += f"**Volumen total:** {volumen} kg\n\n"
+                        
+                        # Detallar cada serie
+                        respuesta += "**Series:**\n"
+                        for i, serie in enumerate(series, 1):
+                            if isinstance(serie, dict):
+                                reps = serie.get('repeticiones', 0)
+                                peso = serie.get('peso', 0)
+                                respuesta += f"• Serie {i}: {reps} repeticiones × {peso} kg\n"
+                            else:
+                                respuesta += f"• Serie {i}: {str(serie)}\n"
+                    else:
+                        respuesta += f"**Datos:** {str(series)}\n"
+            except Exception as e:
+                logger.error(f"Error procesando repeticiones (formato antiguo): {e}")
+                # Si falla el parsing, podría ser que repeticiones ahora sea un número total
+                try:
+                    respuesta += f"**Total repeticiones:** {int(result['repeticiones'])}\n"
+                    respuesta += "No tengo el detalle de cada serie.\n"
+                except:
+                    respuesta += "No pude procesar el formato detallado de las repeticiones.\n"
         
         return respuesta
     
@@ -405,14 +529,22 @@ class HistoryChain:
             
             respuesta += f"### Sesión {i+1} - {fecha}\n"
             
-            # Procesar repeticiones
-            if 'repeticiones' in row and row['repeticiones']:
+            # Añadir comentarios si están disponibles
+            if 'comentarios' in row and row['comentarios']:
+                respuesta += f"**Notas:** {row['comentarios']}\n"
+            
+            # Añadir RIR global si está disponible
+            if 'rir' in row and row['rir'] is not None:
+                respuesta += f"**RIR global:** {row['rir']}\n"
+            
+            # Procesar series_json (NUEVO FORMATO)
+            if 'series_json' in row and row['series_json']:
                 try:
                     # Convertir a JSON si es string
-                    if isinstance(row['repeticiones'], str):
-                        series = json.loads(row['repeticiones'])
+                    if isinstance(row['series_json'], str):
+                        series = json.loads(row['series_json'])
                     else:
-                        series = row['repeticiones']
+                        series = row['series_json']
                     
                     # Solo procesar si es una lista
                     if isinstance(series, list):
@@ -431,13 +563,68 @@ class HistoryChain:
                             if isinstance(serie, dict):
                                 reps = serie.get('repeticiones', 0)
                                 peso = serie.get('peso', 0)
-                                respuesta += f"• Serie {j}: {reps} repeticiones × {peso} kg\n"
+                                rir = serie.get('rir', None)
+                                
+                                serie_texto = f"• Serie {j}: {reps} repeticiones × {peso} kg"
+                                
+                                # Añadir RIR si está disponible
+                                if rir is not None:
+                                    serie_texto += f" (RIR: {rir})"
+                                
+                                respuesta += serie_texto + "\n"
                             else:
                                 respuesta += f"• Serie {j}: {str(serie)}\n"
                     else:
                         respuesta += f"**Datos:** {str(series)}\n"
                 except Exception as e:
+                    logger.error(f"Error procesando series_json: {e}")
                     respuesta += "No pude procesar el formato detallado.\n"
+            
+            # Intentar con el formato antiguo si no hay series_json
+            elif 'repeticiones' in row and row['repeticiones']:
+                try:
+                    # Verificar si repeticiones es un número (nuevo formato) o JSON (antiguo formato)
+                    if isinstance(row['repeticiones'], int) or (isinstance(row['repeticiones'], str) and row['repeticiones'].isdigit()):
+                        # En el nuevo formato, repeticiones es el total
+                        respuesta += f"**Total repeticiones:** {row['repeticiones']}\n"
+                        respuesta += "No tengo el detalle de cada serie.\n"
+                    else:
+                        # Convertir a JSON si es string
+                        if isinstance(row['repeticiones'], str):
+                            series = json.loads(row['repeticiones'])
+                        else:
+                            series = row['repeticiones']
+                        
+                        # Solo procesar si es una lista
+                        if isinstance(series, list):
+                            # Calcular totales
+                            total_reps = sum(s.get('repeticiones', 0) for s in series if isinstance(s, dict))
+                            max_peso = max((s.get('peso', 0) for s in series if isinstance(s, dict)), default=0)
+                            volumen = sum(s.get('repeticiones', 0) * s.get('peso', 0) for s in series if isinstance(s, dict))
+                            
+                            respuesta += f"**Total repeticiones:** {total_reps}\n"
+                            respuesta += f"**Peso máximo:** {max_peso} kg\n"
+                            respuesta += f"**Volumen total:** {volumen} kg\n"
+                            
+                            # Detallar cada serie
+                            respuesta += "**Series:**\n"
+                            for j, serie in enumerate(series, 1):
+                                if isinstance(serie, dict):
+                                    reps = serie.get('repeticiones', 0)
+                                    peso = serie.get('peso', 0)
+                                    respuesta += f"• Serie {j}: {reps} repeticiones × {peso} kg\n"
+                                else:
+                                    respuesta += f"• Serie {j}: {str(serie)}\n"
+                        else:
+                            respuesta += f"**Datos:** {str(series)}\n"
+                except Exception as e:
+                    logger.error(f"Error procesando repeticiones (formato antiguo): {e}")
+                    # Si falla el parsing, podría ser que repeticiones ahora sea un número total
+                    try:
+                        respuesta += f"**Total repeticiones:** {int(row['repeticiones'])}\n"
+                        respuesta += "No tengo el detalle de cada serie.\n"
+                    except:
+                        respuesta += "No pude procesar el formato detallado.\n"
             
             respuesta += "\n"
         
