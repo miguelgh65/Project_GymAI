@@ -103,7 +103,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             # No autenticado y ruta no pública -> Redirigir a login
             logger.warning(f"🚦 Path '{path}' NO público y SIN autenticación válida. Redirigiendo a /login.")
             # Construir URL de redirección segura
-            redirect_path = request.url_for('login_get') # Usa el nombre de la ruta si está definido
+            redirect_path = "/login"  # Usar una ruta directa en lugar de url_for
             # Añadir redirect_url como query param
             final_redirect_url = f"{redirect_path}?redirect_url={request.url.path}"
 
