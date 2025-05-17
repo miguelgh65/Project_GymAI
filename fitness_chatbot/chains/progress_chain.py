@@ -45,7 +45,7 @@ def detect_exercise_in_query(query: str) -> str:
 
 async def process_query(user_id: str, query: str, user_context: Dict[str, Any] = None) -> str:
     """
-    Procesa una consulta sobre progreso y genera un análisis completo.
+    Procesa una consulta sobre progreso y genera un análisis completo utilizando LLM.
     
     Args:
         user_id: ID del usuario
@@ -65,257 +65,167 @@ async def process_query(user_id: str, query: str, user_context: Dict[str, Any] =
         exercise_history = user_context.get("exercise_history", [])
         has_exercise_history = len(exercise_history) > 0
         
+        fitbit_data = user_context.get("fitbit_data", {})
+        has_fitbit_data = fitbit_data.get("available", False)
+        
         if not has_exercise_history:
             logger.warning("⚠️ No hay datos suficientes para análisis de progreso")
-            return "No tengo suficientes datos para analizar tu progreso."
+            return "No tengo suficientes datos para analizar tu progreso. Necesito que registres más ejercicios primero."
         
-        # Detectar si la consulta menciona press banca o similares
-        query_lower = query.lower()
-        specific_exercise = None
-        if "press" in query_lower and ("banca" in query_lower or "banc" in query_lower):
-            specific_exercise = "press banca"
+        # Detectar ejercicio específico mencionado en la consulta
+        specific_exercise = user_context.get("specific_exercise") or detect_exercise_in_query(query)
         
-        # Si se detectó press banca, analizar directamente
         if specific_exercise:
             logger.info(f"🏋️ Ejercicio específico detectado: {specific_exercise}")
-            # Filtrar ejercicios de press banca
-            press_banca_data = []
-            for entry in exercise_history:
-                if entry.get('ejercicio', '') == specific_exercise:
-                    press_banca_data.append(entry)
-            
-            # Generar análisis directo sin usar LLM
-            return generate_press_banca_analysis(press_banca_data)
+            # Filtrar ejercicios para el específico mencionado
+            filtered_exercises = [e for e in exercise_history if e.get('ejercicio', '').lower() == specific_exercise.lower()]
+            if filtered_exercises:
+                logger.info(f"Se encontraron {len(filtered_exercises)} registros para {specific_exercise}")
+                exercise_history = filtered_exercises
         
-        # Para otros casos, usar análisis genérico
-        return "He analizado tus datos de entrenamiento y puedo ver que has estado entrenando regularmente. Para un análisis más específico, pregúntame sobre un ejercicio concreto como 'press banca'."
+        # Estructurar datos para el LLM
+        progress_data = {
+            "exercise_history": exercise_history,
+            "fitbit_data": fitbit_data,
+            "specific_exercise": specific_exercise
+        }
         
+        # Preparar el contexto para el LLM
+        analysis_context = prepare_analysis_context(progress_data)
+        logger.info(f"Preparado contexto de análisis con {len(analysis_context)} caracteres")
+        
+        # Usar el LLM para generar el análisis
+        llm = get_llm()
+        if not llm:
+            logger.error("LLM no disponible para generar análisis de progreso")
+            return "Lo siento, no puedo analizar tu progreso en este momento debido a un problema técnico."
+        
+        # Obtener prompts para análisis de progreso
+        messages = PromptManager.get_prompt_messages(
+            "progress",
+            query=query,
+            user_context=analysis_context
+        )
+        
+        # Invocar el LLM
+        response = await llm.ainvoke(messages)
+        content = response.content if hasattr(response, 'content') else str(response)
+        
+        return content
+    
     except Exception as e:
         logger.exception(f"❌ Error en ProgressChain: {str(e)}")
         return "Lo siento, tuve un problema al analizar tu progreso. Por favor, intenta de nuevo más tarde."
 
-def generate_press_banca_analysis(press_banca_data: List[Dict[str, Any]]) -> str:
+def prepare_analysis_context(progress_data: Dict[str, Any]) -> str:
     """
-    Genera un análisis específico para press banca sin usar LLM.
+    Prepara un contexto detallado para el LLM basado en los datos recopilados.
     
     Args:
-        press_banca_data: Lista de registros de press banca
+        progress_data: Datos de progreso recopilados
         
     Returns:
-        Análisis de progreso formateado
+        Contexto formateado para el LLM
     """
-    if not press_banca_data:
-        return "No encontré registros de press banca en tu historial."
+    exercise_history = progress_data.get("exercise_history", [])
+    fitbit_data = progress_data.get("fitbit_data", {})
+    specific_exercise = progress_data.get("specific_exercise", "")
     
-    # Ordenar por fecha (de más antiguo a más reciente)
-    press_banca_data.sort(key=lambda x: x.get('fecha', ''))
+    context = "=== HISTORIAL DE EJERCICIOS ===\n\n"
     
-    # Extraer datos básicos
-    num_sessions = len(press_banca_data)
-    first_session = press_banca_data[0]
-    last_session = press_banca_data[-1]
-    
-    # Calcular fechas legibles
-    first_date = first_session.get('fecha', '').split('T')[0] if 'T' in first_session.get('fecha', '') else first_session.get('fecha', '')
-    last_date = last_session.get('fecha', '').split('T')[0] if 'T' in last_session.get('fecha', '') else last_session.get('fecha', '')
-    
-    # Calcular peso máximo usado
-    max_weight = 0
-    for session in press_banca_data:
-        for serie in session.get('repeticiones', []):
-            if isinstance(serie, dict):
-                peso = serie.get('peso', 0)
-                if peso > max_weight:
-                    max_weight = peso
-    
-    # Calcular 1RM estimado para primera y última sesión
-    first_1rm = calculate_1rm(first_session.get('repeticiones', []))
-    last_1rm = calculate_1rm(last_session.get('repeticiones', []))
-    
-    # Calcular cambio porcentual
-    if first_1rm > 0:
-        change_percent = ((last_1rm - first_1rm) / first_1rm) * 100
-    else:
-        change_percent = 0
-    
-    # Crear análisis
-    analysis = f"# Análisis de Progreso en Press Banca\n\n"
-    analysis += f"He analizado tus {num_sessions} sesiones de press banca registradas entre {first_date} y {last_date}.\n\n"
-    
-    analysis += "## Resumen\n\n"
-    analysis += f"* **Peso máximo utilizado:** {max_weight} kg\n"
-    analysis += f"* **1RM estimado inicial:** {first_1rm:.1f} kg\n"
-    analysis += f"* **1RM estimado actual:** {last_1rm:.1f} kg\n"
-    
-    if change_percent > 0:
-        analysis += f"* **Progreso:** +{change_percent:.1f}% de mejora\n\n"
-        analysis += "¡Has mostrado un progreso positivo! Tu fuerza máxima estimada ha aumentado significativamente desde tu primera sesión registrada.\n\n"
-    elif change_percent < 0:
-        analysis += f"* **Cambio:** {change_percent:.1f}% (reducción)\n\n"
-        analysis += "Tu fuerza máxima estimada ha disminuido desde tu primera sesión registrada. Esto podría deberse a fatiga, técnica, o factores como nutrición y descanso.\n\n"
-    else:
-        analysis += "* **Progreso:** Estable\n\n"
-        analysis += "Tu fuerza se ha mantenido estable durante el período analizado.\n\n"
-    
-    analysis += "## Recomendaciones\n\n"
-    
-    if change_percent >= 0:
-        analysis += "1. **Continúa con tu progresión gradual** - Sigue aumentando el peso de manera progresiva.\n"
-        analysis += "2. **Considera variaciones** - Añade press inclinado o declinado para desarrollo completo.\n"
-        analysis += f"3. **Próximo objetivo:** Intenta llegar a {(last_1rm * 1.05):.1f} kg de 1RM en las próximas semanas.\n"
-    else:
-        analysis += "1. **Revisa tu técnica** - Asegúrate de ejecutar correctamente el movimiento.\n"
-        analysis += "2. **Evalúa recuperación** - El descanso y la nutrición son clave para el progreso.\n"
-        analysis += "3. **Considera un deload** - Una semana de menor intensidad podría ayudar a recuperarte.\n"
-    
-    return analysis
-
-# fitness_chatbot/chains/progress_chain.py (sección modificada)
-
-def calculate_1rm(repeticiones: List[Dict[str, Any]]) -> float:
-    """
-    Calcula el 1RM estimado usando la fórmula de Brzycki.
-    
-    Args:
-        repeticiones: Lista de series con repeticiones y pesos
+    # Si hay un ejercicio específico, enfocarse en él
+    if specific_exercise and any(e.get('ejercicio') == specific_exercise for e in exercise_history):
+        specific_exercises = [e for e in exercise_history if e.get('ejercicio') == specific_exercise]
+        context += f"EJERCICIO ESPECÍFICO: {specific_exercise}\n"
+        context += f"Total de sesiones: {len(specific_exercises)}\n"
         
-    Returns:
-        1RM estimado
-    """
-    max_1rm = 0
-    
-    # Verificar si es el formato nuevo (series_json) o antiguo (repeticiones)
-    if isinstance(repeticiones, list):
-        for serie in repeticiones:
-            if isinstance(serie, dict):
-                # Buscar los campos correspondientes según el formato
-                if "repeticiones" in serie and "peso" in serie:
-                    # Formato nuevo (series_json)
-                    reps = serie.get('repeticiones', 0)
-                    peso = serie.get('peso', 0)
-                elif "reps" in serie and "weight" in serie:
-                    # Formato antiguo 
-                    reps = serie.get('reps', 0)
-                    peso = serie.get('weight', 0)
-                else:
-                    # Formato desconocido
-                    continue
-                
-                if reps > 0 and reps < 37 and peso > 0:
-                    # Fórmula de Brzycki: 1RM = peso × (36 / (37 - repeticiones))
-                    current_1rm = peso * (36 / (37 - reps))
-                    max_1rm = max(max_1rm, current_1rm)
-    
-    return max_1rm
-
-def generate_press_banca_analysis(press_banca_data: List[Dict[str, Any]]) -> str:
-    """
-    Genera un análisis específico para press banca sin usar LLM.
-    
-    Args:
-        press_banca_data: Lista de registros de press banca
-        
-    Returns:
-        Análisis de progreso formateado
-    """
-    if not press_banca_data:
-        return "No encontré registros de press banca en tu historial."
-    
-    # Ordenar por fecha (de más antiguo a más reciente)
-    press_banca_data.sort(key=lambda x: x.get('fecha', ''))
-    
-    # Extraer datos básicos
-    num_sessions = len(press_banca_data)
-    first_session = press_banca_data[0]
-    last_session = press_banca_data[-1]
-    
-    # Calcular fechas legibles
-    first_date = first_session.get('fecha', '').split('T')[0] if 'T' in first_session.get('fecha', '') else first_session.get('fecha', '')
-    last_date = last_session.get('fecha', '').split('T')[0] if 'T' in last_session.get('fecha', '') else last_session.get('fecha', '')
-    
-    # Calcular peso máximo usado
-    max_weight = 0
-    
-    # MODIFICADO: Verificar si estamos usando series_json o repeticiones
-    for session in press_banca_data:
-        # Verificar primero el formato nuevo (series_json)
-        if 'series_json' in session and session['series_json']:
-            series_data = session['series_json']
-            # Convertir a JSON si es string
-            if isinstance(series_data, str):
+        # Mostrar detalles de cada sesión (limitado a las últimas 5-10)
+        for i, session in enumerate(specific_exercises[:10]):
+            date = session.get('fecha', '').split('T')[0] if 'T' in session.get('fecha', '') else session.get('fecha', '')
+            context += f"  Sesión {i+1} - Fecha: {date}\n"
+            
+            # Intentar extraer detalles de series
+            series_data = []
+            
+            # Primero intentar con series_json
+            if 'series_json' in session and session['series_json']:
                 try:
-                    series_data = json.loads(series_data)
+                    if isinstance(session['series_json'], str):
+                        series_data = json.loads(session['series_json'])
+                    else:
+                        series_data = session['series_json']
                 except:
                     series_data = []
-                    
-            # Extraer peso máximo
-            for serie in series_data:
-                if isinstance(serie, dict):
-                    peso = serie.get('peso', 0)
-                    if peso > max_weight:
-                        max_weight = peso
-        
-        # Verificar el formato antiguo (repeticiones)
-        elif 'repeticiones' in session and session['repeticiones']:
-            series = session.get('repeticiones', [])
-            # Convertir a JSON si es string
-            if isinstance(series, str):
-                try:
-                    series = json.loads(series)
-                except:
-                    series = []
+            # Luego intentar con repeticiones
+            elif 'repeticiones' in session:
+                if isinstance(session['repeticiones'], int):
+                    context += f"    Total repeticiones: {session['repeticiones']}\n"
+                    series_data = []  # No hay detalles de series
+                else:
+                    try:
+                        if isinstance(session['repeticiones'], str):
+                            series_data = json.loads(session['repeticiones'])
+                        else:
+                            series_data = session['repeticiones']
+                    except:
+                        series_data = []
             
-            # Extraer peso máximo
-            for serie in series:
-                if isinstance(serie, dict):
-                    peso = serie.get('peso', 0)
-                    if peso > max_weight:
-                        max_weight = peso
+            # Mostrar detalles de cada serie
+            if series_data and isinstance(series_data, list):
+                for j, serie in enumerate(series_data):
+                    if isinstance(serie, dict):
+                        reps = serie.get('repeticiones', 0)
+                        peso = serie.get('peso', 0)
+                        rir = serie.get('rir', None)
+                        
+                        serie_txt = f"    Serie {j+1}: {reps} repeticiones × {peso} kg"
+                        if rir is not None:
+                            serie_txt += f" (RIR: {rir})"
+                        context += serie_txt + "\n"
     
-    # Calcular 1RM estimado para primera y última sesión
-    # MODIFICADO: Extraer series de series_json si existe, o de repeticiones si no
-    first_series = None
-    last_series = None
+    # Siempre incluir un resumen general
+    context += "\nRESUMEN DE EJERCICIOS:\n"
+    exercise_counts = {}
+    for e in exercise_history:
+        name = e.get('ejercicio', 'desconocido')
+        exercise_counts[name] = exercise_counts.get(name, 0) + 1
     
-    if 'series_json' in first_session and first_session['series_json']:
-        if isinstance(first_session['series_json'], str):
-            try:
-                first_series = json.loads(first_session['series_json'])
-            except:
-                pass
-        else:
-            first_series = first_session['series_json']
-    elif 'repeticiones' in first_session:
-        if isinstance(first_session['repeticiones'], str):
-            try:
-                first_series = json.loads(first_session['repeticiones'])
-            except:
-                pass
-        else:
-            first_series = first_session['repeticiones']
+    for name, count in exercise_counts.items():
+        context += f"• {name}: {count} sesiones\n"
     
-    if 'series_json' in last_session and last_session['series_json']:
-        if isinstance(last_session['series_json'], str):
-            try:
-                last_series = json.loads(last_session['series_json'])
-            except:
-                pass
-        else:
-            last_series = last_session['series_json']
-    elif 'repeticiones' in last_session:
-        if isinstance(last_session['repeticiones'], str):
-            try:
-                last_series = json.loads(last_session['repeticiones'])
-            except:
-                pass
-        else:
-            last_series = last_session['repeticiones']
+    # Incluir datos de Fitbit si están disponibles
+    if fitbit_data.get("available", False):
+        context += "\n=== DATOS DE FITBIT ===\n\n"
+        
+        # Datos de perfil
+        if 'profile' in fitbit_data and 'user' in fitbit_data['profile']:
+            user = fitbit_data['profile']['user']
+            if 'weight' in user:
+                context += "REGISTRO DE PESO:\n"
+                context += f"  {datetime.now().strftime('%Y-%m-%d')}: {user.get('weight')} kg\n"
+        
+        # Datos de actividad
+        if 'activity_summary' in fitbit_data:
+            summary = fitbit_data['activity_summary'].get('summary', {})
+            context += "\nACTIVIDAD RECIENTE:\n"
+            context += f"  Pasos: {summary.get('steps', 0)}\n"
+            context += f"  Calorías: {summary.get('caloriesOut', 0)}\n"
+        
+        # Datos de sueño
+        if 'sleep_log' in fitbit_data and 'sleep' in fitbit_data['sleep_log'] and fitbit_data['sleep_log']['sleep']:
+            sleep = fitbit_data['sleep_log']['sleep'][0]
+            minutes = sleep.get('minutesAsleep', 0)
+            hours = minutes // 60
+            mins = minutes % 60
+            context += f"\nSUEÑO: {hours}h {mins}m\n"
     
-    first_1rm = calculate_1rm(first_series) if first_series else 0
-    last_1rm = calculate_1rm(last_series) if last_series else 0
+    # Añadir instrucciones para el análisis
+    context += "\n=== INSTRUCCIONES PARA ANÁLISIS ===\n"
+    context += "1. Analiza la tendencia de progreso basada en:\n"
+    context += "   - Aumento de peso utilizado\n"
+    context += "   - Aumento de repeticiones totales\n"
+    context += "   - Aumento de volumen total (peso × repeticiones)\n"
+    context += "2. Si hay un ejercicio específico mencionado, enfócate en él\n"
+    context += "3. Proporciona recomendaciones específicas para mejorar\n"
     
-    # Calcular cambio porcentual
-    if first_1rm > 0:
-        change_percent = ((last_1rm - first_1rm) / first_1rm) * 100
-    else:
-        change_percent = 0
+    return context

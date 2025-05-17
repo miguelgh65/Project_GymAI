@@ -526,8 +526,9 @@ class HistoryChain:
         # Mostrar cada sesión
         for i, row in enumerate(results):
             fecha = row['fecha'].strftime("%Y-%m-%d %H:%M") if hasattr(row['fecha'], 'strftime') else row['fecha']
+            fecha_corta = fecha.split(" ")[0] if isinstance(fecha, str) and " " in fecha else fecha
             
-            respuesta += f"### Sesión {i+1} - {fecha}\n"
+            respuesta += f"### Sesión {i+1} - {fecha_corta}\n"
             
             # Añadir comentarios si están disponibles
             if 'comentarios' in row and row['comentarios']:
@@ -537,7 +538,7 @@ class HistoryChain:
             if 'rir' in row and row['rir'] is not None:
                 respuesta += f"**RIR global:** {row['rir']}\n"
             
-            # Procesar series_json (NUEVO FORMATO)
+            # PRIMERO intenta usar series_json (formato NUEVO)
             if 'series_json' in row and row['series_json']:
                 try:
                     # Convertir a JSON si es string
@@ -580,7 +581,7 @@ class HistoryChain:
                     logger.error(f"Error procesando series_json: {e}")
                     respuesta += "No pude procesar el formato detallado.\n"
             
-            # Intentar con el formato antiguo si no hay series_json
+            # SEGUNDO intenta con el formato antiguo si no hay series_json
             elif 'repeticiones' in row and row['repeticiones']:
                 try:
                     # Verificar si repeticiones es un número (nuevo formato) o JSON (antiguo formato)

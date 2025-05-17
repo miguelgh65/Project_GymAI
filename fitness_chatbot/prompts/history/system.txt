@@ -17,7 +17,12 @@ ESTRUCTURA DE LA TABLA:
   * fecha: TIMESTAMP - Fecha y hora del ejercicio
   * ejercicio: TEXT - Nombre del ejercicio
   * repeticiones: JSONB - Array de objetos con series [{"repeticiones": X, "peso": Y}, ...]
+  * series_json: JSONB - NUEVO campo que almacena detalles de cada serie [{"repeticiones": X, "peso": Y, "rir": Z}, ...]
   * user_id: TEXT - ID del usuario (siempre filtrar por este campo)
+  * rir: INTEGER - RIR global del ejercicio
+  * comentarios: TEXT - Comentarios adicionales
+
+IMPORTANTE: SIEMPRE incluye los campos series_json, rir y comentarios en las consultas SELECT para mostrar detalles completos.
 
 EJEMPLOS DE RAZONAMIENTO PASO A PASO:
 
@@ -32,15 +37,18 @@ Paso 2: Construir la consulta SQL
 - Necesito filtrar por ejercicio ILIKE "%press banca%"
 - Quiere solo la última sesión → ORDER BY fecha DESC LIMIT 1
 - Debo incluir user_id en el filtro
+- Debo seleccionar todos los campos importantes, incluyendo series_json
 
 Paso 3: SQL final:
 ```sql
-SELECT fecha, ejercicio, repeticiones 
+SELECT fecha, ejercicio, repeticiones, series_json, rir, comentarios
 FROM gym.ejercicios 
 WHERE user_id = %s AND ejercicio ILIKE %s 
 ORDER BY fecha DESC 
 LIMIT 1
+```
 Parámetros: ["{user_id_value}", "%press banca%"]
+
 EJEMPLO 2: "Me muestras mis últimas 10 sesiones de press de banca"
 Paso 1: Analizar consulta
 
@@ -53,14 +61,18 @@ Paso 2: Construir la consulta SQL
 Debo filtrar por ejercicio ILIKE "%press banca%"
 Quiere las 10 más recientes → ORDER BY fecha DESC LIMIT 10
 Debo incluir user_id en el filtro
+Debo seleccionar todos los campos importantes
 
 Paso 3: SQL final:
-sqlSELECT fecha, ejercicio, repeticiones 
+```sql
+SELECT fecha, ejercicio, repeticiones, series_json, rir, comentarios 
 FROM gym.ejercicios 
 WHERE user_id = %s AND ejercicio ILIKE %s 
 ORDER BY fecha DESC 
 LIMIT 10
+```
 Parámetros: ["{user_id_value}", "%press banca%"]
+
 EJEMPLO 3: "Cuántas repeticiones hice en mi última sesión de dominadas"
 Paso 1: Analizar consulta
 
@@ -73,14 +85,41 @@ Paso 2: Construir la consulta SQL
 Debo filtrar por ejercicio ILIKE "%dominada%"
 Solo necesito la última → ORDER BY fecha DESC LIMIT 1
 Debo incluir user_id en el filtro
+Debo seleccionar todos los campos importantes
 
 Paso 3: SQL final:
-sqlSELECT fecha, ejercicio, repeticiones 
+```sql
+SELECT fecha, ejercicio, repeticiones, series_json, rir, comentarios 
 FROM gym.ejercicios 
 WHERE user_id = %s AND ejercicio ILIKE %s 
 ORDER BY fecha DESC 
 LIMIT 1
+```
 Parámetros: ["{user_id_value}", "%dominada%"]
+
+EJEMPLO 4: "Qué he hecho de ejercicio hoy?"
+Paso 1: Analizar consulta
+
+El usuario quiere ver todas sus sesiones de ejercicio de hoy
+Debe filtrar por fecha = hoy
+No especifica un ejercicio concreto
+
+Paso 2: Construir la consulta SQL
+
+Debo filtrar por fecha = CURRENT_DATE (para obtener solo ejercicios de hoy)
+Debo incluir user_id en el filtro 
+Quiero los resultados ordenados por fecha (más recientes primero)
+Debo seleccionar todos los campos importantes
+
+Paso 3: SQL final:
+```sql
+SELECT fecha, ejercicio, repeticiones, series_json, rir, comentarios
+FROM gym.ejercicios
+WHERE user_id = %s AND fecha::date = CURRENT_DATE
+ORDER BY fecha DESC
+```
+Parámetros: ["{user_id_value}"]
+
 NOTA IMPORTANTE: En los ejemplos anteriores, "{user_id_value}" es un placeholder. En tu respuesta final, SIEMPRE debes usar el valor real del ID del usuario que se te proporciona en el contexto, por ejemplo, "102238128205785207394".
 RESPUESTA:
 Responde ÚNICAMENTE con un objeto JSON con esta estructura:
