@@ -1,269 +1,279 @@
-# Archivo: routes/dashboard.py (CON LOGS DE DEBUG PARA PROGRESO)
-
-import os
-import sys
+# back_end/gym/routes/dashboard.py
+from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import Optional, List, Dict, Any
 import logging
-import json
-from datetime import datetime
-import math # Necesario para e y otros cálculos si usas otras fórmulas
-
 import psycopg2
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from fastapi.responses import JSONResponse
+import datetime
+import json
+from ..dependencies import get_current_user
+from pydantic import BaseModel
+from .. import config
+from ..db_utils import execute_db_query
 
-# Asumiendo que config y middlewares están accesibles
-from config import DB_CONFIG
-from back_end.gym.middlewares import get_current_user # Asegúrate que esta importación funciona
-
-# Configurar logger para este módulo
+# Configurar logger
 logger = logging.getLogger(__name__)
 
-router = APIRouter(
-    prefix="/api",
-    tags=["dashboard", "stats"],
-)
+# Crear router
+router = APIRouter(tags=["dashboard"])
 
-# Función para calcular e1RM (Brzycki)
-def calculate_e1rm_brzycki(weight: float, reps: int) -> float | None:
-    """Calcula el 1RM estimado usando la fórmula de Brzycki."""
-    if reps <= 0 or weight <= 0: return 0
-    if reps == 1: return weight
-    if reps > 15: return None # Límite opcional
+# Modelo para respuesta
+class DashboardResponse(BaseModel):
+    success: bool
+    message: str
+    datos: Optional[List[Dict[str, Any]]] = None
+    ejercicios_disponibles: Optional[List[str]] = None
+    resumen: Optional[Dict[str, Any]] = None
 
-    denominator = 1.0278 - (0.0278 * reps)
-    if denominator <= 0: return None
-
-    e1rm = weight / denominator
-    return round(e1rm, 2)
-
-
-@router.get("/ejercicios_stats", response_class=JSONResponse)
+# Ruta para obtener lista de ejercicios y estadísticas
+@router.get("/api/ejercicios_stats", response_model=DashboardResponse)
 async def get_ejercicios_stats(
-    request: Request,
-    ejercicio: str = Query(None, description="Nombre del ejercicio para filtrar"),
-    desde: str = Query(None, description="Fecha de inicio (YYYY-MM-DD)"),
-    hasta: str = Query(None, description="Fecha de fin (YYYY-MM-DD)"),
-    user = Depends(get_current_user)
+    user: dict = Depends(get_current_user),
+    ejercicio: Optional[str] = None,
+    desde: Optional[str] = None,
+    hasta: Optional[str] = None
 ):
-    # Verificación de usuario (usando google_id)
-    if not user or not user.get('google_id'):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no autenticado o sin ID de Google válido.")
-    user_id_for_query = user['google_id']
-    logger.info(f"Obteniendo estadísticas para usuario Google ID: {user_id_for_query}")
-
-    conn = None
-    cur = None
     try:
-        # Construcción de query_conditions y query_params (usando google_id)
-        query_conditions = ["user_id = %s"]
-        query_params = [user_id_for_query]
-        if ejercicio:
-            query_conditions.append("ejercicio ILIKE %s")
-            query_params.append(f"%{ejercicio}%")
-        if desde:
-            try:
-                datetime.strptime(desde, '%Y-%m-%d')
-                query_conditions.append("fecha >= %s")
-                query_params.append(desde)
-            except ValueError: raise HTTPException(status_code=400, detail="Formato 'desde' inválido.")
-        if hasta:
-            try:
-                datetime.strptime(hasta, '%Y-%m-%d')
-                hasta_con_hora = f"{hasta} 23:59:59"
-                query_conditions.append("fecha <= %s")
-                query_params.append(hasta_con_hora)
-            except ValueError: raise HTTPException(status_code=400, detail="Formato 'hasta' inválido.")
-        where_clause = " AND ".join(query_conditions)
-
-        conn = psycopg2.connect(**DB_CONFIG)
+        # Validar que exista usuario
+        if not user or not user.get('google_id'):
+            raise HTTPException(status_code=401, detail="Autenticación requerida")
+        
+        # Obtener el ID de Google del usuario
+        google_id = user.get('google_id')
+        logger.info(f"Obteniendo estadísticas para usuario Google ID: {google_id}")
+        
+        # Conectar a la base de datos
+        conn = psycopg2.connect(**config.DB_CONFIG)
         cur = conn.cursor()
-        # cur.execute("SET search_path TO gym, public;") # Si es necesario
-
-        # Obtener lista de ejercicios únicos (usando google_id)
-        ejercicios_query = "SELECT DISTINCT ejercicio FROM gym.ejercicios WHERE user_id = %s ORDER BY ejercicio"
-        cur.execute(ejercicios_query, (user_id_for_query,))
-        ejercicios_list = [row[0] for row in cur.fetchall()]
-
-        # Inicializar resultados
-        exercise_data = []
-        summary = {}
-        entries_by_exercise = {}
-
-        # Obtener datos crudos (usando google_id)
+        
+        # Si no se especifica un ejercicio, devolver solo la lista de ejercicios disponibles
+        if not ejercicio:
+            # Obtener solo ejercicios que tienen datos (no null en repeticiones o series_json)
+            query = """
+                SELECT DISTINCT ejercicio 
+                FROM gym.ejercicios 
+                WHERE user_id = %s AND (repeticiones IS NOT NULL OR series_json IS NOT NULL)
+                ORDER BY ejercicio
+            """
+            cur.execute(query, (google_id,))
+            ejercicios_disponibles = [row[0] for row in cur.fetchall()]
+            
+            # Cerrar conexión
+            cur.close()
+            conn.close()
+            
+            return {
+                "success": True,
+                "message": "Lista de ejercicios obtenida correctamente",
+                "ejercicios_disponibles": ejercicios_disponibles,
+                "datos": [],
+                "resumen": {}
+            }
+        
+        # Si se especifica un ejercicio, construir la consulta con filtros
+        query_params = [google_id, ejercicio]
+        
+        # Construir la parte de la consulta para filtros de fecha
+        date_filter = ""
+        if desde:
+            date_filter += " AND fecha >= %s"
+            query_params.append(desde)
+        if hasta:
+            date_filter += " AND fecha <= %s"
+            query_params.append(hasta)
+        
+        # Consulta principal - MODIFICADA para adaptarse al nuevo esquema
         data_query = f"""
-            SELECT fecha, repeticiones, ejercicio
+            SELECT fecha, repeticiones, ejercicio, series_json, comentarios, rir
             FROM gym.ejercicios
-            WHERE {where_clause} AND repeticiones IS NOT NULL AND repeticiones != 'null'
+            WHERE user_id = %s AND ejercicio = %s{date_filter} AND (repeticiones IS NOT NULL OR series_json IS NOT NULL)
             ORDER BY fecha
         """
+        
         cur.execute(data_query, query_params)
         rows = cur.fetchall()
-        logger.info(f"Consulta devolvió {len(rows)} filas para Google ID {user_id_for_query}")
-
-        # --- Inicio Procesamiento de Datos (con cálculo de e1RM) ---
+        
+        # Estructuras para procesar los datos
+        processed_data = []
+        peso_max_ever = 0
+        volumen_max_session = 0
+        e1rm_max_ever = 0
+        first_weight = None
+        last_weight = None
+        
+        # Procesar cada fila
         for row in rows:
-            # ... (lógica de procesamiento de cada fila, cálculo de métricas por sesión
-            #      incluyendo max_e1rm_session, como en la versión anterior) ...
-            fecha, series_json, nombre_ejercicio = row
-            current_exercise_name = nombre_ejercicio if not ejercicio else ejercicio
-            if current_exercise_name not in entries_by_exercise: entries_by_exercise[current_exercise_name] = []
-            if series_json:
-                try:
-                    series = json.loads(series_json) if isinstance(series_json, str) else series_json
-                    if not isinstance(series, list): continue
-                    max_peso_session = 0
-                    total_volumen_session = 0
-                    total_reps_session = 0
-                    max_e1rm_session = 0
-                    valid_series_count = 0
-                    for serie in series:
-                        if isinstance(serie, dict) and 'repeticiones' in serie and 'peso' in serie:
-                            try:
-                                reps = int(serie.get('repeticiones', 0))
-                                peso = float(serie.get('peso', 0))
-                                if reps > 0 and peso > 0:
-                                    total_reps_session += reps
-                                    total_volumen_session += reps * peso
-                                    max_peso_session = max(max_peso_session, peso)
-                                    valid_series_count += 1
-                                    e1rm_serie = calculate_e1rm_brzycki(peso, reps)
-                                    if e1rm_serie is not None: max_e1rm_session = max(max_e1rm_session, e1rm_serie)
-                            except (ValueError, TypeError): continue
-                    if valid_series_count > 0:
-                        avg_peso_session = total_volumen_session / total_reps_session if total_reps_session > 0 else 0
-                        entries_by_exercise[current_exercise_name].append({
-                            "fecha": fecha.strftime('%Y-%m-%d'),
-                            "max_peso": max_peso_session,
-                            "avg_peso": round(avg_peso_session, 2),
-                            "total_reps": total_reps_session,
-                            "volumen": round(total_volumen_session, 2),
-                            "max_e1rm_session": max_e1rm_session
-                        })
-                except json.JSONDecodeError: continue
-                except Exception: continue
-        # --- Fin Procesamiento de Datos ---
-
-
-        # Calcular resumen si se filtró por un ejercicio específico
-        if ejercicio and ejercicio in entries_by_exercise:
-            exercise_data = entries_by_exercise[ejercicio]
-            total_sesiones = len(exercise_data)
-            if total_sesiones > 0:
-                max_weight_ever = max(entry['max_peso'] for entry in exercise_data)
-                max_volume_session = max(entry['volumen'] for entry in exercise_data)
-                max_reps_session = max(entry['total_reps'] for entry in exercise_data)
-                max_e1rm_ever = max(entry['max_e1rm_session'] for entry in exercise_data)
-
-                # <<< INICIO BLOQUE DE CÁLCULO DE PROGRESO CON LOGS >>>
-                logger.info(f"--- DEBUG Progreso ---")
-                logger.info(f"Total sesiones para cálculo: {total_sesiones}")
-                weight_progress = 0
-                progress_percent = 0
-                if total_sesiones >= 2:
-                    # Asegurarse que exercise_data está ordenado por fecha (ya debería por el SQL)
-                    first_session = exercise_data[0]
-                    last_session = exercise_data[-1]
-                    # Añadir logs para ver qué sesiones se están comparando
-                    logger.info(f"Primera sesión (fecha {first_session.get('fecha')}): max_peso = {first_session.get('max_peso')}")
-                    logger.info(f"Última sesión (fecha {last_session.get('fecha')}): max_peso = {last_session.get('max_peso')}")
-
-                    # Asegurarse que los pesos son números antes de calcular
-                    try:
-                        # Usar .get con default 0 por si la clave faltara (aunque no debería)
-                        first_peso = float(first_session.get('max_peso', 0))
-                        last_peso = float(last_session.get('max_peso', 0))
-
-                        weight_progress = last_peso - first_peso
-                        logger.info(f"Progreso absoluto peso: {weight_progress}")
-
-                        if first_peso > 0:
-                            progress_percent = (weight_progress / first_peso) * 100
-                            logger.info(f"Progreso porcentual calculado: {progress_percent}")
-                        else:
-                            logger.info("Peso inicial es 0, progreso porcentual es 0.")
-                            progress_percent = 0
-                    except (TypeError, ValueError) as e:
-                        logger.error(f"Error al convertir pesos para cálculo de progreso: {e}")
-                        progress_percent = 0 # Error en conversión, progreso 0
-                else:
-                    logger.info("Menos de 2 sesiones, progreso es 0.")
-                    progress_percent = 0
-                logger.info(f"Valor final progress_percent antes de añadir a summary: {progress_percent}")
-                # <<< FIN BLOQUE DE CÁLCULO DE PROGRESO CON LOGS >>>
-
-                summary = {
-                    "total_sesiones": total_sesiones,
-                    "max_weight_ever": max_weight_ever,
-                    "max_volume_session": max_volume_session,
-                    "max_reps_session": max_reps_session,
-                    "max_e1rm_ever": max_e1rm_ever,
-                    "progress_percent": round(progress_percent, 2) # Usar el valor calculado y loggeado
-                }
-            else: # No hay datos válidos para este ejercicio en el rango
-                summary = {"total_sesiones": 0, "max_e1rm_ever": 0, "progress_percent": 0}
-        else:
-             summary = None # O {} si prefieres
-
-        # Construir la respuesta final
-        response_content = {
+            fecha = row[0]
+            total_repeticiones = row[1]  # Ahora es INTEGER directamente
+            ejercicio_nombre = row[2]
+            series_json_raw = row[3]  # JSONB con detalles
+            comentarios = row[4]
+            rir = row[5]
+            
+            # Inicializar valores
+            max_peso = 0
+            avg_peso = 0
+            total_volume = 0
+            max_e1rm = 0
+            
+            # Procesar series desde series_json
+            series_list = []
+            try:
+                if series_json_raw:
+                    # Convertir de string a objeto si es necesario
+                    if isinstance(series_json_raw, str):
+                        series_json = json.loads(series_json_raw)
+                    else:
+                        series_json = series_json_raw
+                    
+                    # Asegurar que sea una lista
+                    if isinstance(series_json, list):
+                        series_list = series_json
+                        
+                        # Extraer pesos y repeticiones
+                        pesos = [serie.get('peso', 0) for serie in series_list]
+                        reps = [serie.get('repeticiones', 0) for serie in series_list]
+                        
+                        if pesos:
+                            max_peso = max(pesos)
+                            avg_peso = sum(pesos) / len(pesos)
+                            
+                            # Para estadísticas globales
+                            if max_peso > peso_max_ever:
+                                peso_max_ever = max_peso
+                            
+                            # Registrar primer y último peso para calcular progreso
+                            if first_weight is None:
+                                first_weight = max_peso
+                            last_weight = max_peso
+                            
+                            # Calcular volumen (peso × reps)
+                            total_volume = sum(peso * rep for peso, rep in zip(pesos, reps) if peso is not None and rep is not None)
+                            if total_volume > volumen_max_session:
+                                volumen_max_session = total_volume
+                            
+                            # Calcular e1RM estimado (fórmula Epley: peso × (1 + reps/30))
+                            e1rms = [peso * (1 + rep/30) for peso, rep in zip(pesos, reps) if peso is not None and rep is not None and rep > 0]
+                            if e1rms:
+                                max_e1rm = max(e1rms)
+                                if max_e1rm > e1rm_max_ever:
+                                    e1rm_max_ever = max_e1rm
+            except Exception as e:
+                logger.error(f"Error procesando series_json: {e}")
+                # Continuar con los valores por defecto
+            
+            # Si repeticiones no viene en la entrada o es NULL, calcular a partir de series
+            if total_repeticiones is None and series_list:
+                total_repeticiones = sum(serie.get('repeticiones', 0) for serie in series_list if serie.get('repeticiones') is not None)
+            
+            # Crear entrada para este registro
+            entry = {
+                'fecha': fecha.isoformat() if hasattr(fecha, 'isoformat') else str(fecha),
+                'ejercicio': ejercicio_nombre,
+                'max_peso': round(max_peso, 2) if max_peso else 0,
+                'avg_peso': round(avg_peso, 2) if avg_peso else 0,
+                'volumen': round(total_volume, 2) if total_volume else 0,
+                'total_reps': total_repeticiones if total_repeticiones is not None else 0,
+                'max_e1rm_session': round(max_e1rm, 2) if max_e1rm else 0,
+                'comentarios': comentarios,
+                'rir': rir
+            }
+            
+            processed_data.append(entry)
+        
+        # Calcular porcentaje de progreso
+        progress_percent = 0
+        if first_weight and last_weight and first_weight > 0:
+            progress_percent = ((last_weight - first_weight) / first_weight) * 100
+        
+        # Crear resumen
+        summary = {
+            'total_sesiones': len(processed_data),
+            'max_weight_ever': round(peso_max_ever, 2),
+            'max_volume_session': round(volumen_max_session, 2),
+            'progress_percent': round(progress_percent, 2),
+            'max_e1rm_ever': round(e1rm_max_ever, 2)
+        }
+        
+        # Cerrar conexión
+        cur.close()
+        conn.close()
+        
+        return {
             "success": True,
-            "ejercicios_disponibles": ejercicios_list,
-            "filtro_ejercicio": ejercicio,
-            "datos_agrupados": entries_by_exercise,
-            "datos": exercise_data if ejercicio else [],
-            "resumen": summary if ejercicio and summary is not None else {}
+            "message": f"Datos para '{ejercicio}' obtenidos correctamente",
+            "datos": processed_data,
+            "resumen": summary
+        }
+    
+    except Exception as e:
+        logger.error(f"Error DB: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return {
+            "success": False,
+            "message": f"Error al obtener datos: {str(e)}",
+            "datos": [],
+            "resumen": {}
         }
 
-        # Log opcional para ver la respuesta completa justo antes de enviarla
-        # logger.info("--- DEBUG BACKEND RESPONSE ---")
-        # try: logger.info(json.dumps(response_content, indent=2, default=str))
-        # except Exception as print_err: logger.info(f"Raw response_content: {response_content}")
-        # logger.info("--- FIN DEBUG BACKEND RESPONSE ---")
 
-        return JSONResponse(content=response_content)
-
-    # Manejo de excepciones
-    except HTTPException as http_exc: raise http_exc
-    except psycopg2.Error as db_err:
-        logger.error(f"Error DB: {db_err}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Error BBDD.")
-    except Exception as e:
-        logger.exception(f"Error inesperado: {e}")
-        raise HTTPException(status_code=500, detail="Error inesperado.")
-    finally:
-        if cur: cur.close()
-        if conn: conn.close()
-
-
-# --- Endpoint /api/calendar_heatmap (sin cambios, usa google_id) ---
-@router.get("/calendar_heatmap", response_class=JSONResponse)
+# Ruta para obtener datos del mapa de calor
+@router.get("/api/calendar_heatmap")
 async def get_calendar_heatmap(
-    request: Request,
-    year: int = Query(datetime.now().year),
-    user = Depends(get_current_user)
+    year: Optional[int] = Query(None, description="Año para el mapa de calor"),
+    user: dict = Depends(get_current_user)
 ):
-     if not user or not user.get('google_id'):
-        raise HTTPException(status_code=401, detail="Usuario no autenticado o sin ID Google.")
-     user_id_for_query = user['google_id']
-     logger.info(f"Obteniendo datos de calendario para usuario Google ID: {user_id_for_query}, Año: {year}")
-     conn=None
-     cur=None
-     try:
-        conn = psycopg2.connect(**DB_CONFIG)
+    try:
+        if not user or not user.get('google_id'):
+            raise HTTPException(status_code=401, detail="Autenticación requerida")
+        
+        google_id = user.get('google_id')
+        
+        # Si no se especifica año, usar el actual
+        if not year:
+            year = datetime.datetime.now().year
+        
+        logger.info(f"Obteniendo datos de calendario para usuario Google ID: {google_id}, Año: {year}")
+        
+        # Conectar a la base de datos
+        conn = psycopg2.connect(**config.DB_CONFIG)
         cur = conn.cursor()
+        
+        # Consulta para obtener conteo de ejercicios por día
         query = """
-            SELECT fecha::date as day, COUNT(DISTINCT ejercicio) as value
+            SELECT fecha::date as day, COUNT(*) as count
             FROM gym.ejercicios
             WHERE user_id = %s AND EXTRACT(YEAR FROM fecha) = %s
-            GROUP BY day ORDER BY day
+            GROUP BY day
+            ORDER BY day
         """
-        cur.execute(query, (user_id_for_query, year))
-        rows = cur.fetchall()
-        heatmap_data = [{"date": row[0].strftime('%Y-%m-%d'), "count": row[1]} for row in rows]
-        return JSONResponse(content={"success": True, "year": year, "data": heatmap_data})
-     except Exception as e:
-        logger.exception(f"Error heatmap user {user_id_for_query}: {e}")
-        raise HTTPException(status_code=500, detail="Error obteniendo datos heatmap.")
-     finally:
-        if cur: cur.close()
-        if conn: conn.close()
+        
+        cur.execute(query, (google_id, year))
+        
+        # Formatear resultados
+        result = []
+        for row in cur.fetchall():
+            result.append({
+                "date": row[0].strftime("%Y-%m-%d"),
+                "count": row[1]
+            })
+        
+        # Cerrar conexión
+        cur.close()
+        conn.close()
+        
+        return {
+            "success": True,
+            "message": "Datos de calendario obtenidos correctamente",
+            "data": result
+        }
+    
+    except Exception as e:
+        logger.error(f"Error al obtener datos de calendario: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return {
+            "success": False,
+            "message": f"Error: {str(e)}",
+            "data": []
+        }

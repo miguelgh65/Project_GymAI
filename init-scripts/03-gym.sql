@@ -11,9 +11,12 @@ CREATE TABLE IF NOT EXISTS gym.ejercicios (
     duracion INTEGER,
     user_id VARCHAR(255),
     user_uuid INTEGER REFERENCES public.users(id) ON DELETE SET NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    comentarios TEXT,
+    rir INTEGER,
+    reps_total INTEGER,
+    series_json JSONB
 );
-
 -- Tabla de rutinas
 CREATE TABLE IF NOT EXISTS gym.rutinas (
     id SERIAL PRIMARY KEY,
