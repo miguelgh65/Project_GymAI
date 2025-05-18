@@ -1,5 +1,6 @@
 # fitness_chatbot/nodes/progress_node.py
 import logging
+import json
 from typing import Tuple, Dict, Any
 
 from fitness_chatbot.schemas.agent_state import AgentState
@@ -45,6 +46,8 @@ async def process_progress_query(states: Tuple[AgentState, MemoryState]) -> Tupl
         
         # Pasar los datos directamente a progress_chain sin procesar
         logger.info("🔄 Enviando datos a progress_chain para análisis")
+        
+        # Usar función importada correctamente
         respuesta = await progress_chain.process_query(
             user_id=user_id,
             query=query,
