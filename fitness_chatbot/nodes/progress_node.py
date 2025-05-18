@@ -1,7 +1,6 @@
 # fitness_chatbot/nodes/progress_node.py
 import logging
-from typing import Tuple, Dict, Any, List, Optional
-import json
+from typing import Tuple, Dict, Any
 
 from fitness_chatbot.schemas.agent_state import AgentState
 from fitness_chatbot.schemas.memory_schemas import MemoryState
@@ -12,7 +11,7 @@ logger = logging.getLogger("fitness_chatbot")
 async def process_progress_query(states: Tuple[AgentState, MemoryState]) -> Tuple[AgentState, MemoryState]:
     """
     Procesa consultas sobre progreso, utilizando los datos recolectados por otros nodos
-    que se ejecutaron en paralelo (history y fitbit).
+    que se ejecutaron previamente (history y fitbit).
     
     Args:
         states: Tupla con (AgentState, MemoryState)
@@ -32,62 +31,19 @@ async def process_progress_query(states: Tuple[AgentState, MemoryState]) -> Tupl
     logger.info(f"📊 Procesando consulta de progreso: '{query}' para usuario {user_id}")
     
     try:
-        # Revisar qué hay en el contexto del usuario
+        # Obtener el contexto del usuario (que ya debería tener los datos de history_node y fitbit_node)
         user_context = agent_state.get("user_context", {})
-        logger.info(f"💾 DATOS RECIBIDOS EN PROGRESS_NODE: {list(user_context.keys())}")
         
-        # Verificar datos de historia
+        # Verificar qué datos tenemos disponibles
+        logger.info(f"💾 Datos disponibles: {list(user_context.keys())}")
+        
         if "exercise_history" in user_context:
-            num_entries = len(user_context["exercise_history"])
-            logger.info(f"📋 Encontrados {num_entries} registros de ejercicios en user_context")
-            
-            # Mostrar un ejemplo
-            if num_entries > 0:
-                try:
-                    sample_entry = user_context['exercise_history'][0]
-                    logger.info(f"📝 EJEMPLO DE DATO DE EJERCICIO: {str(sample_entry)}")
-                    
-                    # Verificar campos disponibles
-                    fields = list(sample_entry.keys())
-                    logger.info(f"📊 Campos disponibles: {fields}")
-                    
-                    # Verificar tipos de campos
-                    for field, value in sample_entry.items():
-                        logger.info(f"🔎 Campo '{field}' es de tipo: {type(value).__name__}")
-                except Exception as e:
-                    logger.error(f"Error mostrando ejemplo de ejercicio: {e}")
-        else:
-            logger.warning("⚠️ No hay datos de exercise_history en user_context!")
-            
-        # Verificar datos de Fitbit
+            logger.info(f"📋 Exercise history: {len(user_context['exercise_history'])} registros")
+        
         if "fitbit_data" in user_context:
-            logger.info(f"⌚ Datos de Fitbit encontrados: {list(user_context['fitbit_data'].keys())}")
-        else:
-            logger.warning("⚠️ No hay datos de fitbit_data en user_context!")
-            
-        # Detectar ejercicio específico de la consulta
-        from fitness_chatbot.chains.progress_chain import detect_exercise_in_query
+            logger.info(f"⌚ Fitbit data: {list(user_context['fitbit_data'].keys() if isinstance(user_context['fitbit_data'], dict) else ['datos no disponibles'])}")
         
-        # Primero verificar si ya existe en el contexto
-        specific_exercise = user_context.get("specific_exercise", "")
-        
-        # Si no existe, intentar detectarlo de la consulta
-        if not specific_exercise:
-            specific_exercise = detect_exercise_in_query(query)
-            if specific_exercise:
-                logger.info(f"🏋️ Ejercicio específico detectado: {specific_exercise}")
-                user_context["specific_exercise"] = specific_exercise
-                
-                # Caso especial para detectar press banca con diferentes escrituras
-                if specific_exercise.lower() == "press banca":
-                    # Filtrar y contar cuántos registros corresponden
-                    filtered = [e for e in user_context.get("exercise_history", []) 
-                              if "press" in e.get('ejercicio', '').lower() and 
-                                 "banc" in e.get('ejercicio', '').lower()]
-                    
-                    logger.info(f"📊 Se encontraron {len(filtered)} registros para press banca")
-        
-        # Pasar los datos a la chain para procesamiento
+        # Pasar los datos directamente a progress_chain sin procesar
         logger.info("🔄 Enviando datos a progress_chain para análisis")
         respuesta = await progress_chain.process_query(
             user_id=user_id,
@@ -96,7 +52,6 @@ async def process_progress_query(states: Tuple[AgentState, MemoryState]) -> Tupl
         )
         
         logger.info(f"✅ progress_chain completado. Longitud de respuesta: {len(respuesta)} caracteres")
-        logger.info(f"📊 Primeros 200 caracteres: {respuesta[:200]}")
     
     except Exception as e:
         logger.exception(f"❌ Error procesando consulta de progreso: {str(e)}")

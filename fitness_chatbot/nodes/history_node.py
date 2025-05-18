@@ -1,6 +1,6 @@
 # fitness_chatbot/nodes/history_node.py
 import logging
-from typing import Tuple, Dict, Any
+from typing import Tuple
 import json
 
 from fitness_chatbot.schemas.agent_state import AgentState
@@ -59,20 +59,10 @@ async def process_history_query(states: Tuple[AgentState, MemoryState]) -> Tuple
             agent_state["user_context"]["exercise_history"] = exercise_data
             logger.info(f"💾 Datos de historial almacenados para progress: {len(exercise_data)} registros")
             
-            # Si es un flujo de progreso, añadir más información de logging
+            # Si es un flujo de progreso, añadir información de logging
             if is_progress:
                 logger.info("🔄 FLUJO DE PROGRESO: Preparando datos para el nodo process_progress")
-                # Verificar si hay un ejercicio específico en la consulta
-                from fitness_chatbot.chains.progress_chain import detect_exercise_in_query
-                exercise_name = detect_exercise_in_query(query)
-                if exercise_name:
-                    logger.info(f"🏋️ Ejercicio específico detectado: {exercise_name}")
-                    agent_state["user_context"]["specific_exercise"] = exercise_name
-                
-                # Filtrar ejercicios relevantes si es necesario
-                if exercise_name:
-                    relevant_exercises = [ex for ex in exercise_data if exercise_name.lower() in str(ex.get('ejercicio', '')).lower()]
-                    logger.info(f"📊 Se encontraron {len(relevant_exercises)} registros para {exercise_name}")
+                # Ya no necesitamos detectar ejercicio específico, simplemente recolectamos datos
         else:
             logger.warning("⚠️ No se encontraron datos de historial")
             agent_state["user_context"]["exercise_history"] = []
