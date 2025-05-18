@@ -43,51 +43,60 @@ async def process_progress_query(states: Tuple[AgentState, MemoryState]) -> Tupl
             
             # Mostrar un ejemplo
             if num_entries > 0:
-                example_data = json.dumps(user_context['exercise_history'][0], default=str)
-                logger.info(f"📝 EJEMPLO DE DATO DE EJERCICIO: {example_data[:500]}")
-                
-                # Verificar tipos de campos
-                for field, value in user_context['exercise_history'][0].items():
-                    logger.info(f"🔎 Campo '{field}' es de tipo: {type(value).__name__}")
+                try:
+                    sample_entry = user_context['exercise_history'][0]
+                    logger.info(f"📝 EJEMPLO DE DATO DE EJERCICIO: {str(sample_entry)}")
+                    
+                    # Verificar campos disponibles
+                    fields = list(sample_entry.keys())
+                    logger.info(f"📊 Campos disponibles: {fields}")
+                    
+                    # Verificar tipos de campos
+                    for field, value in sample_entry.items():
+                        logger.info(f"🔎 Campo '{field}' es de tipo: {type(value).__name__}")
+                except Exception as e:
+                    logger.error(f"Error mostrando ejemplo de ejercicio: {e}")
         else:
             logger.warning("⚠️ No hay datos de exercise_history en user_context!")
-            user_context["exercise_history"] = []  # Inicializar como lista vacía
             
-        # Verificar datos de Fitbit - son opcionales
-        if "fitbit_data" in user_context and user_context["fitbit_data"].get("available", False):
+        # Verificar datos de Fitbit
+        if "fitbit_data" in user_context:
             logger.info(f"⌚ Datos de Fitbit encontrados: {list(user_context['fitbit_data'].keys())}")
         else:
             logger.warning("⚠️ No hay datos de fitbit_data en user_context!")
-            # Inicializar datos de Fitbit vacíos pero con estructura correcta
-            user_context["fitbit_data"] = {"available": False}
-        
-        # Verificar si hay un ejercicio específico (history_node podría haberlo detectado)
-        specific_exercise = user_context.get("specific_exercise", "")
-        if specific_exercise:
-            logger.info(f"🏋️ Ejercicio específico ya detectado: {specific_exercise}")
-        else:
-            # Intentar detectar el ejercicio específico desde la consulta
-            from fitness_chatbot.chains.progress_chain import detect_exercise_in_query
-            detected_exercise = detect_exercise_in_query(query)
-            if detected_exercise:
-                logger.info(f"🏋️ Ejercicio específico detectado de la consulta: {detected_exercise}")
-                user_context["specific_exercise"] = detected_exercise
-        
-        # Si no hay datos de ejercicios, informar al usuario
-        if not user_context.get("exercise_history"):
-            logger.warning("⚠️ No hay datos de exercise_history para realizar análisis")
-            respuesta = "No tengo suficientes datos para analizar tu progreso. Por favor, registra algunos ejercicios primero y vuelve a preguntar."
-        else:
-            # Pasar los datos a la chain para procesamiento
-            logger.info("🔄 Enviando datos a progress_chain para análisis")
-            respuesta = await progress_chain.process_query(
-                user_id=user_id,
-                query=query,
-                user_context=user_context
-            )
             
-            logger.info(f"✅ progress_chain completado. Longitud de respuesta: {len(respuesta)} caracteres")
-            logger.info(f"📊 Primeros 200 caracteres: {respuesta[:200]}")
+        # Detectar ejercicio específico de la consulta
+        from fitness_chatbot.chains.progress_chain import detect_exercise_in_query
+        
+        # Primero verificar si ya existe en el contexto
+        specific_exercise = user_context.get("specific_exercise", "")
+        
+        # Si no existe, intentar detectarlo de la consulta
+        if not specific_exercise:
+            specific_exercise = detect_exercise_in_query(query)
+            if specific_exercise:
+                logger.info(f"🏋️ Ejercicio específico detectado: {specific_exercise}")
+                user_context["specific_exercise"] = specific_exercise
+                
+                # Caso especial para detectar press banca con diferentes escrituras
+                if specific_exercise.lower() == "press banca":
+                    # Filtrar y contar cuántos registros corresponden
+                    filtered = [e for e in user_context.get("exercise_history", []) 
+                              if "press" in e.get('ejercicio', '').lower() and 
+                                 "banc" in e.get('ejercicio', '').lower()]
+                    
+                    logger.info(f"📊 Se encontraron {len(filtered)} registros para press banca")
+        
+        # Pasar los datos a la chain para procesamiento
+        logger.info("🔄 Enviando datos a progress_chain para análisis")
+        respuesta = await progress_chain.process_query(
+            user_id=user_id,
+            query=query,
+            user_context=user_context
+        )
+        
+        logger.info(f"✅ progress_chain completado. Longitud de respuesta: {len(respuesta)} caracteres")
+        logger.info(f"📊 Primeros 200 caracteres: {respuesta[:200]}")
     
     except Exception as e:
         logger.exception(f"❌ Error procesando consulta de progreso: {str(e)}")
