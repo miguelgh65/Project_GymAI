@@ -9,9 +9,6 @@ from dotenv import load_dotenv
 from handlers import register_all_handlers
 from telebot import apihelper
 from utils import log_to_console
-from telegram.gym.handlers import register_all_handlers  # Ajusta la ruta de importación
-
-
 
 # Configurar logging
 logging.basicConfig(
@@ -30,12 +27,12 @@ apihelper.ENABLE_MIDDLEWARE = True
 load_dotenv()
 
 # Obtener el token del bot desde las variables de entorno
-TOKEN = os.getenv("BOT_TOKEN")
+TOKEN = os.getenv("TELEGRAM_BOT_API_TOKEN")  # Cambiado de BOT_TOKEN a TELEGRAM_BOT_API_TOKEN
 
 # Verificación del token
 if not TOKEN:
     print("❌ ERROR: No se encontró el token del bot. Verifica tu archivo .env")
-    logging.critical("No se encontró BOT_TOKEN en las variables de entorno")
+    logging.critical("No se encontró TELEGRAM_BOT_API_TOKEN en las variables de entorno")
     sys.exit(1)
 
 # Parámetros de configuración para reintentos

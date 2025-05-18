@@ -1,4 +1,4 @@
-# telegram/gym/chatbot_handlers.py
+# telegram/gym/handlers/chatbot_handlers.py
 import re
 import logging
 import requests

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
-from typing import Dict, Any, Optional
+
 
 from fitness_chatbot.schemas.api_schemas import ChatRequest, ChatResponse
 from fitness_chatbot.graphs.fitness_graph import create_fitness_graph
