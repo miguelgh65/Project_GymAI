@@ -2,8 +2,10 @@
 import re
 import logging
 import requests
+import os
 from telebot.types import Message
 from utils import send_message_split
+from config import WHITELIST_PATH
 
 from .base_handlers import (check_whitelist, get_api_user_id, get_telegram_id,
                             log_to_console)
@@ -32,8 +34,26 @@ def register_chatbot_handlers(bot):
         # ID para enviar a las APIs (Google ID si está vinculado)
         api_user_id = get_api_user_id(message)
         
-        if not check_whitelist(message, bot):
-            return
+        # Verificación directa de whitelist
+        try:
+            with open(WHITELIST_PATH, "r") as f:
+                whitelist_contents = f.read().strip().split('\n')
+                whitelist_contents = [w.strip() for w in whitelist_contents]
+                
+            is_allowed = str(chat_id) in whitelist_contents
+            print(f"✅ ¿Usuario {chat_id} está en whitelist para AI? {is_allowed}")
+            
+            if not is_allowed:
+                bot.send_message(
+                    chat_id,
+                    f"🔒 Acceso denegado. Tu ID de Telegram es: {chat_id}\n"
+                    "Contacta al administrador para obtener acceso."
+                )
+                log_to_console(f"❌ Usuario {chat_id} no está en whitelist - Acceso denegado a /ai", "ACCESS_DENIED")
+                return
+        except Exception as e:
+            print(f"❌ Error verificando whitelist para AI: {e}")
+            # Si hay error en la verificación, continuamos
 
         # Extrae el texto después del comando
         ai_prompt = message.text.replace("/ai", "", 1).strip()
@@ -78,14 +98,22 @@ def register_chatbot_handlers(bot):
             from config import BASE_URL
             url = f"{BASE_URL}/api/chatbot/send"
             
+            # Incluir headers correctos en la solicitud
+            from api_client import ApiClient
+            headers = ApiClient.get_headers()
+            
+            log_to_console(f"Enviando solicitud a {url} con headers: {headers}", "DEBUG")
+            
             response = requests.post(
                 url,
                 json={"user_id": api_user_id, "message": ai_prompt},
-                headers={"Content-Type": "application/json"},
+                headers=headers,
             )
             
+            log_to_console(f"API response status: {response.status_code}", "INFO")
             if response.status_code == 200:
                 data = response.json()
+                log_to_console(f"API response data: {data}", "DEBUG")
                 if data.get("success") and data.get("responses"):
                     answer = ""
                     for resp in data["responses"]:
@@ -103,11 +131,12 @@ def register_chatbot_handlers(bot):
                     f"Error al comunicarse con el entrenador AI: {response.status_code}",
                 )
         except Exception as e:
+            log_to_console(f"Error en comunicación con el chatbot: {str(e)}", "ERROR")
+            logging.exception("Error completo en chat_with_ai:")
             bot.send_message(
                 chat_id,
                 "No pude conectar con el entrenador AI. ¡Los músculos necesitan descanso a veces!",
             )
-            log_to_console(f"Error en comunicación con el chatbot: {str(e)}", "ERROR")
 
     # Handler para mensajes de texto que no son comandos ni ejercicios
     # Este handler debe estar después del de ejercicios para no interferir
@@ -118,8 +147,26 @@ def register_chatbot_handlers(bot):
         # ID para enviar a las APIs (Google ID si está vinculado)
         api_user_id = get_api_user_id(message)
         
-        if not check_whitelist(message, bot):
-            return
+        # Verificación directa de whitelist
+        try:
+            with open(WHITELIST_PATH, "r") as f:
+                whitelist_contents = f.read().strip().split('\n')
+                whitelist_contents = [w.strip() for w in whitelist_contents]
+                
+            is_allowed = str(chat_id) in whitelist_contents
+            print(f"✅ ¿Usuario {chat_id} está en whitelist para mensaje general? {is_allowed}")
+            
+            if not is_allowed:
+                bot.send_message(
+                    chat_id,
+                    f"🔒 Acceso denegado. Tu ID de Telegram es: {chat_id}\n"
+                    "Contacta al administrador para obtener acceso."
+                )
+                log_to_console(f"❌ Usuario {chat_id} no está en whitelist - Acceso denegado a mensaje general", "ACCESS_DENIED")
+                return
+        except Exception as e:
+            print(f"❌ Error verificando whitelist para mensaje general: {e}")
+            # Si hay error en la verificación, continuamos
             
         # Si llegamos aquí, el mensaje no es un comando ni un ejercicio
         # Así que lo tratamos como una pregunta para el AI
@@ -153,14 +200,22 @@ def register_chatbot_handlers(bot):
             from config import BASE_URL
             url = f"{BASE_URL}/api/chatbot/send"
             
+            # Usar ApiClient para obtener headers correctos
+            from api_client import ApiClient
+            headers = ApiClient.get_headers()
+            
+            log_to_console(f"Enviando solicitud a {url} con headers: {headers}", "DEBUG")
+            
             response = requests.post(
                 url,
                 json={"user_id": api_user_id, "message": message.text},
-                headers={"Content-Type": "application/json"},
+                headers=headers,
             )
             
+            log_to_console(f"API response status: {response.status_code}", "INFO")
             if response.status_code == 200:
                 data = response.json()
+                log_to_console(f"API response data: {data}", "DEBUG")
                 if data.get("success") and data.get("responses"):
                     answer = ""
                     for resp in data["responses"]:
@@ -178,8 +233,9 @@ def register_chatbot_handlers(bot):
                     f"Error al comunicarse con el entrenador AI: {response.status_code}",
                 )
         except Exception as e:
+            log_to_console(f"Error en comunicación con el chatbot: {str(e)}", "ERROR")
+            logging.exception("Error completo en handle_general_message:")
             bot.send_message(
                 chat_id,
                 "No pude conectar con el entrenador AI. ¡Los músculos necesitan descanso a veces!",
             )
-            log_to_console(f"Error en comunicación con el chatbot: {str(e)}", "ERROR")

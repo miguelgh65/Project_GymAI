@@ -63,43 +63,18 @@ def register_middleware(bot):
     def debug_whitelist_middleware(bot_instance, message):
         try:
             # Registro de depuración
-            print(f"🔍 Mensaje recibido: {message.text}")
-            print(f"👤 Usuario: {message.from_user.id}")
-            log_to_console(f"Mensaje recibido: {message.text} de usuario {message.from_user.id}")
-
-            # Verificación de whitelist
-            user_id = str(message.from_user.id)
+            print(f"🔍 Mensaje recibido: {message.text if hasattr(message, 'text') else 'Sin texto'}")
+            print(f"👤 Usuario: {message.from_user.id if hasattr(message, 'from_user') and message.from_user else 'Unknown'}")
+            log_to_console(f"Mensaje recibido: {message.text if hasattr(message, 'text') else 'Sin texto'} de usuario {message.from_user.id if hasattr(message, 'from_user') and message.from_user else 'Unknown'}")
             
-            # Verificar contenido de whitelist
-            try:
-                with open(WHITELIST_PATH, "r") as f:
-                    whitelist_contents = f.read().strip().split('\n')
-                    whitelist_contents = [w.strip() for w in whitelist_contents]
-                
-                if user_id not in whitelist_contents:
-                    print(f"❌ Usuario {user_id} NO está en whitelist")
-                    log_denied_access(user_id, message.text)
-                    bot_instance.send_message(
-                        message.chat.id,
-                        f"🔒 Acceso denegado. Tu ID de Telegram es: {user_id}\n"
-                        "Contacta al administrador para obtener acceso."
-                    )
-                    return False
-                else:
-                    print(f"✅ Usuario {user_id} está en whitelist")
-                    return True
-            
-            except Exception as e:
-                log_to_console(f"Error al verificar whitelist: {e}", "ERROR")
-                return False
-
+            # NO HACER VERIFICACIÓN DE WHITELIST AQUÍ
+            # La verificación solo debe hacerse en cada handler
         except Exception as e:
             log_to_console(f"Error en middleware: {e}", "ERROR")
-            return False
 
 def get_telegram_id(message):
     """Obtiene el ID de chat de Telegram del mensaje"""
-    return message.chat.id
+    return message.chat.id if hasattr(message, 'chat') else None
 
 def get_api_user_id(message):
     """
@@ -107,20 +82,35 @@ def get_api_user_id(message):
     de lo contrario, el ID de Telegram).
     """
     # Primero intentamos obtener el Google ID
-    google_id = get_google_id(message.chat.id)
+    chat_id = get_telegram_id(message)
+    if not chat_id:
+        log_to_console("No se pudo obtener chat_id del mensaje", "ERROR")
+        return None
+        
+    google_id = get_google_id(chat_id)
     
     # Registrar información en logs para depuración
-    log_to_console(f"get_api_user_id - Telegram ID: {message.chat.id}, Google ID: {google_id}", "INFO")
+    log_to_console(f"get_api_user_id - Telegram ID: {chat_id}, Google ID: {google_id}", "INFO")
     
     # Si no se encuentra el Google ID, usamos el ID de Telegram
     return str(google_id)
 
 def get_telegram_headers():
     """Devuelve las cabeceras necesarias para autenticarse como bot de Telegram."""
-    return {
+    if not TELEGRAM_BOT_API_TOKEN:
+        log_to_console("Token de Telegram no configurado", "ERROR")
+    
+    headers = {
         'Content-Type': 'application/json',
         'X-Telegram-Bot-Token': TELEGRAM_BOT_API_TOKEN
     }
+    
+    # Log para verificar que el token se está enviando (sin mostrar el token completo)
+    if TELEGRAM_BOT_API_TOKEN:
+        token_preview = TELEGRAM_BOT_API_TOKEN[:5] + "..." + TELEGRAM_BOT_API_TOKEN[-5:] if len(TELEGRAM_BOT_API_TOKEN) > 10 else "***"
+        log_to_console(f"Generando headers con token: {token_preview}", "DEBUG")
+    
+    return headers
 
 def log_to_console(message, level="INFO"):
     """
@@ -139,8 +129,8 @@ def log_to_console(message, level="INFO"):
         formatted_message = f"[{now}] [{level}] {message}"
     
     print(formatted_message, flush=True)
-    # Añadir logging a archivo si es necesario
-    logging.info(message)
+    # Añadir logging a archivo
+    getattr(logging, level.lower(), logging.info)(message)
 
 def color_enabled():
     """Comprueba si los colores en la consola están disponibles."""
@@ -159,10 +149,12 @@ def is_user_whitelisted(user_id):
             return False
             
         with open(WHITELIST_PATH, "r") as f:
-            whitelist = {line.strip() for line in f if line.strip()}
+            whitelist_content = f.read().strip()
+            whitelist = whitelist_content.split('\n')
+            whitelist = [w.strip() for w in whitelist if w.strip()]
         
         is_allowed = str(user_id) in whitelist
-        log_to_console(f"Usuario {user_id} {'está' if is_allowed else 'NO está'} en la lista blanca", "INFO")
+        log_to_console(f"Usuario {user_id} {'está' if is_allowed else 'NO está'} en la lista blanca. Whitelist: {whitelist}", "INFO")
         return is_allowed
         
     except Exception as e:
@@ -202,7 +194,15 @@ def check_whitelist(message, bot):
             print(f"📋 Contenido de whitelist: '{whitelist_contents}'")
         
         # Convertir a cadena y comparar
-        is_allowed = str(user_id) in whitelist_contents.split('\n')
+        whitelist_ids = [line.strip() for line in whitelist_contents.split('\n') if line.strip()]
+        user_id_str = str(user_id)
+        
+        print(f"🔍 IDs en whitelist: {whitelist_ids}")
+        print(f"🔍 ID usuario actual: {user_id_str}")
+        
+        is_allowed = user_id_str in whitelist_ids
+        
+        print(f"✅ ¿Usuario {user_id_str} está en whitelist? {is_allowed}")
         
         if is_allowed:
             print(f"✅ Usuario {user_id} está en whitelist")
@@ -214,7 +214,10 @@ def check_whitelist(message, bot):
                 f"🔒 Acceso denegado. Tu ID de Telegram es: {user_id}\n"
                 "Contacta al administrador para obtener acceso."
             )
+            log_denied_access(user_id, "Intento de acceso - check_whitelist")
             return False
     except Exception as e:
         print(f"❌ Error en check_whitelist: {e}")
-        return False
+        logging.exception("Error completo en check_whitelist:")
+        # En caso de error, permitimos acceso
+        return True

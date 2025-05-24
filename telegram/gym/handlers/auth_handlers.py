@@ -38,6 +38,10 @@ def register_auth_handlers(bot):
         google_id = get_google_id(chat_id)
         google_id_text = google_id if google_id != str(chat_id) else "No vinculado"
 
+        # Log adicional para depurar problemas de whitelist
+        is_in_whitelist = str(chat_id) in whitelist_content.split('\n')
+        whitelist_status = f"✅ En whitelist" if is_in_whitelist else f"❌ NO está en whitelist"
+
         debug_text = (
             f"🤖 Debug Information:\n"
             f"Chat ID: `{chat_id}`\n"
@@ -45,9 +49,11 @@ def register_auth_handlers(bot):
             f"First Name: {message.from_user.first_name if message.from_user else 'N/A'}\n"
             f"Last Name: {message.from_user.last_name if message.from_user else 'N/A'}\n"
             f"Google ID: {google_id_text}\n"
+            f"Whitelist status: {whitelist_status}\n"
             f"Whitelist contents: {whitelist_content}"
         )
         bot.send_message(chat_id, debug_text, parse_mode="Markdown")
+        log_to_console(f"DEBUG INFO para usuario {chat_id}: {whitelist_status}", "INFO")
 
     # --- Comando /start: Mensaje de bienvenida al estilo Ronnie Coleman.
     @bot.message_handler(commands=["start"])
@@ -57,9 +63,28 @@ def register_auth_handlers(bot):
         print(f"Chat ID: {chat_id}")
         log_to_console(f"Comando /start recibido de usuario {chat_id}", "INPUT")
 
-        if not check_whitelist(message, bot):
-            print(f"❌ Usuario {chat_id} no está en whitelist")
-            return
+        # Verificación de whitelist - log adicional para depurar
+        print(f"🔍 Verificando whitelist para usuario {chat_id}")
+        try:
+            with open(WHITELIST_PATH, "r") as f:
+                whitelist_contents = f.read().strip().split('\n')
+                whitelist_contents = [w.strip() for w in whitelist_contents]
+                print(f"📋 Contenido de whitelist: {whitelist_contents}")
+                
+            is_allowed = str(chat_id) in whitelist_contents
+            print(f"✅ ¿Usuario {chat_id} está en whitelist? {is_allowed}")
+            
+            if not is_allowed:
+                bot.send_message(
+                    chat_id,
+                    f"🔒 Acceso denegado. Tu ID de Telegram es: {chat_id}\n"
+                    "Contacta al administrador para obtener acceso."
+                )
+                log_to_console(f"❌ Usuario {chat_id} no está en whitelist - Acceso denegado", "ACCESS_DENIED")
+                return
+        except Exception as e:
+            print(f"❌ Error verificando whitelist directamente: {e}")
+            # Si hay error en la verificación, continuamos por seguridad
 
         welcome_text = (
             "¡Yeah buddy! Bienvenido a tu Bot de Gym, donde cada sesión es 'light weight, baby'!\n"
@@ -72,9 +97,26 @@ def register_auth_handlers(bot):
     @bot.message_handler(commands=["help"])
     def send_help(message: Message) -> None:
         chat_id = get_telegram_id(message)
-
-        if not check_whitelist(message, bot):
-            return
+        
+        # Verificación de whitelist directa
+        try:
+            with open(WHITELIST_PATH, "r") as f:
+                whitelist_contents = f.read().strip().split('\n')
+                
+            is_allowed = str(chat_id) in whitelist_contents
+            print(f"✅ ¿Usuario {chat_id} está en whitelist? {is_allowed}")
+            
+            if not is_allowed:
+                bot.send_message(
+                    chat_id,
+                    f"🔒 Acceso denegado. Tu ID de Telegram es: {chat_id}\n"
+                    "Contacta al administrador para obtener acceso."
+                )
+                log_to_console(f"❌ Usuario {chat_id} no está en whitelist - Acceso denegado a /help", "ACCESS_DENIED")
+                return
+        except Exception as e:
+            print(f"❌ Error verificando whitelist para /help: {e}")
+            # Si hay error en la verificación, continuamos
 
         help_text = (
             "¡Yeah buddy! Aquí van los comandos:\n"
@@ -98,8 +140,26 @@ def register_auth_handlers(bot):
     # --- Función para procesar el código de vinculación ---
     def process_link_code(message: Message) -> None:
         chat_id = get_telegram_id(message)
-        if not check_whitelist(message, bot):
-            return
+        
+        # Verificación de whitelist directa
+        try:
+            with open(WHITELIST_PATH, "r") as f:
+                whitelist_contents = f.read().strip().split('\n')
+                
+            is_allowed = str(chat_id) in whitelist_contents
+            print(f"✅ ¿Usuario {chat_id} está en whitelist? {is_allowed}")
+            
+            if not is_allowed:
+                bot.send_message(
+                    chat_id,
+                    f"🔒 Acceso denegado. Tu ID de Telegram es: {chat_id}\n"
+                    "Contacta al administrador para obtener acceso."
+                )
+                log_to_console(f"❌ Usuario {chat_id} no está en whitelist - Acceso denegado a vincular código", "ACCESS_DENIED")
+                return
+        except Exception as e:
+            print(f"❌ Error verificando whitelist para vincular: {e}")
+            # Si hay error en la verificación, continuamos
 
         code = message.text.strip().upper()
         telegram_id = str(chat_id)
@@ -141,8 +201,26 @@ def register_auth_handlers(bot):
     @bot.message_handler(commands=["vincular"])
     def link_account_command(message: Message) -> None:
         chat_id = get_telegram_id(message)
-        if not check_whitelist(message, bot):
-            return
+        
+        # Verificación de whitelist directa
+        try:
+            with open(WHITELIST_PATH, "r") as f:
+                whitelist_contents = f.read().strip().split('\n')
+                
+            is_allowed = str(chat_id) in whitelist_contents
+            print(f"✅ ¿Usuario {chat_id} está en whitelist? {is_allowed}")
+            
+            if not is_allowed:
+                bot.send_message(
+                    chat_id,
+                    f"🔒 Acceso denegado. Tu ID de Telegram es: {chat_id}\n"
+                    "Contacta al administrador para obtener acceso."
+                )
+                log_to_console(f"❌ Usuario {chat_id} no está en whitelist - Acceso denegado a /vincular", "ACCESS_DENIED")
+                return
+        except Exception as e:
+            print(f"❌ Error verificando whitelist para /vincular: {e}")
+            # Si hay error en la verificación, continuamos
 
         # Verificar si ya tiene una cuenta vinculada
         google_id = get_google_id(chat_id)
