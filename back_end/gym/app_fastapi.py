@@ -101,7 +101,7 @@ logger.info("---------------------------------")
 # En app_fastapi.py - Reemplaza la configuración CORS actual
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"], # O usa tu lista cors_origins si prefieres ser más restrictivo
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
@@ -112,7 +112,7 @@ app.add_middleware(
 secret_key = os.getenv('SECRET_KEY')
 if not secret_key:
     logger.warning("SECRET_KEY no definida en .env. Usando valor temporal (inseguro!).")
-    secret_key = os.urandom(24).hex()
+    secret_key = os.urandom(24).hex() #
 app.add_middleware(SessionMiddleware, secret_key=secret_key)
 
 # Middleware de autenticación (DESPUÉS de CORS y Session)
@@ -131,12 +131,12 @@ try:
     from .routes import profile as profile_routes
     from .routes.fitbit import router as fitbit_router
     from .routes import routine as routine_routes
-    from .routes import login_handler as login_routes
+    from .routes import login_handler as login_routes # Asegúrate que esta importación es correcta
     from .routes.internal import router as internal_router
     from .routes.nutrition import router as nutrition_router
 
     logger.info("Incluyendo routers...")
-    #app.include_router(login_routes.router)
+    app.include_router(login_routes.router) # <--- DESCOMENTADO
     app.include_router(main_routes.router)
     app.include_router(routine_routes.router)
     app.include_router(dashboard_routes.router)
@@ -171,16 +171,26 @@ if os.path.exists(frontend_build_dir):
     # Ruta para manejar otras rutas de frontend (SPA)
     @app.get("/{rest_of_path:path}")
     async def serve_spa(request: Request, rest_of_path: str):
-        if rest_of_path.startswith("api/"):
-            # No servir rutas de API desde esta función
-            raise HTTPException(status_code=404)
-        index_path = f"{frontend_build_dir}/index.html"
+        # Ignorar rutas de API y archivos estáticos ya montados
+        if rest_of_path.startswith("api/") or rest_of_path.startswith("static/") or rest_of_path.startswith("docs") or rest_of_path.startswith("openapi.json"):
+            # No servir rutas de API, docs, o static desde esta función
+            # Para /docs y /openapi.json, FastAPI los maneja si están habilitados.
+            # Si se produce un 404 aquí para /docs, asegúrate que no está deshabilitado en la config de FastAPI.
+            raise HTTPException(status_code=404, detail="Not found")
+        
+        index_path = os.path.join(frontend_build_dir, "index.html")
         if os.path.exists(index_path):
             return FileResponse(index_path)
         else:
             logger.warning(f"No se encontró el archivo index.html en {frontend_build_dir}")
             raise HTTPException(status_code=404, detail="Frontend no encontrado") 
+else:
+    logger.warning(f"El directorio del frontend '{frontend_build_dir}' no existe. No se servirán archivos estáticos del frontend.")
 
-# Punto de entrada principal
+
+# Punto de entrada principal (si se ejecuta directamente, aunque con uvicorn usualmente no se llega aquí)
 if __name__ == '__main__':
     import uvicorn
+    # Esto es para ejecución directa. Para producción/desarrollo con `uvicorn main:app --reload`,
+    # esta parte no se ejecuta necesariamente a menos que llames `python app_fastapi.py`.
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
