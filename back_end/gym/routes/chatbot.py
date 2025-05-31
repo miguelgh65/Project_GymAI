@@ -124,7 +124,7 @@ async def stream_generator(user_id: str, message: str, auth_token: Optional[str]
 @router.post("/send", response_class=JSONResponse)
 async def chatbot_send(request: Request, user = Depends(get_current_user)):
     """API endpoint para enviar mensajes al chatbot"""
-    
+
     # Verificar autenticación
     if not user or not user.get('id'):
         logger.warning("Intento de acceso a chatbot sin autenticación")
@@ -133,8 +133,8 @@ async def chatbot_send(request: Request, user = Depends(get_current_user)):
             status_code=status.HTTP_401_UNAUTHORIZED
         )
 
-    # Extraer datos del request
     try:
+        # Extraer datos del request
         data = await request.json()
         message = data.get("message", "").strip()
         stream = data.get("stream", False)  # Parámetro para activar streaming
@@ -212,9 +212,11 @@ async def chatbot_send(request: Request, user = Depends(get_current_user)):
             "success": True,
             "responses": [{"role": "assistant", "content": content}]
         })
-
+    except HTTPException: # Añadido para relanzar HTTPException explícitamente
+        raise # FastAPI manejará esto y devolverá el código de estado correcto (ej. 400)
     except Exception as e:
         logger.exception(f"Error procesando mensaje: {e}")
+        # Este bloque ahora solo capturará otras excepciones no esperadas
         return JSONResponse(
             content={"success": False, "message": f"Error interno del servidor: {str(e)}"},
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
